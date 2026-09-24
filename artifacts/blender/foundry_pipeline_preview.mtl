@@ -1,0 +1,59 @@
+newmtl mat_foundation_graphite
+Kd 0.05 0.06 0.07
+Ka 0.01 0.01 0.01
+Ks 0.18 0.18 0.18
+Ns 40
+
+newmtl mat_task_blue
+Kd 0.12 0.34 0.70
+Ka 0.02 0.04 0.08
+Ks 0.22 0.24 0.28
+Ns 55
+
+newmtl mat_exploration_teal
+Kd 0.02 0.55 0.57
+Ka 0.01 0.05 0.05
+Ks 0.2 0.25 0.25
+Ns 50
+
+newmtl mat_capture_green
+Kd 0.12 0.58 0.25
+Ka 0.01 0.05 0.02
+Ks 0.18 0.24 0.18
+Ns 45
+
+newmtl mat_compiler_gold
+Kd 0.93 0.62 0.16
+Ka 0.08 0.05 0.01
+Ks 0.32 0.26 0.16
+Ns 70
+
+newmtl mat_verify_crimson
+Kd 0.72 0.16 0.22
+Ka 0.07 0.01 0.02
+Ks 0.24 0.18 0.18
+Ns 55
+
+newmtl mat_policy_violet
+Kd 0.36 0.22 0.76
+Ka 0.03 0.02 0.08
+Ks 0.22 0.2 0.32
+Ns 60
+
+newmtl mat_registry_cyan
+Kd 0.05 0.51 0.82
+Ka 0.01 0.04 0.08
+Ks 0.2 0.24 0.3
+Ns 60
+
+newmtl mat_runtime_lime
+Kd 0.47 0.70 0.18
+Ka 0.04 0.07 0.01
+Ks 0.2 0.24 0.16
+Ns 50
+
+newmtl mat_arrow_light
+Kd 0.76 0.82 0.88
+Ka 0.07 0.08 0.09
+Ks 0.28 0.28 0.28
+Ns 75

@@ -1,0 +1,44 @@
+{
+  "name": "agent-capability-compiler",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n api,web \"tsx watch src/server.ts\" \"vite --host 127.0.0.1\"",
+    "start": "tsx src/server.ts",
+    "build": "tsc --noEmit && vite build",
+    "lint": "tsc --noEmit && prettier --check src tests scripts e2e *.json *.ts *.html *.md docs",
+    "format": "prettier --write src tests scripts e2e *.json *.ts *.html *.md docs",
+    "test": "vitest run tests/unit tests/failure tests/compiler tests/runtime tests/differential",
+    "test:integration": "vitest run tests/integration",
+    "eval": "tsx scripts/evaluate.ts",
+    "test:all": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "express": "5.2.1",
+    "lucide-react": "1.47.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@types/express": "5.0.6",
+    "@types/node": "26.6.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@types/supertest": "7.2.1",
+    "@vitejs/plugin-react": "6.1.1",
+    "concurrently": "10.0.5",
+    "prettier": "3.9.9",
+    "supertest": "7.3.0",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "vite": "8.3.0",
+    "vitest": "5.0.1"
+  }
+}

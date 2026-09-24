@@ -1,0 +1,17 @@
+{
+  "name": "foundry_pipeline_blender_artifact",
+  "version": "0.1.0",
+  "format": "blender-generator-v1",
+  "entrypoint": "generate_foundry_pipeline.py",
+  "preview": "foundry_pipeline_preview.obj",
+  "outputs": ["foundry_pipeline.blend", "foundry_pipeline.glb"],
+  "requires": {
+    "blender": "4.x or compatible bpy runtime"
+  },
+  "description": "A Blender scene that depicts the Agent JIT Compiler pipeline as a trusted capability assembly line.",
+  "status": "generator_checked_in_preview_mesh_available",
+  "notes": [
+    "The local environment did not expose a blender executable on PATH or in common Windows install locations.",
+    "Run the entrypoint with Blender to generate native .blend and .glb outputs."
+  ]
+}
