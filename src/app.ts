@@ -2,6 +2,7 @@ import express from 'express';
 import type { ErrorRequestHandler } from 'express';
 import { resolve } from 'node:path';
 import { z } from 'zod';
+import type { ArtifactSigner } from './security/signing.js';
 import { customerInput } from './compiler/ir.js';
 import { DomainError, defaultPolicy } from './domain.js';
 import { sampleRawAgentTrajectory, sampleTrajectory } from './exploration/capture.js';
@@ -11,6 +12,7 @@ import { Store } from './registry/store.js';
 import { ApiKeyAuthenticator, withIdentity, requirePermission } from './security/identity.js';
 export type AppOptions = {
   auth?: ApiKeyAuthenticator;
+  signer?: ArtifactSigner;
   runtime?: ConstructorParameters<typeof Foundry>[1];
 };
 
@@ -48,11 +50,11 @@ export function createApp(store: Store, seed = true, options: AppOptions = {}) {
                   ? 'verify'
                   : action === 'approve'
                     ? 'approve'
-                    : ['deploy', 'revoke'].includes(action ?? '')
+                    : ['deploy', 'revoke', 'routing'].includes(action ?? '')
                       ? 'deploy'
                       : action === 'dispatch' || action === 'shadow'
                         ? 'invoke'
-                        : req.path === '/v2/traces'
+                        : ['/v2/traces', '/v2/telemetry'].includes(req.path)
                           ? 'observe'
                           : 'admin';
           try {
@@ -241,6 +243,18 @@ export function createApp(store: Store, seed = true, options: AppOptions = {}) {
           .map((trace) => service.jit.ingest(trace, 'demo')),
       );
   });
+  app.get('/api/v2/runtime/capability', (_req, res) => {
+    requirePermission('invoke');
+    if (!options.signer) throw new DomainError('Capability signing is not configured.', 503);
+    res.json(options.signer.sign(service.jit.runtimeTicket()));
+  });
+  app.get('/api/v2/runtime/routing', (_req, res) => res.json(service.jit.routing()));
+  app.post('/api/v2/runtime/routing', (req, res) =>
+    res.json(service.jit.configureRouting(req.body)),
+  );
+  app.post('/api/v2/telemetry', (req, res) =>
+    res.status(201).json(service.jit.ingestTelemetry(req.body)),
+  );
   app.get('/api/v2/patterns', (_req, res) => res.json(service.jit.patterns()));
   app.post('/api/v2/patterns/analyze', (req, res) => {
     emptyRequest.parse(req.body ?? {});

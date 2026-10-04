@@ -1,3 +1,9 @@
+import {
+  routingSchema,
+  telemetrySchema,
+  wireArtifactSchema,
+  type RuntimeTicket,
+} from '../integration/protocol.js';
 import { analyzePatterns, type OptimizationPattern } from '../compiler/analyze.js';
 import { compileIR, type CompileOptions } from '../compiler/compile-ir.js';
 import { assertDigest, emitArtifact } from '../compiler/emit.js';
@@ -297,9 +303,16 @@ export class JitRegistry {
   }
 
   async dispatch(request: TaskRequest): Promise<StoredDispatchRun> {
+    const live = this.store.tenantId === 'local-demo' || this.routing().mode === 'live';
     const outcome = await dispatch(
       request,
-      this.active().filter((artifact) => artifact.taskKind === request.kind),
+      live
+        ? this.active().filter(
+            (artifact) =>
+              artifact.taskKind === request.kind &&
+              (this.store.tenantId === 'local-demo' || this.shadowStatus(artifact.id).ready),
+          )
+        : [],
       { adapters: this.adapters(), context: this.context(), agent: this.runtime.agent },
     );
     const run: StoredDispatchRun = { ...outcome, id: outcome.runId };
@@ -315,6 +328,87 @@ export class JitRegistry {
       );
     });
     return run;
+  }
+
+  routing() {
+    return routingSchema.parse(
+      this.store.setting('runtimeRouting', { mode: 'observe', rolloutPercent: 0 }),
+    );
+  }
+  configureRouting(value: unknown) {
+    const policy = routingSchema.parse(value);
+    this.store.transaction(() => {
+      this.store.setSetting('runtimeRouting', policy);
+      this.audit(
+        'routing.configured',
+        this.store.tenantId,
+        `${policy.mode}; ${policy.rolloutPercent}% rollout.`,
+      );
+    });
+    return policy;
+  }
+  runtimeTicket(now = Date.now()): RuntimeTicket {
+    const identity = currentIdentity();
+    const policy = this.routing();
+    const eligible =
+      policy.mode === 'live'
+        ? this.active().filter((entry) => this.shadowStatus(entry.id).ready)
+        : this.artifacts();
+    const artifact = [...eligible]
+      .sort((a, b) => b.version - a.version)
+      .find(
+        (entry) =>
+          ['verified', 'approved'].includes(entry.status) &&
+          entry.verifiedDigest === entry.digest &&
+          entry.validationVersion === 'read-validation-v3' &&
+          entry.checks.every((check) => check.passed) &&
+          irDigest(entry.ir) === entry.digest &&
+          (!entry.ir.guards.principalId || entry.ir.guards.principalId === identity.principalId),
+      );
+    const mode = policy.mode === 'observe' || !artifact ? 'observe' : policy.mode;
+    return {
+      format: 'foundry-runtime-v1',
+      tenantId: this.store.tenantId,
+      principalId: identity.principalId,
+      issuedAt: now,
+      expiresAt: now + 60000,
+      mode,
+      rolloutPercent: mode === 'observe' ? 0 : policy.rolloutPercent,
+      ...(mode !== 'observe' && artifact
+        ? {
+            artifact: wireArtifactSchema.parse(
+              Object.fromEntries(
+                Object.keys(wireArtifactSchema.shape).map((key) => [
+                  key,
+                  artifact[key as keyof IRArtifact],
+                ]),
+              ),
+            ),
+          }
+        : {}),
+    };
+  }
+  ingestTelemetry(value: unknown) {
+    const telemetry = telemetrySchema.parse(value);
+    const identity = currentIdentity();
+    if (
+      telemetry.tenantId !== identity.tenantId ||
+      telemetry.principalId !== identity.principalId ||
+      telemetry.agentId !== identity.agentId
+    )
+      throw new DomainError('Telemetry identity mismatch.', 403);
+    if (this.store.get('telemetry', telemetry.traceId))
+      throw new DomainError('Duplicate telemetry.', 409);
+    const stored = {
+      ...telemetry,
+      id: telemetry.traceId,
+      capturedAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
+      trust: 'client_reported' as const,
+    };
+    this.store.put('telemetry', stored);
+    // Customer reports are useful for health, but cannot attest validation/shadow promotion.
+    return { accepted: true, traceId: telemetry.traceId };
   }
 
   shadowStatus(id: string) {

@@ -4,6 +4,7 @@ import { dirname } from 'node:path';
 import { currentIdentity } from '../security/identity.js';
 import { migrate } from './migrations.js';
 import { DomainError } from '../domain.js';
+import type { StoredTelemetry } from '../integration/protocol.js';
 import type { ShadowRun } from '../runtime/shadow.js';
 import type { OptimizationPattern } from '../compiler/analyze.js';
 import type { IRArtifact } from '../compiler/ir.js';
@@ -23,6 +24,7 @@ import type {
 
 export type StoredDispatchRun = DispatchOutcome & { id: string };
 type Records = {
+  telemetry: StoredTelemetry;
   shadowRun: ShadowRun;
   pattern: OptimizationPattern;
   trajectory: Trajectory;
@@ -111,6 +113,19 @@ export class Store {
     this.db
       .prepare('DELETE FROM deployments WHERE tenant_id = ? AND name = ? AND capability_id = ?')
       .run(this.tenantId, name, id);
+  }
+  setting<T>(key: string, fallback: T): T {
+    const row = this.db
+      .prepare('SELECT value FROM settings WHERE tenant_id=? AND key=?')
+      .get(this.tenantId, key);
+    return row ? (JSON.parse(row.value as string) as T) : fallback;
+  }
+  setSetting(key: string, value: unknown) {
+    this.db
+      .prepare(
+        'INSERT INTO settings VALUES (?,?,?) ON CONFLICT(tenant_id,key) DO UPDATE SET value=excluded.value',
+      )
+      .run(this.tenantId, key, JSON.stringify(value));
   }
   get contractVersion() {
     this.db

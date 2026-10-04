@@ -17,7 +17,8 @@
     "eval": "tsx scripts/evaluate.ts",
     "test:all": "vitest run",
     "test:e2e": "playwright test",
-    "analyze": "tsx scripts/analyze-patterns.ts"
+    "analyze": "tsx scripts/analyze-patterns.ts",
+    "build:sdk": "tsc -p tsconfig.sdk.json && tsx scripts/build-sdk.ts"
   },
   "dependencies": {
     "express": "5.2.1",
