@@ -8,7 +8,8 @@ import {
   type AdapterRunner,
   type RuntimeContext,
 } from '../runtime/adapters/registry.js';
-import { normalizeObservable } from '../runtime/observable.js';
+import { bounded } from '../runtime/bounded.js';
+import { contextProjection, normalizeObservable } from '../runtime/observable.js';
 import {
   emptyMeasurement,
   reportedUsageSchema,
@@ -89,11 +90,10 @@ export class TrajectoryObserver {
     };
     this.measurement.toolCalls! += 1;
     try {
-      const raw = await this.options.adapters(
-        operation,
-        { customerId: value },
-        this.options.context,
-        AbortSignal.timeout(5000),
+      const signal = AbortSignal.timeout(5000);
+      const raw = await bounded(
+        () => this.options.adapters(operation, { customerId: value }, this.options.context, signal),
+        signal,
       );
       const projection = contracts[operation].output.parse(raw);
       if (
@@ -162,6 +162,7 @@ export class TrajectoryObserver {
   }
   finish(result: unknown): StoredToolTrace {
     this.measurement.durationMs = performance.now() - this.started;
+    contextProjection(result);
     this.measurement.outcome = 'success';
     return captureToolTrace(
       {

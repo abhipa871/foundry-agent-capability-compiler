@@ -1,8 +1,15 @@
 import { performance } from 'node:perf_hooks';
 import type { Check } from '../domain.js';
 import { irDigest, validateIR, type CapabilityIR, type IRArtifact } from '../compiler/ir.js';
+import { validateEvidence } from './evidence.js';
+import { contextProjection, sameContext } from '../runtime/observable.js';
 import { traceScopeIds, type StoredToolTrace } from '../exploration/tool-events.js';
-import { localContext, mockAdapters, type RuntimeContext } from '../runtime/adapters/registry.js';
+import {
+  fixtureResult,
+  localContext,
+  mockAdapters,
+  type RuntimeContext,
+} from '../runtime/adapters/registry.js';
 import { checkGuards } from '../runtime/dispatcher.js';
 import { DeoptimizationError, interpret } from '../runtime/interpret.js';
 import { differences } from './equivalence.js';
@@ -50,7 +57,16 @@ export async function verifyIR(
     input: unknown,
     ctx?: Partial<RuntimeContext>,
     adapters = build(),
-  ) => interpret(ir, input, { adapters, context: { ...localContext(), ...ctx } });
+  ) =>
+    interpret(ir, input, {
+      adapters,
+      context: {
+        ...localContext(),
+        tenantId: artifact.ir.guards.tenantId,
+        principalId: artifact.ir.guards.principalId ?? localContext().principalId,
+        ...ctx,
+      },
+    });
   const rejects = async (fn: () => Promise<unknown>, expected: string | string[]) => {
     const wanted = [expected].flat();
     try {
@@ -76,6 +92,57 @@ export async function verifyIR(
       `digest ${artifact.digest.slice(0, 12)} matches the validated IR`,
     );
   });
+  await check('Complete supporting evidence is present and coherent', 'schema', async () => {
+    const ids = artifact.ir.provenance.traceIds;
+    const complete =
+      supporting.length === ids.length &&
+      new Set(ids).size === ids.length &&
+      supporting.length >= 2 &&
+      new Set(supporting.map((trace) => trace.taskInput.customerId)).size >= 2;
+    supporting.forEach(validateEvidence);
+    return expect(
+      complete &&
+        supporting.every(
+          (trace) =>
+            trace.status === 'success' &&
+            trace.tenantId === artifact.ir.guards.tenantId &&
+            trace.principalId === artifact.ir.guards.principalId,
+        ),
+      'Supporting evidence is missing, duplicated or identity-incoherent.',
+      'complete distinct source evidence',
+    );
+  });
+  await check(
+    'Held-out full context agrees with independent fixture oracle',
+    'regression',
+    async () => {
+      for (const customerId of ['C-101', 'C-202', 'C-303']) {
+        const result = await run(artifact.ir, { customerId });
+        const reference = Object.fromEntries([
+          ['customer_id', customerId],
+          ...(['crm.getCustomer', 'orders.list', 'payments.refundHistory'] as const).map(
+            (operation) => [
+              operation === 'crm.getCustomer'
+                ? 'crm_get_customer'
+                : operation === 'orders.list'
+                  ? 'orders_list'
+                  : 'payments_refund_history',
+              {
+                ...(fixtureResult(operation, customerId) as object),
+                tenantId: artifact.ir.guards.tenantId,
+              },
+            ],
+          ),
+        ]);
+        expect(
+          sameContext(result.result, reference),
+          'Full context differs from fixture oracle.',
+          '',
+        );
+      }
+      return 'all resource identities and values match, including C-303 held out from demo evidence';
+    },
+  );
   await check('Tampered IR changes the digest', 'schema', async () => {
     const tampered = {
       ...artifact.ir,
@@ -93,6 +160,21 @@ export async function verifyIR(
       'sandbox',
       async () => {
         const result = await run(artifact.ir, trace.taskInput);
+        const reference = {
+          customer_id: trace.taskInput.customerId,
+          crm_get_customer: trace.events.find(
+            (event) => event.status === 'success' && event.operation === 'crm.getCustomer',
+          )?.result?.projection,
+          orders_list: trace.events.find(
+            (event) => event.status === 'success' && event.operation === 'orders.list',
+          )?.result?.projection,
+          payments_refund_history: trace.events.find(
+            (event) => event.status === 'success' && event.operation === 'payments.refundHistory',
+          )?.result?.projection,
+        };
+        contextProjection(reference);
+        if (!sameContext(result.result, reference))
+          throw new Error('Full context differs from recorded resource values.');
         const diff = differences(result.observable, trace.observableResult);
         return expect(
           diff.length === 0,

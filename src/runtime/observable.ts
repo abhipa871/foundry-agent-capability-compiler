@@ -1,3 +1,5 @@
+import { canonical } from '../compiler/ir.js';
+import { contracts } from './adapters/registry.js';
 import { z } from 'zod';
 import { DomainError } from '../domain.js';
 import { observableResultSchema, type ObservableResult } from '../exploration/tool-events.js';
@@ -30,4 +32,46 @@ export function normalizeObservable(result: unknown): ObservableResult {
           100,
       ) / 100,
   });
+}
+
+export const fullContextSchema = z
+  .object({
+    customer_id: z.string().regex(/^C-\d{3}$/),
+    crm_get_customer: contracts['crm.getCustomer'].output,
+    orders_list: contracts['orders.list'].output,
+    payments_refund_history: contracts['payments.refundHistory'].output,
+  })
+  .strict();
+
+export function contextProjection(raw: unknown) {
+  const parsed = fullContextSchema.safeParse(raw);
+  if (!parsed.success) throw new DomainError('Output does not satisfy full context.v1.', 409);
+  const value = parsed.data;
+  const components = [value.crm_get_customer, value.orders_list, value.payments_refund_history];
+  if (
+    components.some(
+      (part) =>
+        part.customerId !== value.customer_id ||
+        part.tenantId !== value.crm_get_customer.tenantId ||
+        part.snapshot !== value.crm_get_customer.snapshot,
+    )
+  )
+    throw new DomainError('Context identity mismatch.', 409);
+  const orders = [...value.orders_list.orders].sort((a, b) => a.id.localeCompare(b.id));
+  const refunds = [...value.payments_refund_history.refunds].sort((a, b) =>
+    a.id.localeCompare(b.id),
+  );
+  if (
+    new Set(orders.map((entry) => entry.id)).size !== orders.length ||
+    new Set(refunds.map((entry) => entry.id)).size !== refunds.length
+  )
+    throw new DomainError('Duplicate context resource identity.', 409);
+  return {
+    ...value,
+    orders_list: { ...value.orders_list, orders },
+    payments_refund_history: { ...value.payments_refund_history, refunds },
+  };
+}
+export function sameContext(a: unknown, b: unknown): boolean {
+  return canonical(contextProjection(a)) === canonical(contextProjection(b));
 }

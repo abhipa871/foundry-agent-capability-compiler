@@ -30,6 +30,7 @@ export function prune(graphs: ProvenanceGraph[]): PruneResult {
       }
       if (
         node.operation.startsWith('policy.') ||
+        (node.reason === 'operation_without_contract' && node.status === 'success') ||
         node.effect === 'external_write' ||
         node.effect === 'write'
       )

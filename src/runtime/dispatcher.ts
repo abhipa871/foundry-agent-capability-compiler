@@ -147,12 +147,18 @@ export async function dispatch(
     toolCalls,
     durationMs: performance.now() - started,
   });
-  const denied = (guards: GuardResult[], detail: string): DispatchOutcome => ({
+  const denied = (
+    guards: GuardResult[],
+    detail: string,
+    attempted?: DeoptimizationError['detail'],
+  ): DispatchOutcome => ({
     ...base,
     mode: 'agent',
     guards,
     outcome: 'denied',
-    measurement: measure('denied'),
+    measurement: measure('denied', attempted?.adapterCalls ?? 0),
+    adapterCalls: attempted?.adapterCalls ?? 0,
+    nodeTimings: attempted?.nodeTimings ?? [],
     durationMs: performance.now() - started,
     fallbackReason: 'guard_miss',
     fallbackDetail: detail,
@@ -275,7 +281,7 @@ export async function dispatch(
   } catch (error) {
     const deopt = error instanceof DeoptimizationError ? error : undefined;
     if (deopt?.detail.status === 403 || (error instanceof DomainError && error.status === 403))
-      return denied(guards, 'Adapter authorization denied.');
+      return denied(guards, 'Adapter authorization denied.', deopt?.detail);
     const checkpoint = buildCheckpoint({
       runId,
       artifact: selected,

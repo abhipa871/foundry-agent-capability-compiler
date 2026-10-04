@@ -201,7 +201,7 @@ export class JitRegistry {
       status: passed ? (artifact.status === 'approved' ? 'approved' : 'verified') : 'draft',
       approvedDigest: passed ? artifact.approvedDigest : undefined,
       revision: (artifact.revision ?? 0) + 1,
-      validationVersion: 'read-validation-v2',
+      validationVersion: 'read-validation-v3',
     };
     this.store.transaction(() => {
       this.store.put('irArtifact', next);

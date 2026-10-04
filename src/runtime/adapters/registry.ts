@@ -5,7 +5,7 @@ import { currentIdentity, tenantIdSchema } from '../../security/identity.js';
 import { customerInput, type ReadOperation } from '../../compiler/ir.js';
 
 const common = {
-  customerId: z.string(),
+  customerId: z.string().regex(/^C-\d{3}$/),
   tenantId: tenantIdSchema,
   snapshot: z.literal('fixtures-v1'),
 };
@@ -23,9 +23,16 @@ export const contracts = {
     output: z
       .object({
         ...common,
-        orders: z.array(
-          z.object({ id: z.string(), daysLate: z.number().int().nonnegative() }).strict(),
-        ),
+        orders: z
+          .array(
+            z
+              .object({
+                id: z.string().min(1).max(80),
+                daysLate: z.number().int().nonnegative().max(36500),
+              })
+              .strict(),
+          )
+          .max(1000),
       })
       .strict(),
   },
@@ -36,7 +43,16 @@ export const contracts = {
     output: z
       .object({
         ...common,
-        refunds: z.array(z.object({ id: z.string(), amount: z.number().nonnegative() }).strict()),
+        refunds: z
+          .array(
+            z
+              .object({
+                id: z.string().min(1).max(80),
+                amount: z.number().finite().nonnegative().max(100000000),
+              })
+              .strict(),
+          )
+          .max(1000),
       })
       .strict(),
   },

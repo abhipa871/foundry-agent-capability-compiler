@@ -2,6 +2,7 @@ import { performance } from 'node:perf_hooks';
 import { DomainError } from '../domain.js';
 import {
   customerInput,
+  validateIR,
   resolveExpression,
   type CapabilityIR,
   type IRNode,
@@ -9,7 +10,8 @@ import {
 import type { ObservableResult } from '../exploration/tool-events.js';
 import { schedule } from '../compiler/passes/schedule.js';
 import { contracts, type AdapterRunner, type RuntimeContext } from './adapters/registry.js';
-import { normalizeObservable } from './observable.js';
+import { bounded } from './bounded.js';
+import { contextProjection, normalizeObservable } from './observable.js';
 
 export type NodeTiming = { id: string; operation?: string; startMs: number; endMs: number };
 export type CompiledRun = {
@@ -53,6 +55,7 @@ export async function interpret(
   rawInput: unknown,
   options: { adapters: AdapterRunner; context: RuntimeContext; signal?: AbortSignal },
 ): Promise<CompiledRun> {
+  ir = validateIR(ir);
   const input = customerInput.parse(rawInput);
   const started = performance.now();
   const values = new Map<string, unknown>();
@@ -126,6 +129,7 @@ export async function interpret(
   }
   const result = values.get(ir.outputNode) as Record<string, unknown>;
   try {
+    contextProjection(result);
     const observable = normalizeObservable(result);
     if (observable.customerId !== input.customerId)
       throw new DomainError('Output invariant customer_id_matches failed.', 409);
@@ -185,13 +189,24 @@ async function runNode(
     );
   }
   const contract = contracts[node.operation];
-  if (!node.requiredScopes.every((scope) => options.context.scopes.includes(scope)))
+  if (
+    !options.context.scopes.includes(contract.scope) ||
+    !node.requiredScopes.every((scope) => options.context.scopes.includes(scope))
+  )
     throw new DomainError(`Missing scope for ${node.operation}.`, 403);
   const customerId = resolveExpression(node.args.customerId, input, values);
   if (typeof customerId !== 'string')
     throw new DomainError(`Resolved argument for ${node.operation} is not a customer id.`, 409);
   onAdapterCall();
-  const raw = await options.adapters(node.operation, { customerId }, options.context, signal);
+  if (
+    options.context.allowedCustomerIds &&
+    !options.context.allowedCustomerIds.includes(customerId)
+  )
+    throw new DomainError('Customer permission denied.', 403);
+  const raw = await bounded(
+    () => options.adapters(node.operation, { customerId }, options.context, signal),
+    signal,
+  );
   const parsed = contract.output.safeParse(raw);
   if (!parsed.success)
     throw new DomainError(`${node.operation} returned a value outside ${contract.schemaId}.`, 409);

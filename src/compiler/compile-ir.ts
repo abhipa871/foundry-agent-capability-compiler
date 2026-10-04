@@ -1,3 +1,4 @@
+import { validateEvidence } from '../verification/evidence.js';
 import { DomainError } from '../domain.js';
 import { buildProvenance, type ProvenanceGraph } from '../exploration/provenance.js';
 import type { StoredToolTrace } from '../exploration/tool-events.js';
@@ -48,6 +49,7 @@ export function compileIR(traces: StoredToolTrace[], options: CompileOptions = {
     if (trace.status !== 'success')
       throw new DomainError('Only successful traces are compilation evidence.', 409);
   }
+  traces.forEach(validateEvidence);
   const graphs = traces.map(buildProvenance);
   const pruned = prune(graphs);
   const match = minePattern(graphs);
