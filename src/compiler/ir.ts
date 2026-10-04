@@ -111,6 +111,8 @@ export type IRArtifact = {
   reviewNote?: string;
   revision?: number;
   validationVersion?: string;
+  patternId?: string;
+  measurementOrigin?: 'observed' | 'fixture' | 'estimated';
 };
 export function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;

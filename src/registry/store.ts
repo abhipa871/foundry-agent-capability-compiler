@@ -4,6 +4,7 @@ import { dirname } from 'node:path';
 import { currentIdentity } from '../security/identity.js';
 import { migrate } from './migrations.js';
 import { DomainError } from '../domain.js';
+import type { OptimizationPattern } from '../compiler/analyze.js';
 import type { IRArtifact } from '../compiler/ir.js';
 import type { StoredToolTrace } from '../exploration/tool-events.js';
 import type { ExecutionCheckpoint } from '../runtime/checkpoint.js';
@@ -21,6 +22,7 @@ import type {
 
 export type StoredDispatchRun = DispatchOutcome & { id: string };
 type Records = {
+  pattern: OptimizationPattern;
   trajectory: Trajectory;
   toolTrace: StoredToolTrace;
   irArtifact: IRArtifact;

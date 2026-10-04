@@ -43,3 +43,12 @@ workflows and insufficient distinct observations cannot become eligible. `npm ru
 No routing or promotion occurs.
 
 Phase 2 gate: 83 tests across 16 files and lint/type checking passed; offline demo exercised.
+
+## Phase 3 — Observed patterns to existing compiler
+
+The tenant-scoped registry persists offline reports and creates draft artifacts through the
+existing compiler. Eligibility is recomputed from current traces, and repeated proposals for
+the same evidence reuse the candidate. Pattern identity and measurement origin remain explicit.
+The new analyze/compile endpoints never verify, approve or route candidates automatically.
+
+Phase 3 gate: all 85 tests in 17 files and lint/type checking passed. Replay serialization selects only the raw trace wire schema; client storage metadata cannot enter ingestion. Existing v1 and coding replay tests remain passing.

@@ -130,6 +130,15 @@ export type StoredToolTrace = ToolTrace & {
   expiresAt?: string;
 };
 
+// Select the wire schema explicitly; storage metadata is never accepted from an SDK caller.
+export function replayTrace(trace: StoredToolTrace): ToolTrace {
+  return toolTraceSchema.parse(
+    Object.fromEntries(
+      Object.keys(toolTraceSchema.shape).map((key) => [key, trace[key as keyof ToolTrace]]),
+    ),
+  );
+}
+
 const sensitive = /token|secret|password|authorization|api[_-]?key|credential/i;
 
 export function captureToolTrace(

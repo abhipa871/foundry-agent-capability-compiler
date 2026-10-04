@@ -368,6 +368,7 @@ export class Foundry {
     const deployments = this.store.deployments();
     return {
       traces: this.jit.traces(),
+      patterns: this.jit.patterns(),
       artifacts,
       runs: this.jit.runs(),
       checkpoints: this.jit.checkpoints(),

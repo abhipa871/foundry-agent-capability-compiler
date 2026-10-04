@@ -41,7 +41,7 @@ export function createApp(store: Store, seed = true, options: AppOptions = {}) {
           const permission =
             req.method === 'GET'
               ? 'read'
-              : action === 'compile'
+              : action === 'compile' || action === 'analyze'
                 ? 'compile'
                 : action === 'verify'
                   ? 'verify'
@@ -239,6 +239,22 @@ export function createApp(store: Store, seed = true, options: AppOptions = {}) {
           .filter((trace) => !existing.has(trace.traceId))
           .map((trace) => service.jit.ingest(trace, 'demo')),
       );
+  });
+  app.get('/api/v2/patterns', (_req, res) => res.json(service.jit.patterns()));
+  app.post('/api/v2/patterns/analyze', (req, res) => {
+    emptyRequest.parse(req.body ?? {});
+    res.json(service.jit.analyze());
+  });
+  app.post('/api/v2/patterns/:patternId/compile', (req, res) => {
+    emptyRequest.parse(req.body ?? {});
+    res.status(201).json(
+      service.jit.compilePattern(
+        z
+          .string()
+          .regex(/^[a-f0-9]{64}$/)
+          .parse(req.params.patternId),
+      ),
+    );
   });
   app.post('/api/v2/compile', (req, res) => {
     const body = z

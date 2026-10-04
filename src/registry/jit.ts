@@ -1,3 +1,4 @@
+import { analyzePatterns, type OptimizationPattern } from '../compiler/analyze.js';
 import { compileIR, type CompileOptions } from '../compiler/compile-ir.js';
 import { assertDigest, emitArtifact } from '../compiler/emit.js';
 import { irDigest, type IRArtifact } from '../compiler/ir.js';
@@ -102,6 +103,54 @@ export class JitRegistry {
       );
     });
     return trace;
+  }
+
+  patterns(): OptimizationPattern[] {
+    return this.store.all('pattern');
+  }
+
+  analyze(): OptimizationPattern[] {
+    const patterns = analyzePatterns(this.traces(), this.store.tenantId);
+    this.store.transaction(() => {
+      this.store.deleteKind('pattern');
+      for (const pattern of patterns) this.store.put('pattern', pattern);
+      this.audit(
+        'patterns.analyzed',
+        this.store.tenantId,
+        `${patterns.length} structural groups; no capability promoted.`,
+      );
+    });
+    return patterns;
+  }
+
+  compilePattern(patternId: string): IRArtifact {
+    // Stored reports are explanatory snapshots. Eligibility is recomputed from current evidence,
+    // so a caller cannot edit a report or retain stale eligibility to authorize compilation.
+    const pattern = analyzePatterns(this.traces(), this.store.tenantId).find(
+      (entry) => entry.id === patternId,
+    );
+    if (!pattern) throw new DomainError('Pattern not found.', 404);
+    if (!pattern.eligible)
+      throw new DomainError('Pattern is not eligible for read-only compilation.', 409);
+    const existing = this.artifacts().find(
+      (artifact) =>
+        artifact.patternId === patternId &&
+        artifact.status !== 'revoked' &&
+        JSON.stringify([...artifact.ir.provenance.traceIds].sort()) ===
+          JSON.stringify([...pattern.traceIds].sort()),
+    );
+    if (existing) return existing;
+    const artifact = this.compile(pattern.traceIds);
+    const next = { ...artifact, patternId, measurementOrigin: pattern.measurementOrigin };
+    this.store.transaction(() => {
+      this.store.put('irArtifact', next);
+      this.audit(
+        'pattern.candidate',
+        next.id,
+        `Untrusted read-only candidate from ${pattern.occurrences} observations.`,
+      );
+    });
+    return next;
   }
 
   compile(traceIds?: string[], options: CompileOptions = {}): IRArtifact {
