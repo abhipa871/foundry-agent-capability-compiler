@@ -2,7 +2,8 @@
 
 The supported optimization is `customer_context` / `load_customer_context(customerId)`, using
 three read contracts over `fixtures-v1`. This implementation is ready for local integration and
-review. Production CRM/order/payment connectors and a live agent benchmark are still required.
+review. A [live-provider experiment](real-agent-experiment.md) is available; production connector
+measurements with metered billing are still required.
 The existing local UI keeps its sample compile/verify/approve flow. New pattern, routing, shadow,
 health and maintenance operations are available through the v2 API; there is no new hosted UI.
 
@@ -42,6 +43,12 @@ versions. Never derive it from a task prompt or capability payload. `customerOwn
 is an allowlisted operation dispatcher that keeps provider credentials locally and honors
 cancellation. A native callback may use the deoptimization checkpoint for context but must rerun
 under the original authorization; checkpoints do not resume compiled execution automatically.
+
+Optional `provider` and `model` client options label observed model events and replay evidence.
+For streaming provider bridges, `observer.recordModelResponse(usage, startedAt, completedAt)`
+accepts normalized provider-reported input/output/cache counts and monotonic `performance.now()`
+timestamps. Record each completed response once; cumulative usage must be reconciled in the
+bridge. Keep incomplete usage unknown and never pass prompts, raw event payloads or reasoning.
 
 `observer.read` requires declared task-input or event-output expressions. For example, pass
 `{ source: 'task_input', key: 'customerId' }` to the CRM read, then pass its `eventId` as the producer

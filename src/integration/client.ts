@@ -37,6 +37,8 @@ export type ClientOptions = {
   adapters: AdapterRunner;
   context: () => RuntimeContext;
   native: CustomerAgent;
+  provider?: string;
+  model?: string;
   endpoint?: string;
   apiKey?: string;
   trustedPublicKey?: string;
@@ -118,6 +120,8 @@ export class FoundryClient {
             context,
             adapters: this.options.adapters,
             agentId: this.options.agentId,
+            provider: this.options.provider,
+            model: this.options.model,
           })
         : undefined;
     const native: AgentFallback = async (task, checkpoint) => {

@@ -9,6 +9,9 @@ clustering, graph database, distributed streaming or automatic capability promot
 The implementation is a local integration milestone. It does not establish production connector
 correctness, live-agent profitability or production readiness.
 
+The subsequent [real-provider experiment](real-agent-experiment.md) measures live inference on
+the same read-only workflow, with full results and explicit limits on billing and production ROI.
+
 ## Architecture implemented
 
 1. Explicit observation wraps typed tools and model invocations, recording declared argument

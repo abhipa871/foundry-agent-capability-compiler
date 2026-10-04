@@ -80,3 +80,7 @@ and [the implementation report](docs/implementation-report.md). `npm run build:s
 reviewable SDK package. `npm run analyze -- --demo` analyzes fixture traces offline.
 `npm run benchmark:optimization` measures 30 controlled fixture replay pairs through the actual SDK
 and authenticated loopback API; it does not benchmark live model inference or claim dollar savings.
+`npm run benchmark:real-agent` runs the opt-in live Codex/OpenAI paired experiment. See
+[the real-agent results](docs/real-agent-experiment.md) for measured inference savings, complete
+latency, correctness, setup amortization and billing limitations. Production CRM/order/payment
+connector measurements with metered billing are still required.

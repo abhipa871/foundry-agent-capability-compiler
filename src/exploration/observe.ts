@@ -166,6 +166,42 @@ export class TrajectoryObserver {
         : null;
     }
   }
+  // Streaming providers can report a completed response after tool requests have been emitted.
+  // Accept only normalized usage and observed monotonic timestamps, never raw model events.
+  recordModelResponse(usage: ReportedUsage, startedAt: number, completedAt: number) {
+    const parsed = reportedUsageSchema.parse(usage);
+    if (!Number.isFinite(startedAt) || !Number.isFinite(completedAt) || completedAt < startedAt)
+      throw new DomainError('Invalid model response timing.', 400);
+    if (this.modelAttempts >= 100) throw new DomainError('Trajectory model budget exceeded.', 429);
+    this.modelAttempts += 1;
+    this.modelEvents.push({
+      id: randomUUID(),
+      provider: this.options.provider ?? 'unknown',
+      model: this.options.model ?? 'unknown',
+      startMs: Math.max(0, startedAt - this.started),
+      endMs: Math.max(0, completedAt - this.started),
+      status: 'success',
+      inputTokens: parsed.inputTokens,
+      outputTokens: parsed.outputTokens,
+      cachedInputTokens: parsed.cachedInputTokens ?? null,
+      costUsd: parsed.costUsd ?? null,
+    });
+    this.measurement.modelCalls! += 1;
+    for (const key of ['inputTokens', 'outputTokens', 'cachedInputTokens'] as const) {
+      const value = parsed[key];
+      this.measurement[key] =
+        this.measurement[key] === null || value === undefined
+          ? null
+          : this.measurement[key] + value;
+    }
+    this.measurement.totalTokens =
+      this.measurement.inputTokens === null || this.measurement.outputTokens === null
+        ? null
+        : this.measurement.inputTokens + this.measurement.outputTokens;
+    this.measurement.costUsd = this.modelEvents.every((event) => event.costUsd !== null)
+      ? this.modelEvents.reduce((sum, event) => sum + event.costUsd!, 0)
+      : null;
+  }
   finish(result: unknown): StoredToolTrace {
     this.measurement.durationMs = performance.now() - this.started;
     contextProjection(result);
