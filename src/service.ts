@@ -29,14 +29,20 @@ import { verify } from './verification/verify.js';
 import { buildGraph } from './graph/graph.js';
 import { metrics } from './telemetry/metrics.js';
 import { CodingRegistry } from './registry/coding.js';
+import { currentIdentity } from './security/identity.js';
 import { JitRegistry } from './registry/jit.js';
 
 export class Foundry {
   readonly coding: CodingRegistry;
   readonly jit: JitRegistry;
-  constructor(readonly store: Store) {
-    this.jit = new JitRegistry(store, (action, target, detail) =>
-      this.audit(action, target, detail),
+  constructor(
+    readonly store: Store,
+    runtime: ConstructorParameters<typeof JitRegistry>[2] = {},
+  ) {
+    this.jit = new JitRegistry(
+      store,
+      (action, target, detail) => this.audit(action, target, detail),
+      runtime,
     );
     this.coding = new CodingRegistry(
       store,
@@ -64,7 +70,7 @@ export class Foundry {
     this.store.put('audit', {
       id: randomUUID(),
       at: new Date().toISOString(),
-      actor: 'Local operator',
+      actor: currentIdentity().principalId,
       action,
       target,
       detail,

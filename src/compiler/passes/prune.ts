@@ -28,7 +28,11 @@ export function prune(graphs: ProvenanceGraph[]): PruneResult {
         keptEventIds.push(node.eventId);
         continue;
       }
-      if (node.operation.startsWith('policy.') || node.effect === 'external_write')
+      if (
+        node.operation.startsWith('policy.') ||
+        node.effect === 'external_write' ||
+        node.effect === 'write'
+      )
         throw new DomainError(
           `Refusing to prune ${node.operation}: policy and external-write steps must be compiled or the trace rejected.`,
           409,

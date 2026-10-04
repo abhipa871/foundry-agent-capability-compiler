@@ -7,6 +7,11 @@ import { sampleRawAgentTrajectory, sampleTrajectory } from './exploration/captur
 import { sampleToolTraces } from './exploration/sample-traces.js';
 import { Foundry } from './service.js';
 import { Store } from './registry/store.js';
+import { ApiKeyAuthenticator, withIdentity, requirePermission } from './security/identity.js';
+export type AppOptions = {
+  auth?: ApiKeyAuthenticator;
+  runtime?: ConstructorParameters<typeof Foundry>[1];
+};
 
 const id = z.string().uuid();
 const note = z.object({ note: z.string().trim().min(5).max(500) }).strict();
@@ -17,14 +22,51 @@ const agentTask = z
     providerId: z.string().trim().min(1).max(80).optional(),
   })
   .strict();
-export function createApp(store: Store, seed = true) {
+export function createApp(store: Store, seed = true, options: AppOptions = {}) {
   const app = express();
-  const service = new Foundry(store);
-  if (seed) service.seed();
+  const service = new Foundry(store, options.runtime);
+  if (seed && !options.auth) service.seed();
   app.disable('x-powered-by');
   app.use(express.json({ limit: '128kb' }));
   app.use('/api', (req, res, next) => {
     res.setHeader('Cache-Control', 'no-store');
+    if (options.auth) {
+      if (req.path === '/health') return next();
+      if (!req.path.startsWith('/v2/'))
+        return res.status(404).json({ error: 'Hosted mode exposes the read-only v2 API.' });
+      try {
+        const identity = options.auth.authenticate(req.get('authorization'));
+        return withIdentity(identity, () => {
+          const action = req.path.split('/').at(-1);
+          const permission =
+            req.method === 'GET'
+              ? 'read'
+              : action === 'compile'
+                ? 'compile'
+                : action === 'verify'
+                  ? 'verify'
+                  : action === 'approve'
+                    ? 'approve'
+                    : ['deploy', 'revoke'].includes(action ?? '')
+                      ? 'deploy'
+                      : action === 'dispatch'
+                        ? 'invoke'
+                        : req.path === '/v2/traces'
+                          ? 'observe'
+                          : 'admin';
+          try {
+            requirePermission(permission);
+            store.consumeQuota(permission, permission === 'compile' ? 10 : 120);
+            next();
+          } catch (error) {
+            service.audit('authorization.denied', 'api', 'Request permission or quota denied.');
+            next(error);
+          }
+        });
+      } catch (error) {
+        return next(error);
+      }
+    }
     const host = req.hostname;
     if (!['localhost', '127.0.0.1', '[::1]'].includes(host))
       return res.status(403).json({ error: 'Local demo accepts loopback hosts only.' });
@@ -43,7 +85,9 @@ export function createApp(store: Store, seed = true) {
         .json({ error: 'X-Foundry-Client: local-ui is required for local mutations.' });
     next();
   });
-  app.get('/api/health', (_req, res) => res.json({ status: 'ok', mode: 'local-demo' }));
+  app.get('/api/health', (_req, res) =>
+    res.json({ status: 'ok', mode: options.auth ? 'authenticated-read-api' : 'local-demo' }),
+  );
   app.get('/api/state', (_req, res) => res.json(service.state()));
   app.get('/api/agent/options', (_req, res) =>
     res.json({ providers: service.state().agentProviders }),
@@ -262,6 +306,16 @@ export function createApp(store: Store, seed = true) {
   app.get('/api/v2/profiles/:name', (req, res) =>
     res.json(service.jit.profile(z.string().min(1).max(64).parse(req.params.name))),
   );
+  app.get('/api/v2/export', (_req, res) => {
+    requirePermission('admin');
+    res.json(store.exportData());
+  });
+  app.delete('/api/v2/data', (_req, res) => {
+    requirePermission('admin');
+    store.deleteData();
+    service.audit('tenant.deleted', store.tenantId, 'Tenant data deleted.');
+    res.json({ deleted: true });
+  });
   app.use('/api', (_req, res) => res.status(404).json({ error: 'API route not found.' }));
   app.use(express.static(resolve('dist')));
   app.get('/{*path}', (_req, res) => res.sendFile(resolve('dist/index.html')));

@@ -13,6 +13,7 @@ import {
 import type { ExecutionCheckpoint } from '../runtime/checkpoint.js';
 import { dispatch, type AgentFallback, type TaskRequest } from '../runtime/dispatcher.js';
 import { verifyIR } from '../verification/verify-ir.js';
+import { currentIdentity } from '../security/identity.js';
 import { Store, type StoredDispatchRun } from './store.js';
 
 export type JitProfile = {
@@ -87,6 +88,9 @@ export class JitRegistry {
 
   ingest(value: unknown, source: StoredToolTrace['source']): StoredToolTrace {
     const trace = captureToolTrace(value, source);
+    if (trace.tenantId !== this.store.tenantId) throw new DomainError('Tenant mismatch.', 403);
+    if (this.store.tenantId !== 'local-demo' && trace.principalId !== currentIdentity().principalId)
+      throw new DomainError('Principal mismatch.', 403);
     if (this.store.get('toolTrace', trace.id))
       throw new DomainError('That trace has already been ingested.', 409);
     this.store.transaction(() => {
@@ -132,16 +136,27 @@ export class JitRegistry {
   async verify(id: string): Promise<IRArtifact> {
     const artifact = assertDigest(this.get(id));
     const checks = await verifyIR(artifact, this.traces());
-    const passed = checks.every((check) => check.passed);
+    const current = this.get(id);
+    if (
+      (current.revision ?? 0) !== (artifact.revision ?? 0) ||
+      current.digest !== artifact.digest ||
+      current.status === 'revoked'
+    )
+      throw new DomainError('Artifact changed during verification.', 409);
+    const passed = checks.length > 0 && checks.every((check) => check.passed);
     const next: IRArtifact = {
       ...artifact,
       checks,
       verifiedAt: new Date().toISOString(),
       verifiedDigest: passed ? artifact.digest : undefined,
-      status: artifact.status === 'approved' ? 'approved' : passed ? 'verified' : 'draft',
+      status: passed ? (artifact.status === 'approved' ? 'approved' : 'verified') : 'draft',
+      approvedDigest: passed ? artifact.approvedDigest : undefined,
+      revision: (artifact.revision ?? 0) + 1,
+      validationVersion: 'read-validation-v2',
     };
     this.store.transaction(() => {
       this.store.put('irArtifact', next);
+      if (!passed) this.store.undeploy(`jit/${artifact.name}`, id);
       this.audit(
         'ir.verified',
         id,
@@ -169,10 +184,11 @@ export class JitRegistry {
       approvedAt: new Date().toISOString(),
       approvedDigest: artifact.digest,
       reviewNote: note,
+      revision: (artifact.revision ?? 0) + 1,
     };
     this.store.transaction(() => {
       this.store.put('irArtifact', next);
-      this.store.deploy(`jit/${next.name}`, next.id);
+      if (this.store.tenantId === 'local-demo') this.store.deploy(`jit/${next.name}`, next.id);
       this.audit('ir.approved', id, `v${next.version}: ${note}`);
     });
     return next;
@@ -180,7 +196,13 @@ export class JitRegistry {
 
   deploy(id: string): IRArtifact {
     const artifact = assertDigest(this.get(id));
-    if (artifact.status !== 'approved' || artifact.approvedDigest !== artifact.digest)
+    if (
+      artifact.status !== 'approved' ||
+      artifact.approvedDigest !== artifact.digest ||
+      artifact.verifiedDigest !== artifact.digest ||
+      !artifact.checks.length ||
+      !artifact.checks.every((check) => check.passed)
+    )
       throw new DomainError('Only an approved artifact can be deployed.', 409);
     this.store.transaction(() => {
       this.store.deploy(`jit/${artifact.name}`, artifact.id);
@@ -195,7 +217,12 @@ export class JitRegistry {
 
   revoke(id: string): IRArtifact {
     const artifact = this.get(id);
-    const next: IRArtifact = { ...artifact, status: 'revoked' };
+    const next: IRArtifact = {
+      ...artifact,
+      status: 'revoked',
+      approvedDigest: undefined,
+      revision: (artifact.revision ?? 0) + 1,
+    };
     this.store.transaction(() => {
       this.store.undeploy(`jit/${artifact.name}`, artifact.id);
       this.store.put('irArtifact', next);
@@ -209,6 +236,9 @@ export class JitRegistry {
     return this.artifacts().filter(
       (artifact) =>
         artifact.status === 'approved' &&
+        artifact.verifiedDigest === artifact.digest &&
+        artifact.checks.length > 0 &&
+        artifact.checks.every((check) => check.passed) &&
         deployments[`jit/${artifact.name}`] === artifact.id &&
         irDigest(artifact.ir) === artifact.digest,
     );
@@ -262,13 +292,18 @@ export class JitRegistry {
   }
 
   profile(name: string): JitProfile {
-    const runs = this.runs().filter((run) => run.capability === name || run.taskKind === name);
+    const artifact =
+      this.artifacts().find((entry) => entry.id === this.store.deployments()[`jit/${name}`]) ??
+      this.artifacts().find((entry) => entry.name === name);
+    const runs = this.runs().filter(
+      (run) => run.capability === name || run.taskKind === (artifact?.taskKind ?? name),
+    );
     const durations = runs
       .filter((run) => run.mode === 'compiled')
       .map((run) => run.durationMs)
       .sort((a, b) => a - b);
     const traces = this.traces();
-    const artifact = this.artifacts().find((entry) => entry.name === name);
+
     const supporting = traces.filter((trace) =>
       artifact ? artifact.ir.provenance.traceIds.includes(trace.traceId) : false,
     );

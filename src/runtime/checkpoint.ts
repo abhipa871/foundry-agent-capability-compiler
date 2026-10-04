@@ -56,7 +56,7 @@ export function buildCheckpoint(input: {
     capabilityDigest: input.artifact.digest,
     createdAt: new Date().toISOString(),
     taskKind: input.artifact.taskKind,
-    input: input.taskInput,
+    input: redact(input.taskInput),
     failedNodeId: input.failedNodeId,
     completedNodeIds: input.completedNodeIds ?? [],
     nextNodeIds: input.nextNodeIds ?? input.artifact.ir.nodes.map((node) => node.id),

@@ -1,11 +1,12 @@
 import { z } from 'zod';
 import { setTimeout as delay } from 'node:timers/promises';
 import { DomainError } from '../../domain.js';
+import { currentIdentity, tenantIdSchema } from '../../security/identity.js';
 import { customerInput, type ReadOperation } from '../../compiler/ir.js';
 
 const common = {
   customerId: z.string(),
-  tenantId: z.literal('local-demo'),
+  tenantId: tenantIdSchema,
   snapshot: z.literal('fixtures-v1'),
 };
 export const contracts = {
@@ -48,11 +49,15 @@ export type RuntimeContext = {
   adapterVersions: Record<ReadOperation, string>;
   snapshot: string;
   observedAt: number;
+  allowedCustomerIds?: string[];
 };
 export const localContext = (): RuntimeContext => ({
-  tenantId: 'local-demo',
-  principalId: 'local-operator',
-  scopes: Object.values(contracts).map((c) => c.scope),
+  tenantId: currentIdentity().tenantId,
+  principalId: currentIdentity().principalId,
+  scopes: currentIdentity().toolScopes,
+  ...(currentIdentity().tenantId !== 'local-demo'
+    ? { allowedCustomerIds: currentIdentity().customerIds }
+    : {}),
   policyVersion: 'read-policy-v1',
   adapterVersions: { 'crm.getCustomer': '1', 'orders.list': '1', 'payments.refundHistory': '1' },
   snapshot: 'fixtures-v1',
@@ -93,7 +98,10 @@ export function mockAdapters(
   } = {},
 ): AdapterRunner {
   return async (operation, args, context, signal) => {
-    if (context.tenantId !== 'local-demo' || !context.scopes.includes(contracts[operation].scope))
+    if (
+      !context.scopes.includes(contracts[operation].scope) ||
+      (context.allowedCustomerIds && !context.allowedCustomerIds.includes(args.customerId))
+    )
       throw new DomainError('Adapter permission denied.', 403);
     if (context.adapterVersions[operation] !== contracts[operation].version)
       throw new DomainError('Adapter drift.', 409);
@@ -102,9 +110,20 @@ export function mockAdapters(
       !options.faultOperation || options.faultOperation === operation ? options.fault : 'none';
     await delay(fault === 'timeout' ? 10000 : (options.delayMs ?? 2), undefined, { signal });
     const result = fixtureResult(operation, args.customerId) as Record<string, unknown>;
+    result.tenantId = context.tenantId;
     if (fault === 'malformed') return { invalid: true };
     if (fault === 'wrong_customer') result.customerId = 'C-999';
     if (fault === 'wrong_snapshot') result.snapshot = 'wrong';
     return result;
   };
+}
+
+export function authorizeContext(context: RuntimeContext, rawInput: unknown) {
+  const input = customerInput.parse(rawInput);
+  if (
+    !Object.values(contracts).every((contract) => context.scopes.includes(contract.scope)) ||
+    (context.allowedCustomerIds && !context.allowedCustomerIds.includes(input.customerId))
+  )
+    throw new DomainError('Customer context permission denied.', 403);
+  return input;
 }

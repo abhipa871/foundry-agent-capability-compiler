@@ -35,6 +35,10 @@ export class DeoptimizationError extends Error {
       liveValues: Record<string, unknown>;
       observedResources: CompiledRun['observedResources'];
       status: number;
+      adapterCalls: number;
+      peakParallel: number;
+      nodeTimings: NodeTiming[];
+      durationMs: number;
     },
   ) {
     super(message);
@@ -78,6 +82,10 @@ export async function interpret(
         liveValues: Object.fromEntries(values),
         observedResources,
         status,
+        adapterCalls,
+        peakParallel,
+        nodeTimings: [...nodeTimings],
+        durationMs: performance.now() - started,
       },
     );
   };
@@ -99,7 +107,7 @@ export async function interpret(
             system: node.operation.split('.')[0],
             kind: node.outputSchemaId,
             key: input.customerId,
-            observedVersion: ir.adapterVersions[node.operation]!,
+            observedVersion: options.context.snapshot,
           });
         executedNodeIds.push(id);
         nodeTimings.push({

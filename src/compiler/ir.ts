@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { DomainError, type Check } from '../domain.js';
+import { tenantIdSchema } from '../security/identity.js';
 
 export const identifier = z
   .string()
@@ -55,7 +56,8 @@ export const irSchema = z
     policyVersion: z.literal('read-policy-v1'),
     guards: z
       .object({
-        tenantId: z.literal('local-demo'),
+        tenantId: tenantIdSchema,
+        principalId: z.string().max(80).optional(),
         snapshot: z.literal('fixtures-v1'),
         maxAgeMs: z.number().int().min(1).max(60000),
       })
@@ -107,6 +109,8 @@ export type IRArtifact = {
   verifiedAt?: string;
   approvedAt?: string;
   reviewNote?: string;
+  revision?: number;
+  validationVersion?: string;
 };
 export function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;

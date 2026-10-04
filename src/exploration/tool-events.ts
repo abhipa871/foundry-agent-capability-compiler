@@ -1,6 +1,11 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { DomainError } from '../domain.js';
+import { tenantIdSchema } from '../security/identity.js';
+import { measurementSchema } from '../telemetry/measurement.js';
+import { contracts } from '../runtime/adapters/registry.js';
+import { redact, safeText } from './privacy.js';
+export { redact } from './privacy.js';
 import { canonical, customerInput, identifier } from '../compiler/ir.js';
 
 export const argName = z.string().regex(/^[A-Za-z][A-Za-z0-9_]{0,63}$/);
@@ -41,6 +46,7 @@ export const toolEventSchema = z
     eventId: uuid,
     traceId: uuid,
     parentSpanId: uuid.optional(),
+    principalId: z.string().max(80).optional(),
     startMs: z.number().int().nonnegative(),
     endMs: z.number().int().nonnegative(),
     adapterId: z.string().min(1).max(40),
@@ -78,7 +84,31 @@ export const toolTraceSchema = z
     taskKind: identifier,
     task: z.string().min(10).max(1000),
     agentModel: z.string().min(1).max(80),
-    tenantId: z.literal('local-demo'),
+    tenantId: tenantIdSchema,
+    principalId: z.string().min(1).max(80).optional(),
+    agentId: z.string().min(1).max(80).optional(),
+    provider: z.string().max(80).optional(),
+    measurement: measurementSchema.optional(),
+    privacyMode: z.enum(['minimal', 'standard', 'full']).optional(),
+    modelEvents: z
+      .array(
+        z
+          .object({
+            id: uuid,
+            provider: z.string().max(80),
+            model: z.string().max(80),
+            startMs: z.number().nonnegative(),
+            endMs: z.number().nonnegative(),
+            status: z.enum(['success', 'failed']),
+            inputTokens: z.number().int().nonnegative().nullable(),
+            outputTokens: z.number().int().nonnegative().nullable(),
+            cachedInputTokens: z.number().int().nonnegative().nullable(),
+            costUsd: z.number().nonnegative().nullable(),
+          })
+          .strict(),
+      )
+      .max(1000)
+      .optional(),
     snapshot: z.literal('fixtures-v1'),
     policyVersion: z.literal('read-policy-v1'),
     taskInput: customerInput,
@@ -87,7 +117,7 @@ export const toolTraceSchema = z
     agentTokens: z.number().int().nonnegative().max(10000000),
     durationMs: z.number().positive().max(3600000),
     finalEventId: uuid.optional(),
-    events: z.array(toolEventSchema).min(1).max(100),
+    events: z.array(toolEventSchema).max(100),
     observableResult: observableResultSchema,
   })
   .strict();
@@ -97,25 +127,18 @@ export type StoredToolTrace = ToolTrace & {
   capturedAt: string;
   source: 'demo' | 'import' | 'recovery';
   resultHashes: Record<string, string>;
+  expiresAt?: string;
 };
 
 const sensitive = /token|secret|password|authorization|api[_-]?key|credential/i;
-export function redact(value: unknown, depth = 0): unknown {
-  if (depth > 6 || value === null || typeof value !== 'object') return value;
-  if (Array.isArray(value)) return value.slice(0, 50).map((item) => redact(item, depth + 1));
-  return Object.fromEntries(
-    Object.entries(value as Record<string, unknown>).map(([key, item]) => [
-      key,
-      sensitive.test(key) ? '[redacted]' : redact(item, depth + 1),
-    ]),
-  );
-}
 
 export function captureToolTrace(
   value: unknown,
   source: StoredToolTrace['source'],
 ): StoredToolTrace {
   const trace = toolTraceSchema.parse(value);
+  if (trace.status === 'success' && !trace.events.length)
+    throw new DomainError('Successful trace needs tool evidence.');
   const ids = new Set<string>();
   for (const event of trace.events) {
     if (event.traceId !== trace.traceId)
@@ -145,7 +168,17 @@ export function captureToolTrace(
       ]),
     ),
     result: event.result
-      ? { ...event.result, projection: redact(event.result.projection) }
+      ? {
+          ...event.result,
+          projection:
+            event.operation in contracts && event.status === 'success'
+              ? contracts[event.operation as keyof typeof contracts].output.parse(
+                  event.result.projection,
+                )
+              : trace.privacyMode === 'full'
+                ? redact(event.result.projection)
+                : '[omitted]',
+        }
       : undefined,
   }));
   const resultHashes = Object.fromEntries(
@@ -158,11 +191,13 @@ export function captureToolTrace(
   );
   return {
     ...trace,
+    task: trace.privacyMode === 'full' ? safeText(trace.task) : 'Observed customer context task.',
     events,
     id: trace.traceId,
     capturedAt: new Date().toISOString(),
     source,
     resultHashes,
+    expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
   };
 }
 

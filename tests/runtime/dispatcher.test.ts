@@ -11,7 +11,21 @@ function approvedArtifact(): IRArtifact {
   const traces = sampleToolTraces.map((trace) => captureToolTrace(trace, 'demo'));
   const { ir, report } = compileIR(traces);
   const artifact = emitArtifact(ir, report, { version: 1 });
-  return { ...artifact, status: 'approved', approvedDigest: artifact.digest };
+  return {
+    ...artifact,
+    status: 'approved',
+    approvedDigest: artifact.digest,
+    verifiedDigest: artifact.digest,
+    checks: [
+      {
+        name: 'Fixture verification',
+        category: 'schema',
+        passed: true,
+        detail: 'Runtime guard fixture',
+        durationMs: 0,
+      },
+    ],
+  };
 }
 const request = (customerId: string) => ({
   kind: 'customer_context',

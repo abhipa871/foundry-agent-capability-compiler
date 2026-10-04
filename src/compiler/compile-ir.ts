@@ -34,7 +34,11 @@ export function compileIR(traces: StoredToolTrace[], options: CompileOptions = {
   if (traces.length < 2)
     throw new DomainError('Compilation needs at least two structured traces as evidence.', 409);
   const [first] = traces;
+  if (new Set(traces.map((trace) => trace.traceId)).size !== traces.length)
+    throw new DomainError('Distinct trace evidence required.', 409);
   for (const trace of traces) {
+    if (trace.principalId !== first.principalId)
+      throw new DomainError('Principal context differs across traces.', 409);
     if (trace.taskKind !== first.taskKind)
       throw new DomainError('Traces belong to different task kinds.', 409);
     if (trace.tenantId !== first.tenantId || trace.snapshot !== first.snapshot)
@@ -122,7 +126,8 @@ export function compileIR(traces: StoredToolTrace[], options: CompileOptions = {
     ),
     policyVersion: 'read-policy-v1',
     guards: {
-      tenantId: 'local-demo',
+      tenantId: first.tenantId,
+      ...(first.principalId ? { principalId: first.principalId } : {}),
       snapshot: 'fixtures-v1',
       maxAgeMs: options.maxAgeMs ?? 30000,
     },
