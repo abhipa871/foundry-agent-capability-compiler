@@ -31,3 +31,15 @@ Production authentication, transport termination, record authorization and real 
 remain integration responsibilities. The fixture adapters still simulate business systems.
 
 Validation gate: 80 tests across 15 files, lint/type checking and existing evaluation passed.
+
+## Phase 2 — Offline structural analysis
+
+`analyzePatterns` reuses canonical nodes/signatures and `minePattern`. It partitions by tenant,
+principal, adapter/scopes, policy, snapshot and measurement origin, then reports support, task
+success, dependencies, average calls/latency/tokens/cost, and eligibility reasons. Unknown usage
+stays null and fixture evidence remains labeled. Successful unsupported work, writes, incomplete
+workflows and insufficient distinct observations cannot become eligible. `npm run analyze --
+--demo` is an offline fixture report; without `--demo` it reads the configured tenant database.
+No routing or promotion occurs.
+
+Phase 2 gate: 83 tests across 16 files and lint/type checking passed; offline demo exercised.
