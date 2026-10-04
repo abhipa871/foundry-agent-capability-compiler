@@ -1,3 +1,4 @@
+import { safeText } from '../exploration/privacy.js';
 import { performance } from 'node:perf_hooks';
 import type { Check } from '../domain.js';
 import { irDigest, validateIR, type CapabilityIR, type IRArtifact } from '../compiler/ir.js';
@@ -331,6 +332,6 @@ export async function verifyIR(
 }
 
 function summarize(detail: string): string {
-  const flat = detail.replace(/\s+/g, ' ').trim();
+  const flat = safeText(detail).replace(/\s+/g, ' ').trim();
   return flat.length > 220 ? `${flat.slice(0, 217)}...` : flat;
 }

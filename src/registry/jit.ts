@@ -46,8 +46,9 @@ export type JitProfile = {
   fallbacks: Record<string, number>;
   recordedTraceBaseline: {
     traces: number;
-    avgLlmInvocations: number;
-    avgTokens: number;
+    avgLlmInvocations: number | null;
+    avgTokens: number | null;
+    measurementOrigins: string[];
     avgDurationMs: number;
     note: string;
   };
@@ -104,8 +105,12 @@ export class JitRegistry {
   ingest(value: unknown, source: StoredToolTrace['source']): StoredToolTrace {
     const trace = captureToolTrace(value, source);
     if (trace.tenantId !== this.store.tenantId) throw new DomainError('Tenant mismatch.', 403);
-    if (this.store.tenantId !== 'local-demo' && trace.principalId !== currentIdentity().principalId)
-      throw new DomainError('Principal mismatch.', 403);
+    if (
+      this.store.tenantId !== 'local-demo' &&
+      (trace.principalId !== currentIdentity().principalId ||
+        trace.agentId !== currentIdentity().agentId)
+    )
+      throw new DomainError('Principal or agent mismatch.', 403);
     if (this.store.get('toolTrace', trace.id))
       throw new DomainError('That trace has already been ingested.', 409);
     this.store.transaction(() => {
@@ -249,6 +254,7 @@ export class JitRegistry {
   approve(id: string, note: string): IRArtifact {
     const artifact = assertDigest(this.get(id));
     if (
+      this.health(id).status !== 'healthy' ||
       artifact.status !== 'verified' ||
       !artifact.checks.length ||
       !artifact.checks.every((check) => check.passed) ||
@@ -345,7 +351,11 @@ export class JitRegistry {
         : [],
       { adapters: this.adapters(), context: this.context(), agent: this.runtime.agent },
     );
-    const run: StoredDispatchRun = { ...outcome, id: outcome.runId };
+    const run: StoredDispatchRun = {
+      ...outcome,
+      id: outcome.runId,
+      expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
+    };
     this.store.transaction(() => {
       this.store.put('dispatchRun', run);
       if (run.capabilityId) {
@@ -558,7 +568,11 @@ export class JitRegistry {
       this.store.put('shadowRun', result.shadow);
       if (result.shadow.status === 'mismatch') this.applyHealth(id, { kind: 'mismatch' });
       if (result.shadow.status === 'compiled_failure') this.applyHealth(id, { kind: 'failure' });
-      this.store.put('dispatchRun', { ...result.authoritative, id: result.authoritative.runId });
+      this.store.put('dispatchRun', {
+        ...result.authoritative,
+        id: result.authoritative.runId,
+        expiresAt: result.shadow.expiresAt,
+      });
       this.audit(
         'shadow.observed',
         id,
@@ -610,8 +624,10 @@ export class JitRegistry {
     const supporting = traces.filter((trace) =>
       artifact ? artifact.ir.provenance.traceIds.includes(trace.traceId) : false,
     );
-    const average = (values: number[]) =>
-      values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : 0;
+    const average = (values: (number | null)[]): number | null =>
+      !values.length || values.some((value) => value === null)
+        ? null
+        : values.reduce<number>((sum, value) => sum + value!, 0) / values.length;
     return {
       name,
       taskKind: artifact?.taskKind ?? name,
@@ -634,9 +650,33 @@ export class JitRegistry {
       }, {}),
       recordedTraceBaseline: {
         traces: supporting.length,
-        avgLlmInvocations: average(supporting.map((trace) => trace.llmInvocations)),
-        avgTokens: average(supporting.map((trace) => trace.agentTokens)),
-        avgDurationMs: average(supporting.map((trace) => trace.durationMs)),
+        avgLlmInvocations: average(
+          supporting.map((trace) =>
+            trace.measurement
+              ? trace.measurement.modelCalls
+              : trace.source === 'demo'
+                ? trace.llmInvocations
+                : null,
+          ),
+        ),
+        avgTokens: average(
+          supporting.map((trace) =>
+            trace.measurement
+              ? trace.measurement.totalTokens
+              : trace.source === 'demo'
+                ? trace.agentTokens
+                : null,
+          ),
+        ),
+        measurementOrigins: [
+          ...new Set(
+            supporting.map(
+              (trace) =>
+                trace.measurement?.origin ?? (trace.source === 'demo' ? 'fixture' : 'estimated'),
+            ),
+          ),
+        ],
+        avgDurationMs: average(supporting.map((trace) => trace.durationMs)) ?? 0,
         note: 'Recorded from the source trajectories, including their exploration. Not a controlled benchmark against an equivalent second attempt.',
       },
     };

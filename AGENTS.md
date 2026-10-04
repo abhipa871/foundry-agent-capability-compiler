@@ -100,7 +100,8 @@ Configuration belongs in `config/`, architecture decisions in `docs/adr/`.
 - Incremental specialization (an agent-resolved exception compiled into a tested v2 branch).
 - Profitability-driven compilation; the profile counts runs but decides nothing.
 - Frequent-subgraph mining, anti-unification, a TypeScript emission backend, write opcodes,
-  multi-tenant or non-fixture adapters.
+  or non-fixture adapters. Tenant isolation and the signed read-only optimization overlay are now
+  implemented; see docs/adr/0002-optimization-overlay.md and docs/customer-sdk.md.
 
 ## Design notes that constrain changes
 

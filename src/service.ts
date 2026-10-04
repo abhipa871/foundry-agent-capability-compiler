@@ -1,3 +1,4 @@
+import { safeText } from './exploration/privacy.js';
 import { randomUUID } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 import {
@@ -73,7 +74,7 @@ export class Foundry {
       actor: currentIdentity().principalId,
       action,
       target,
-      detail,
+      detail: safeText(detail),
     });
   }
   seed() {

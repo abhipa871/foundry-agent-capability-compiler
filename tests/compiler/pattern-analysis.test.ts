@@ -14,7 +14,8 @@ describe('offline structural analysis', () => {
       'orders.list',
       'payments.refundHistory',
     ]);
-    expect(pattern.potentialToolCallReduction).toBe(0.5);
+    expect(pattern.averageToolCalls).toBe(4); // includes the captured failed legacy read
+    expect(pattern.potentialToolCallReduction).toBe(1);
     expect(pattern.measurementOrigin).toBe('fixture');
     expect(pattern.averageCostUsd).toBeNull();
     expect(analyzePatterns(traces().reverse(), 'local-demo')[0].id).toBe(pattern.id);

@@ -1,5 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, chmodSync, existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { currentIdentity } from '../security/identity.js';
 import { migrate } from './migrations.js';
@@ -23,7 +23,7 @@ import type {
   Trajectory,
 } from '../domain.js';
 
-export type StoredDispatchRun = DispatchOutcome & { id: string };
+export type StoredDispatchRun = DispatchOutcome & { id: string; expiresAt?: string };
 type Records = {
   health: CapabilityHealth;
   telemetry: StoredTelemetry;
@@ -44,10 +44,13 @@ type Records = {
 export class Store {
   readonly db: DatabaseSync;
   constructor(path = 'data/foundry.sqlite') {
-    if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
+    if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
     this.db = new DatabaseSync(path);
     this.db.exec('PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;');
     migrate(this.db);
+    if (path !== ':memory:')
+      for (const file of [path, `${path}-wal`, `${path}-shm`])
+        if (existsSync(file)) chmodSync(file, 0o600);
   }
   get tenantId() {
     return currentIdentity().tenantId;

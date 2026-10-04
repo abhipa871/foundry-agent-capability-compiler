@@ -66,3 +66,17 @@ Equivalent root `make` targets are available. Backend services are in `src/servi
 The compiler lives in `src/compiler/`, the IR interpreter and guarded dispatcher in `src/runtime/`, and structured trace capture in `src/exploration/`.
 
 See [ADR 0001](docs/adr/0001-compiled-read-capability.md) for why traces compile to a guarded IR rather than to generated source, and [the design notes](docs/agent-jit-design-notes.md) for the wider plan and what remains unbuilt. See [coding task security](docs/coding-task-security.md) for enforcement boundaries and extension points. See [raw agent failures to branchAnalysis](docs/branch-analysis.md) for the short note on how failed and abandoned raw events are pruned into provenance.
+
+## Approved optimization overlay
+
+The seven implementation phases are checkpointed in [the implementation log](docs/optimization-implementation.md).
+The tenant-scoped offline analyzer proposes draft capabilities through the existing compiler; full
+context validation and native-authoritative shadow evidence gate signed customer routing. The thin
+Node SDK keeps read adapters and credentials customer-side. Durable health, quarantine, safe rollback,
+revalidation, retention and tenant export/deletion are available through the v2 API.
+
+See [SDK integration and operator APIs](docs/customer-sdk.md), [ADR 0002](docs/adr/0002-optimization-overlay.md),
+and [the implementation report](docs/implementation-report.md). `npm run build:sdk` creates a private
+reviewable SDK package. `npm run analyze -- --demo` analyzes fixture traces offline.
+`npm run benchmark:optimization` measures 30 controlled fixture replay pairs through the actual SDK
+and authenticated loopback API; it does not benchmark live model inference or claim dollar savings.

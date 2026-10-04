@@ -91,7 +91,7 @@ it('expires validation and telemetry within one tenant while preserving other te
     const artifact = await ready(registry);
     withIdentity({ ...localIdentity, tenantId: 'other' }, () => store.setSetting('marker', true));
     const result = registry.maintenance(Date.now() + 8 * 86400000);
-    expect(result.purged).toBe(5);
+    expect(result.purged).toBe(8);
     expect(registry.traces()).toEqual([]);
     expect(registry.health(artifact.id).reason).toBe('validation_expired');
     withIdentity({ ...localIdentity, tenantId: 'other' }, () =>

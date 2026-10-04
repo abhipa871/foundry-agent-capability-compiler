@@ -46,6 +46,9 @@ export function analyzePatterns(
     const key = canonical({
       taskKind: trace.taskKind,
       principal: trace.principalId ?? 'local-operator',
+      agent: trace.agentId ?? 'unknown',
+      provider: trace.provider ?? 'unknown',
+      model: trace.agentModel,
       snapshot: trace.snapshot,
       policy: trace.policyVersion,
       origin: trace.measurement?.origin ?? (trace.source === 'demo' ? 'fixture' : 'estimated'),
@@ -77,7 +80,8 @@ export function analyzePatterns(
       const first = supporting[0];
       const nodes = canonicalNodes(buildProvenance(first));
       const reasons: string[] = [];
-      if (supporting.length < 2) reasons.push('At least two distinct successful traces required.');
+      if (new Set(supporting.map((trace) => trace.traceId)).size < 2)
+        reasons.push('At least two distinct successful traces required.');
       if (new Set(supporting.map((trace) => trace.taskInput.customerId)).size < 2)
         reasons.push('Distinct task inputs required.');
       if (
@@ -121,8 +125,7 @@ export function analyzePatterns(
       const tools = supporting.map(
         (trace) =>
           trace.measurement?.toolCalls ??
-          trace.events.filter((event) => event.effect === 'read' && event.status === 'success')
-            .length,
+          trace.events.filter((event) => event.status !== 'skipped').length,
       );
       const averageTools = average(tools)!;
       results.push({

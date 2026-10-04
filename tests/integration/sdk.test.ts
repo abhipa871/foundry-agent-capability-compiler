@@ -94,9 +94,11 @@ it('integrates once: observes privately, shadows natively, then uses a signed ga
     service.jit.approve(candidate.id, 'Sandbox approval');
     expect(service.jit.runtimeTicket().mode).toBe('observe');
     service.jit.configureRouting({ mode: 'shadow', rolloutPercent: 100 });
-    expect(
-      (await client.execute({ kind: 'customer_context', input: { customerId: 'C-101' } })).mode,
-    ).toBe('agent');
+    for (let n = 0; n < 3; n++)
+      expect(
+        (await client.execute({ kind: 'customer_context', input: { customerId: 'C-101' } })).mode,
+      ).toBe('agent');
+    expect(service.jit.health(candidate.id).status).toBe('healthy');
     // Customer-reported matches cannot authorize promotion.
     expect(service.jit.shadowStatus(candidate.id).ready).toBe(false);
     for (const customerId of ['C-101', 'C-202', 'C-303'])
@@ -105,7 +107,7 @@ it('integrates once: observes privately, shadows natively, then uses a signed ga
     expect(
       (await client.execute({ kind: 'customer_context', input: { customerId: 'C-202' } })).mode,
     ).toBe('compiled');
-    expect(store.all('telemetry')).toHaveLength(3);
+    expect(store.all('telemetry')).toHaveLength(5);
   } finally {
     store.close();
   }
@@ -179,4 +181,22 @@ it('retains reported model usage when only tool calls were wrapped', async () =>
   expect(result.measurement.modelCalls).toBe(2);
   expect(result.measurement.totalTokens).toBe(321);
   expect(result.measurement.inputTokens).toBeNull();
+});
+
+it('uses wrapped provider usage even when a legacy callback reports default zero counters', async () => {
+  const client = new FoundryClient({
+    ...localIdentity,
+    context: localContext,
+    adapters: mockAdapters(),
+    native: async (...args) => {
+      await args[2]!.modelCall(async () => ({
+        value: 'sandbox response',
+        usage: { inputTokens: 12, outputTokens: 3 },
+      }));
+      return native(...args);
+    },
+  });
+  const result = await client.execute({ kind: 'customer_context', input: { customerId: 'C-101' } });
+  expect(result.measurement.modelCalls).toBe(1);
+  expect(result.measurement.totalTokens).toBe(15);
 });

@@ -145,7 +145,7 @@ export class FoundryClient {
         } // Optional telemetry must not replace an authoritative native result.
         trace.measurement =
           result.measurement ??
-          (observer.modelEvents.length === result.llmInvocations
+          (observer.modelEvents.length >= result.llmInvocations
             ? trace.measurement
             : {
                 ...trace.measurement!,
@@ -169,7 +169,7 @@ export class FoundryClient {
           toolCalls: trace.measurement?.toolCalls ?? undefined,
         };
       }
-      return result;
+      return observer?.events.length ? { ...result, toolCalls: observer.events.length } : result;
     };
     let ticket: RuntimeTicket | undefined;
     try {
@@ -226,7 +226,7 @@ export class FoundryClient {
             ? 'denied'
             : result.mode === 'compiled'
               ? 'compiled'
-              : selected
+              : ticket?.mode === 'live' && selected
                 ? 'fallback'
                 : 'native',
         shadowStatus,

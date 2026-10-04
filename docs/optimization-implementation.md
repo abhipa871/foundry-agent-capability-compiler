@@ -80,3 +80,14 @@ Durable health records track failure streaks, equivalence mismatches and a bound
 Validation expires after 24 hours for customer offers. Maintenance deletes seven-day trace/structural/shadow evidence only within the current tenant. Missing source evidence prevents future verification. Privacy capture additionally omits unknown argument/resource values. Failed SDK tool calls retain attempted counts while unknown model/API usage remains null. Concurrent observer budgets count attempts before awaiting adapters.
 
 Gate: all 103 tests in 22 files and lint/type checking pass. Seven new tests cover failure quarantine, safe rollback, latency regression, retention/isolation, failed observation accounting, stale verification versus revocation, and concurrent observation limits. Existing v1, v2 and coding replay remain passing. Operational maintenance/revalidation must be scheduled by the deployer; this V1 provides commands/API hooks, not a distributed scheduler.
+
+## Final cross-phase review
+
+The final supported Node 24 gate includes 107 tests in 23 files, evaluation, frontend/SDK builds
+and two existing browser workflows. Regression coverage now includes hosted promotion/rollout,
+changed duplicate outputs, exact fractional/unknown measurement averages, provider-wrapper usage
+and repeated successful shadow runs that must not count as fallback failures. Tenant evidence
+also binds agent identity. SQLite files are owner-only; run/checkpoint expiry joins seven-day
+telemetry retention. The measured replay and its raw pairs are in optimization-benchmark.json;
+production token/model-call/dollar savings remain unknown. See implementation-report.md for all
+changed files, architecture, controls, measured results and production prerequisites.

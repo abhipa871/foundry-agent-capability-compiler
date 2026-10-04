@@ -1,3 +1,4 @@
+import { emptyMeasurement } from '../../src/telemetry/measurement.js';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
@@ -147,4 +148,26 @@ describe('structured trace to guarded dispatch lifecycle', () => {
   it('requires the local client header for v2 mutations', async () => {
     await request(context.app).post('/api/v2/compile').send({}).expect(403);
   });
+});
+
+it('preserves fractional fixture averages without presenting them as measured savings', () => {
+  const store = new Store(':memory:');
+  try {
+    const { service } = createApp(store);
+    service.jit.compile();
+    expect(
+      service.jit.profile('load_customer_context').recordedTraceBaseline.avgLlmInvocations,
+    ).toBe(6.5);
+    for (const trace of service.jit.traces())
+      store.put('toolTrace', {
+        ...trace,
+        measurement: { ...emptyMeasurement(), totalTokens: null, modelCalls: null },
+      });
+    expect(service.jit.profile('load_customer_context').recordedTraceBaseline.avgTokens).toBeNull();
+    expect(
+      service.jit.profile('load_customer_context').recordedTraceBaseline.avgLlmInvocations,
+    ).toBeNull();
+  } finally {
+    store.close();
+  }
 });

@@ -393,7 +393,8 @@ export function createApp(store: Store, seed = true, options: AppOptions = {}) {
       res.status(400).json({ error: 'Invalid JSON request.' });
       return;
     }
-    console.error(error);
+    if (options.auth) console.error('Foundry API error: unexpected server failure.');
+    else console.error(error);
     if (req.path.startsWith('/api/agent')) {
       res.status(500).json({
         error: error instanceof Error ? error.message : 'Coding-agent server error.',
