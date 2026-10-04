@@ -13,6 +13,7 @@ import {
 } from '../runtime/adapters/registry.js';
 import type { ExecutionCheckpoint } from '../runtime/checkpoint.js';
 import { dispatch, type AgentFallback, type TaskRequest } from '../runtime/dispatcher.js';
+import { shadowExecute, shadowReadiness } from '../runtime/shadow.js';
 import { verifyIR } from '../verification/verify-ir.js';
 import { currentIdentity } from '../security/identity.js';
 import { Store, type StoredDispatchRun } from './store.js';
@@ -253,6 +254,8 @@ export class JitRegistry {
       !artifact.checks.every((check) => check.passed)
     )
       throw new DomainError('Only an approved artifact can be deployed.', 409);
+    if (this.store.tenantId !== 'local-demo' && !this.shadowStatus(id).ready)
+      throw new DomainError('Deployment requires passing read-only shadow coverage.', 409);
     this.store.transaction(() => {
       this.store.deploy(`jit/${artifact.name}`, artifact.id);
       this.audit(
@@ -312,6 +315,29 @@ export class JitRegistry {
       );
     });
     return run;
+  }
+
+  shadowStatus(id: string) {
+    return shadowReadiness(this.get(id), this.store.all('shadowRun'));
+  }
+
+  async shadow(id: string, input: unknown) {
+    const artifact = assertDigest(this.get(id));
+    const result = await shadowExecute({ kind: artifact.taskKind, input }, artifact, {
+      adapters: this.adapters(),
+      context: this.context(),
+      agent: this.runtime.agent,
+    });
+    this.store.transaction(() => {
+      this.store.put('shadowRun', result.shadow);
+      this.store.put('dispatchRun', { ...result.authoritative, id: result.authoritative.runId });
+      this.audit(
+        'shadow.observed',
+        id,
+        `Native authoritative; comparison ${result.shadow.status}.`,
+      );
+    });
+    return result;
   }
 
   // A handoff is closed by recording what actually resolved it. The recovery note becomes

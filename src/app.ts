@@ -2,6 +2,7 @@ import express from 'express';
 import type { ErrorRequestHandler } from 'express';
 import { resolve } from 'node:path';
 import { z } from 'zod';
+import { customerInput } from './compiler/ir.js';
 import { DomainError, defaultPolicy } from './domain.js';
 import { sampleRawAgentTrajectory, sampleTrajectory } from './exploration/capture.js';
 import { sampleToolTraces } from './exploration/sample-traces.js';
@@ -49,7 +50,7 @@ export function createApp(store: Store, seed = true, options: AppOptions = {}) {
                     ? 'approve'
                     : ['deploy', 'revoke'].includes(action ?? '')
                       ? 'deploy'
-                      : action === 'dispatch'
+                      : action === 'dispatch' || action === 'shadow'
                         ? 'invoke'
                         : req.path === '/v2/traces'
                           ? 'observe'
@@ -318,6 +319,13 @@ export function createApp(store: Store, seed = true, options: AppOptions = {}) {
       .strict()
       .parse(req.body);
     res.json(service.jit.recover(id.parse(req.params.id), body));
+  });
+  app.get('/api/v2/artifacts/:id/shadow', (req, res) =>
+    res.json(service.jit.shadowStatus(id.parse(req.params.id))),
+  );
+  app.post('/api/v2/artifacts/:id/shadow', async (req, res) => {
+    const body = z.object({ input: customerInput }).strict().parse(req.body);
+    res.json(await service.jit.shadow(id.parse(req.params.id), body.input));
   });
   app.get('/api/v2/profiles/:name', (req, res) =>
     res.json(service.jit.profile(z.string().min(1).max(64).parse(req.params.name))),

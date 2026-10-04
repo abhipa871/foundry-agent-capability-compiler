@@ -4,6 +4,7 @@ import { dirname } from 'node:path';
 import { currentIdentity } from '../security/identity.js';
 import { migrate } from './migrations.js';
 import { DomainError } from '../domain.js';
+import type { ShadowRun } from '../runtime/shadow.js';
 import type { OptimizationPattern } from '../compiler/analyze.js';
 import type { IRArtifact } from '../compiler/ir.js';
 import type { StoredToolTrace } from '../exploration/tool-events.js';
@@ -22,6 +23,7 @@ import type {
 
 export type StoredDispatchRun = DispatchOutcome & { id: string };
 type Records = {
+  shadowRun: ShadowRun;
   pattern: OptimizationPattern;
   trajectory: Trajectory;
   toolTrace: StoredToolTrace;
