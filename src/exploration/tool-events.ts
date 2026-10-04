@@ -173,9 +173,18 @@ export function captureToolTrace(
     args: Object.fromEntries(
       Object.entries(event.args).map(([key, arg]) => [
         key,
-        sensitive.test(key) ? { ...arg, value: '[redacted]' } : arg,
+        sensitive.test(key)
+          ? { ...arg, value: '[redacted]' }
+          : !(event.operation in contracts) && trace.privacyMode !== 'full'
+            ? { ...arg, value: '[omitted]' }
+            : { ...arg, value: safeText(arg.value) },
       ]),
     ),
+    reads: event.reads.map((resource) => ({
+      ...resource,
+      key: /^C-\d{3}$/.test(resource.key) ? resource.key : '[omitted]',
+    })),
+    writes: event.writes.map((resource) => ({ ...resource, key: '[omitted]' })),
     result: event.result
       ? {
           ...event.result,

@@ -369,6 +369,9 @@ export class Foundry {
     return {
       traces: this.jit.traces(),
       patterns: this.jit.patterns(),
+      shadowRuns: this.store.all('shadowRun'),
+      health: this.jit.artifacts().map((artifact) => this.jit.health(artifact.id)),
+      routing: this.jit.routing(),
       artifacts,
       runs: this.jit.runs(),
       checkpoints: this.jit.checkpoints(),

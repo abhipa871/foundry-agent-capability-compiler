@@ -33,6 +33,8 @@ export class TrajectoryObserver {
   readonly modelEvents: NonNullable<ToolTrace['modelEvents']> = [];
   readonly measurement: Measurement;
   private readonly started = performance.now();
+  private toolAttempts = 0;
+  private modelAttempts = 0;
   constructor(
     private readonly options: {
       input: { customerId: string };
@@ -43,10 +45,12 @@ export class TrajectoryObserver {
       model?: string;
       privacyMode?: PrivacyMode;
       origin?: Measurement['origin'];
+      apiCallsKnown?: boolean;
     },
   ) {
     customerInput.parse(options.input);
     this.measurement = emptyMeasurement(options.origin);
+    if (!options.apiCallsKnown) this.measurement.apiCalls = null;
   }
   async read(
     operation: ReadOperation,
@@ -54,7 +58,9 @@ export class TrajectoryObserver {
       | Omit<Extract<ArgExpr, { source: 'task_input' }>, 'value'>
       | Omit<Extract<ArgExpr, { source: 'event_output' }>, 'value'>,
   ) {
-    if (this.events.length >= 100) throw new DomainError('Trajectory tool budget exceeded.', 429);
+    if (this.toolAttempts >= 100) throw new DomainError('Trajectory tool budget exceeded.', 429);
+    this.toolAttempts += 1;
+    if (!(operation in contracts)) throw new DomainError('Unsupported adapter operation.', 403);
     authorizeContext(this.options.context, this.options.input);
     let value: string;
     if (binding.source === 'task_input') value = this.options.input.customerId;
@@ -114,8 +120,8 @@ export class TrajectoryObserver {
     }
   }
   async modelCall<T>(fn: () => Promise<{ value: T; usage?: ReportedUsage }>): Promise<T> {
-    if (this.modelEvents.length >= 100)
-      throw new DomainError('Trajectory model budget exceeded.', 429);
+    if (this.modelAttempts >= 100) throw new DomainError('Trajectory model budget exceeded.', 429);
+    this.modelAttempts += 1;
     const event: NonNullable<ToolTrace['modelEvents']>[number] = {
       id: randomUUID(),
       provider: this.options.provider ?? 'unknown',

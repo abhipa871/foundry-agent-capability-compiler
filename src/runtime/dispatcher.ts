@@ -25,6 +25,11 @@ export type AgentFallback = (
   measurement?: Measurement;
   toolCalls?: number;
 }>;
+export class AgentExecutionError extends Error {
+  constructor(readonly measurement: Measurement) {
+    super('Native agent execution failed.');
+  }
+}
 export type DispatchOutcome = {
   runId: string;
   mode: 'compiled' | 'agent';
@@ -189,14 +194,17 @@ export async function dispatch(
   ): Promise<DispatchOutcome> => {
     let agent: Awaited<ReturnType<AgentFallback>> | undefined;
     let failed = false;
+    let failedMeasurement: Measurement | undefined;
     try {
       agent = await options.agent?.(request, checkpoint);
-    } catch {
+    } catch (error) {
       failed = true;
+      if (error instanceof AgentExecutionError) failedMeasurement = error.measurement;
     }
     const outcome = failed ? 'failed' : agent?.resolved ? 'success' : 'unresolved';
-    const measurement = agent?.measurement
-      ? { ...agent.measurement }
+    const reported = agent?.measurement ?? failedMeasurement;
+    const measurement = reported
+      ? { ...reported }
       : {
           ...measure(outcome),
           inputTokens: null,
@@ -205,6 +213,7 @@ export async function dispatch(
           totalTokens: agent?.tokens ?? null,
           modelCalls: agent?.llmInvocations ?? null,
           toolCalls: agent?.toolCalls ?? null,
+          apiCalls: null,
         };
     measurement.outcome = outcome;
     measurement.durationMs = performance.now() - started;

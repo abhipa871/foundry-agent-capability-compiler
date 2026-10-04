@@ -10,6 +10,7 @@ import {
 } from '../runtime/adapters/registry.js';
 import {
   dispatch,
+  AgentExecutionError,
   type AgentFallback,
   type DispatchOutcome,
   type TaskRequest,
@@ -97,6 +98,11 @@ export class FoundryClient {
   }
   async execute(request: TaskRequest): Promise<DispatchOutcome> {
     const started = performance.now();
+    let apiCalls = 0;
+    const remote = (path: string, body?: unknown) => {
+      apiCalls += 1;
+      return this.request(path, body);
+    };
     const context = this.options.context();
     // Caller identity is not inferred from the task or a downloaded artifact.
     if (
@@ -115,9 +121,28 @@ export class FoundryClient {
           })
         : undefined;
     const native: AgentFallback = async (task, checkpoint) => {
-      const result = await this.options.native(task, checkpoint, observer);
+      let result: Awaited<ReturnType<CustomerAgent>>;
+      try {
+        result = await this.options.native(task, checkpoint, observer);
+      } catch {
+        if (!observer) throw new Error('Native execution failed.');
+        const measured = observer.finishFailure().measurement!;
+        throw new AgentExecutionError({
+          ...measured,
+          modelCalls: null,
+          inputTokens: null,
+          outputTokens: null,
+          cachedInputTokens: null,
+          totalTokens: null,
+        });
+      }
       if (result.resolved && result.result && observer?.events.length) {
-        const trace = observer.finish(result.result);
+        let trace;
+        try {
+          trace = observer.finish(result.result);
+        } catch {
+          return result;
+        } // Optional telemetry must not replace an authoritative native result.
         trace.measurement =
           result.measurement ??
           (observer.modelEvents.length === result.llmInvocations
@@ -134,7 +159,7 @@ export class FoundryClient {
         trace.measurement!.toolCalls = observer.events.length;
         if (this.options.endpoint && this.options.shareReplayEvidence)
           try {
-            await this.request('/api/v2/traces', replayTrace(trace));
+            await remote('/api/v2/traces', replayTrace(trace));
           } catch {
             /* best effort */
           }
@@ -151,7 +176,7 @@ export class FoundryClient {
       authorizeContext(context, request.input);
       if (request.kind === 'customer_context' && this.options.endpoint)
         ticket = verifyTicket(
-          await this.request('/api/v2/runtime/capability'),
+          await remote('/api/v2/runtime/capability'),
           this.options.trustedPublicKey!,
           this.options,
         );
@@ -181,10 +206,12 @@ export class FoundryClient {
         agent: native,
       });
     }
+    if (result.measurement.apiCalls !== null) result.measurement.apiCalls += apiCalls;
     result.durationMs = performance.now() - started;
     result.measurement.durationMs = result.durationMs;
     if (this.options.endpoint && observer) {
       const summary = observer.exportStructural();
+      if (result.measurement.apiCalls !== null) result.measurement.apiCalls += 1;
       const telemetry: ClientTelemetry = {
         ...summary,
         taskKind: 'customer_context',
@@ -206,7 +233,7 @@ export class FoundryClient {
         events: summary.events as ClientTelemetry['events'],
       };
       try {
-        await this.request('/api/v2/telemetry', telemetry);
+        await remote('/api/v2/telemetry', telemetry);
       } catch {
         /* never fail customer work for telemetry */
       }

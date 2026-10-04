@@ -1,3 +1,10 @@
+import { randomInt } from 'node:crypto';
+import {
+  initialHealth,
+  observeHealth,
+  type HealthObservation,
+  type HealthReason,
+} from '../telemetry/health.js';
 import {
   routingSchema,
   telemetrySchema,
@@ -205,14 +212,31 @@ export class JitRegistry {
       checks,
       verifiedAt: new Date().toISOString(),
       verifiedDigest: passed ? artifact.digest : undefined,
-      status: passed ? (artifact.status === 'approved' ? 'approved' : 'verified') : 'draft',
-      approvedDigest: passed ? artifact.approvedDigest : undefined,
+      status: passed
+        ? this.store.tenantId === 'local-demo' && artifact.status === 'approved'
+          ? 'approved'
+          : 'verified'
+        : 'draft',
+      approvedDigest:
+        passed && this.store.tenantId === 'local-demo' ? artifact.approvedDigest : undefined,
       revision: (artifact.revision ?? 0) + 1,
       validationVersion: 'read-validation-v3',
     };
     this.store.transaction(() => {
       this.store.put('irArtifact', next);
-      if (!passed) this.store.undeploy(`jit/${artifact.name}`, id);
+      if (!passed || this.store.tenantId !== 'local-demo')
+        this.store.undeploy(`jit/${artifact.name}`, id);
+      this.store.put(
+        'health',
+        passed
+          ? initialHealth(this.store.tenantId, id)
+          : {
+              ...this.health(id),
+              status: 'quarantined',
+              reason: 'validation_failed',
+              updatedAt: new Date().toISOString(),
+            },
+      );
       this.audit(
         'ir.verified',
         id,
@@ -253,6 +277,7 @@ export class JitRegistry {
   deploy(id: string): IRArtifact {
     const artifact = assertDigest(this.get(id));
     if (
+      this.health(id).status !== 'healthy' ||
       artifact.status !== 'approved' ||
       artifact.approvedDigest !== artifact.digest ||
       artifact.verifiedDigest !== artifact.digest ||
@@ -293,6 +318,8 @@ export class JitRegistry {
     const deployments = this.store.deployments();
     return this.artifacts().filter(
       (artifact) =>
+        this.health(artifact.id).status === 'healthy' &&
+        (this.store.tenantId === 'local-demo' || this.validationCurrent(artifact)) &&
         artifact.status === 'approved' &&
         artifact.verifiedDigest === artifact.digest &&
         artifact.checks.length > 0 &&
@@ -303,7 +330,10 @@ export class JitRegistry {
   }
 
   async dispatch(request: TaskRequest): Promise<StoredDispatchRun> {
-    const live = this.store.tenantId === 'local-demo' || this.routing().mode === 'live';
+    const policy = this.routing();
+    const live =
+      this.store.tenantId === 'local-demo' ||
+      (policy.mode === 'live' && randomInt(100) < policy.rolloutPercent);
     const outcome = await dispatch(
       request,
       live
@@ -318,6 +348,21 @@ export class JitRegistry {
     const run: StoredDispatchRun = { ...outcome, id: outcome.runId };
     this.store.transaction(() => {
       this.store.put('dispatchRun', run);
+      if (run.capabilityId) {
+        if (run.mode === 'compiled')
+          this.applyHealth(run.capabilityId, { kind: 'success', durationMs: run.durationMs });
+        else if (run.fallbackReason === 'unsupported_state')
+          this.applyHealth(run.capabilityId, { kind: 'unsupported' });
+        else if (run.fallbackReason && run.outcome !== 'denied')
+          this.applyHealth(run.capabilityId, { kind: 'failure' });
+      }
+      const drifted = this.artifacts().find(
+        (entry) =>
+          this.store.deployments()[`jit/${entry.name}`] === entry.id &&
+          entry.taskKind === request.kind &&
+          run.guards.some((guard) => guard.name === 'adapter_versions' && !guard.ok),
+      );
+      if (drifted) this.applyHealth(drifted.id, { kind: 'drift' });
       if (run.checkpoint) this.store.put('checkpoint', run.checkpoint);
       this.audit(
         `dispatch.${run.mode}`,
@@ -328,6 +373,64 @@ export class JitRegistry {
       );
     });
     return run;
+  }
+
+  private validationCurrent(artifact: IRArtifact, now = Date.now()) {
+    const age = now - Date.parse(artifact.verifiedAt ?? '');
+    return Number.isFinite(age) && age >= 0 && age <= 86400000;
+  }
+  health(id: string) {
+    this.get(id);
+    return this.store.get('health', `health:${id}`) ?? initialHealth(this.store.tenantId, id);
+  }
+  private applyHealth(id: string, observation: HealthObservation) {
+    const next = observeHealth(this.health(id), observation);
+    this.store.put('health', next);
+    if (next.status === 'quarantined') {
+      const artifact = this.get(id);
+      this.store.undeploy(`jit/${artifact.name}`, id);
+      this.audit(
+        'health.quarantined',
+        id,
+        next.reason ?? 'Unsafe capability removed from routing.',
+      );
+    }
+    return next;
+  }
+  quarantine(id: string, reason: HealthReason = 'operator') {
+    return this.store.transaction(() => this.applyHealth(id, { kind: 'failure', reason }));
+  }
+  rollback(id: string) {
+    const target = this.get(id);
+    const currentId = this.store.deployments()[`jit/${target.name}`];
+    const current = currentId ? this.get(currentId) : undefined;
+    if (current && target.version >= current.version)
+      throw new DomainError('Rollback requires a previous approved version.', 409);
+    if (
+      !this.shadowStatus(id).ready ||
+      this.health(id).status !== 'healthy' ||
+      !this.validationCurrent(target)
+    )
+      throw new DomainError(
+        'Rollback target requires healthy current validation and shadow coverage.',
+        409,
+      );
+    const deployed = this.deploy(id);
+    this.audit('ir.rollback', id, `Rolled back ${target.name} to v${target.version}.`);
+    return deployed;
+  }
+  maintenance(now = Date.now()) {
+    for (const artifact of this.artifacts()) {
+      if (
+        ['verified', 'approved'].includes(artifact.status) &&
+        !this.validationCurrent(artifact, now) &&
+        this.health(artifact.id).status === 'healthy'
+      )
+        this.quarantine(artifact.id, 'validation_expired');
+    }
+    const purged = this.store.purgeExpired(now);
+    this.audit('retention.purged', this.store.tenantId, `${purged} expired records deleted.`);
+    return { purged, health: this.artifacts().map((artifact) => this.health(artifact.id)) };
   }
 
   routing() {
@@ -363,6 +466,8 @@ export class JitRegistry {
           entry.validationVersion === 'read-validation-v3' &&
           entry.checks.every((check) => check.passed) &&
           irDigest(entry.ir) === entry.digest &&
+          this.health(entry.id).status === 'healthy' &&
+          this.validationCurrent(entry, now) &&
           (!entry.ir.guards.principalId || entry.ir.guards.principalId === identity.principalId),
       );
     const mode = policy.mode === 'observe' || !artifact ? 'observe' : policy.mode;
@@ -406,7 +511,34 @@ export class JitRegistry {
       expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
       trust: 'client_reported' as const,
     };
-    this.store.put('telemetry', stored);
+    if (telemetry.capabilityId) {
+      const artifact = this.get(telemetry.capabilityId);
+      if (
+        artifact.digest !== telemetry.capabilityDigest ||
+        (artifact.ir.guards.principalId && artifact.ir.guards.principalId !== identity.principalId)
+      )
+        throw new DomainError('Telemetry artifact binding mismatch.', 403);
+    }
+    this.store.transaction(() => {
+      this.store.put('telemetry', stored);
+      if (telemetry.capabilityId) {
+        if (telemetry.shadowStatus === 'mismatch')
+          this.applyHealth(telemetry.capabilityId, { kind: 'mismatch' });
+        else if (
+          telemetry.runtimeStatus === 'fallback' ||
+          telemetry.shadowStatus === 'compiled_failure'
+        )
+          this.applyHealth(telemetry.capabilityId, { kind: 'failure' });
+        else if (
+          telemetry.runtimeStatus === 'compiled' &&
+          telemetry.measurement.outcome === 'success'
+        )
+          this.applyHealth(telemetry.capabilityId, {
+            kind: 'success',
+            durationMs: telemetry.measurement.durationMs,
+          });
+      }
+    });
     // Customer reports are useful for health, but cannot attest validation/shadow promotion.
     return { accepted: true, traceId: telemetry.traceId };
   }
@@ -424,6 +556,8 @@ export class JitRegistry {
     });
     this.store.transaction(() => {
       this.store.put('shadowRun', result.shadow);
+      if (result.shadow.status === 'mismatch') this.applyHealth(id, { kind: 'mismatch' });
+      if (result.shadow.status === 'compiled_failure') this.applyHealth(id, { kind: 'failure' });
       this.store.put('dispatchRun', { ...result.authoritative, id: result.authoritative.runId });
       this.audit(
         'shadow.observed',

@@ -46,11 +46,13 @@ export function createApp(store: Store, seed = true, options: AppOptions = {}) {
               ? 'read'
               : action === 'compile' || action === 'analyze'
                 ? 'compile'
-                : action === 'verify'
+                : action === 'verify' || action === 'revalidate'
                   ? 'verify'
                   : action === 'approve'
                     ? 'approve'
-                    : ['deploy', 'revoke', 'routing'].includes(action ?? '')
+                    : ['deploy', 'revoke', 'routing', 'quarantine', 'rollback'].includes(
+                          action ?? '',
+                        )
                       ? 'deploy'
                       : action === 'dispatch' || action === 'shadow'
                         ? 'invoke'
@@ -333,6 +335,25 @@ export function createApp(store: Store, seed = true, options: AppOptions = {}) {
       .strict()
       .parse(req.body);
     res.json(service.jit.recover(id.parse(req.params.id), body));
+  });
+  app.get('/api/v2/capabilities/:id/health', (req, res) =>
+    res.json(service.jit.health(id.parse(req.params.id))),
+  );
+  app.post('/api/v2/capabilities/:id/quarantine', (req, res) => {
+    emptyRequest.parse(req.body ?? {});
+    res.json(service.jit.quarantine(id.parse(req.params.id)));
+  });
+  app.post('/api/v2/capabilities/:id/rollback', (req, res) => {
+    emptyRequest.parse(req.body ?? {});
+    res.json(service.jit.rollback(id.parse(req.params.id)));
+  });
+  app.post('/api/v2/capabilities/:id/revalidate', async (req, res) => {
+    emptyRequest.parse(req.body ?? {});
+    res.json(await service.jit.verify(id.parse(req.params.id)));
+  });
+  app.post('/api/v2/maintenance', (req, res) => {
+    emptyRequest.parse(req.body ?? {});
+    res.json(service.jit.maintenance());
   });
   app.get('/api/v2/artifacts/:id/shadow', (req, res) =>
     res.json(service.jit.shadowStatus(id.parse(req.params.id))),

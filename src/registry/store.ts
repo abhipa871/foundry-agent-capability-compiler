@@ -4,6 +4,7 @@ import { dirname } from 'node:path';
 import { currentIdentity } from '../security/identity.js';
 import { migrate } from './migrations.js';
 import { DomainError } from '../domain.js';
+import type { CapabilityHealth } from '../telemetry/health.js';
 import type { StoredTelemetry } from '../integration/protocol.js';
 import type { ShadowRun } from '../runtime/shadow.js';
 import type { OptimizationPattern } from '../compiler/analyze.js';
@@ -24,6 +25,7 @@ import type {
 
 export type StoredDispatchRun = DispatchOutcome & { id: string };
 type Records = {
+  health: CapabilityHealth;
   telemetry: StoredTelemetry;
   shadowRun: ShadowRun;
   pattern: OptimizationPattern;
@@ -172,6 +174,19 @@ export class Store {
       )
       .run(this.tenantId, bucket, window, limit);
     if (!result.changes) throw new DomainError('Tenant request quota exceeded.', 429);
+  }
+  purgeExpired(now = Date.now()): number {
+    const expired = this.db
+      .prepare('SELECT kind,id,data FROM records WHERE tenant_id=? AND kind IN (?,?,?,?,?)')
+      .all(this.tenantId, 'toolTrace', 'telemetry', 'shadowRun', 'dispatchRun', 'checkpoint')
+      .filter((row) => {
+        const expiry = (JSON.parse(row.data as string) as { expiresAt?: string }).expiresAt;
+        return expiry && Date.parse(expiry) <= now;
+      });
+    this.transaction(() => {
+      for (const row of expired) this.deleteRecord(row.kind as keyof Records, row.id as string);
+    });
+    return expired.length;
   }
   exportData() {
     return this.db
