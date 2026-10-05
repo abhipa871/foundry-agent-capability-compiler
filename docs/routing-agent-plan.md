@@ -87,3 +87,19 @@ partial/unknown/failure cases are visible. Do not charge compiler setup to handw
 claim compiler superiority when savings come from execution placement. Existing normal/native
 defaults stay available; recommend new paths only where correctness and the measured objective
 support them.
+
+## Retained setup preflight
+
+The first development attempt stopped before warmups or measured tasks at the trusted-shadow
+gate. The driver reused a runtime observation timestamp from process startup across successive
+provider requests; by the second shadow it exceeded the unchanged 30-second freshness guard.
+The failure is reproducible with a fixture test: a stale request gets `guard_miss`, while a new
+request with a fresh trusted observation gets `match`.
+
+The fix creates a fresh runtime observation before each distinct observation/shadow request;
+it does not widen guards or refresh an in-flight request. Selection rules, cases and prompts are
+unchanged. The corrected driver also retains each shadow status and observation age.
+[Preflight evidence](routing-agent-development-preflight.json) retains four native requests,
+eight completed responses, 30.840 seconds and $0.107790 API-equivalent spending. This spending
+counts toward development's stopping threshold and is added to the corrected run's total.
+The corrected development run still has 60 measured tasks; no measured case was rerun or tuned.

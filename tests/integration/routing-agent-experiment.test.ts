@@ -17,6 +17,8 @@ import { sampleToolTraces } from '../../src/exploration/sample-traces.js';
 import { captureToolTrace } from '../../src/exploration/tool-events.js';
 import { interpret } from '../../src/runtime/interpret.js';
 import { sameContext } from '../../src/runtime/observable.js';
+import { Store } from '../../src/registry/store.js';
+import { JitRegistry } from '../../src/registry/jit.js';
 
 it('separates development and final IDs/messages and includes every required scenario', () => {
   expect(developmentCases).toHaveLength(10);
@@ -139,4 +141,41 @@ it('computes paired differences and case-block uncertainty, preserving unknown c
   expect(result.totalTokens.descriptiveCaseBlockBootstrap95).toEqual([-10, -10]);
   expect(result.apiEquivalentCostUsd.absoluteSaving).toBeNull();
   expect(result.apiEquivalentCostUsd.descriptiveCaseBlockBootstrap95).toBeNull();
+});
+
+it('keeps freshness guards intact and starts each new shadow request with a fresh runtime observation', async () => {
+  const store = new Store(':memory:');
+  let context = localContext();
+  const registry = new JitRegistry(store, () => {}, {
+    context: () => context,
+    agent: async (request) => {
+      const { customerId } = request.input as { customerId: string };
+      return {
+        resolved: true,
+        summary: 'Fixture context',
+        tokens: 0,
+        llmInvocations: 0,
+        result: {
+          customer_id: customerId,
+          crm_get_customer: routingFixture('crm.getCustomer', customerId),
+          orders_list: routingFixture('orders.list', customerId),
+          payments_refund_history: routingFixture('payments.refundHistory', customerId),
+        },
+      };
+    },
+  });
+  try {
+    registry.seed();
+    const artifact = await registry.verify(registry.compile().id);
+    context = { ...context, observedAt: Date.now() - artifact.ir.guards.maxAgeMs - 1 };
+    expect((await registry.shadow(artifact.id, { customerId: 'C-101' })).shadow.status).toBe(
+      'guard_miss',
+    );
+    context = localContext();
+    expect((await registry.shadow(artifact.id, { customerId: 'C-101' })).shadow.status).toBe(
+      'match',
+    );
+  } finally {
+    store.close();
+  }
 });

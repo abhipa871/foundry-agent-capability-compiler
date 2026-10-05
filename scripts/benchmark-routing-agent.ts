@@ -64,6 +64,14 @@ const split = process.argv[2];
 if (split !== 'development' && split !== 'heldout')
   throw new Error('Choose development or heldout.');
 const output = `docs/routing-agent-${split}.json`;
+const preflightPath = 'docs/routing-agent-development-preflight.json';
+const preflight =
+  split === 'development' && existsSync(preflightPath)
+    ? (JSON.parse(readFileSync(preflightPath, 'utf8')) as {
+        experimentTotals: { apiEquivalentCostUsd: number | null; nativeRequests: number };
+        providerAccounting: { completedInferenceResponses: number };
+      })
+    : undefined;
 if (existsSync(output)) throw new Error('Refusing to overwrite retained live evidence.');
 const cases = split === 'development' ? developmentCases : heldoutCases;
 const repeats = split === 'development' ? 1 : 2;
@@ -232,7 +240,11 @@ const sumCost = (rows: typeof ledger) =>
     : rows.reduce((sum, r) => sum + r.apiEquivalentCostUsd!, 0);
 const budget = () => {
   if (budgetStopped) throw new Error(budgetStopped);
-  const spent = sumCost(ledger);
+  const mainCost = sumCost(ledger);
+  const spent =
+    mainCost === null || preflight?.experimentTotals.apiEquivalentCostUsd === null
+      ? null
+      : mainCost + (preflight?.experimentTotals.apiEquivalentCostUsd ?? 0);
   if (spent === null || spent > 9)
     throw new Error('Live estimate unknown or $9 inference-equivalent budget reached; stopping.');
 };
@@ -604,6 +616,8 @@ const results: {
 const warmups: CaseRun[] = [];
 let failure: string | undefined;
 let currentHost: Awaited<ReturnType<typeof host>> | undefined;
+const shadowGates: { phase: string; customerId: string; status: string; contextAgeMs: number }[] =
+  [];
 try {
   console.log(
     JSON.stringify({
@@ -638,6 +652,7 @@ try {
   });
   await timed('observation', async () => {
     for (const customerId of ['C-101', 'C-202']) {
+      activeContext = baseContext();
       const run = await trainingClient.execute(request(customerId));
       guard(
         run.outcome === 'success' &&
@@ -664,11 +679,17 @@ try {
     'Artifact verification failed.',
   );
   await timed('trustedShadow', async () => {
-    for (const customerId of ['C-101', 'C-202', 'C-303'])
-      guard(
-        (await server.service.jit.shadow(candidateId, { customerId })).shadow.status === 'match',
-        'Trusted shadow failed.',
-      );
+    for (const customerId of ['C-101', 'C-202', 'C-303']) {
+      activeContext = baseContext();
+      const result = await server.service.jit.shadow(candidateId, { customerId });
+      shadowGates.push({
+        phase,
+        customerId,
+        status: result.shadow.status,
+        contextAgeMs: Date.now() - activeContext.observedAt,
+      });
+      guard(result.shadow.status === 'match', `Trusted shadow failed: ${result.shadow.status}.`);
+    }
   });
   server.service.jit.approve(candidateId, 'User-authorized isolated routing experiment.');
   server.service.jit.deploy(candidateId);
@@ -691,11 +712,17 @@ try {
     'Revalidation failed.',
   );
   await timed('renewedShadow', async () => {
-    for (const customerId of ['C-101', 'C-202', 'C-303'])
-      guard(
-        (await server.service.jit.shadow(candidateId, { customerId })).shadow.status === 'match',
-        'Renewed shadow failed.',
-      );
+    for (const customerId of ['C-101', 'C-202', 'C-303']) {
+      activeContext = baseContext();
+      const result = await server.service.jit.shadow(candidateId, { customerId });
+      shadowGates.push({
+        phase,
+        customerId,
+        status: result.shadow.status,
+        contextAgeMs: Date.now() - activeContext.observedAt,
+      });
+      guard(result.shadow.status === 'match', `Renewed shadow failed: ${result.shadow.status}.`);
+    }
   });
   server.service.jit.approve(candidateId, 'Revalidation passed before sandbox snapshots.');
   server.service.jit.deploy(candidateId);
@@ -836,6 +863,7 @@ try {
     },
     setup,
     revalidation,
+    shadowGates,
     steadyState: Object.fromEntries(
       experimentArms.map((arm) => [arm, summarizeRouting(complete.map((row) => row.runs[arm]!))]),
     ),
@@ -868,6 +896,18 @@ try {
       elapsedMs: performance.now() - began,
       cpuMicros: process.cpuUsage(cpuStart),
       apiEquivalentCostUsd: sumCost(ledger),
+      preflight: preflight
+        ? {
+            path: preflightPath,
+            apiEquivalentCostUsd: preflight.experimentTotals.apiEquivalentCostUsd,
+            nativeRequests: preflight.experimentTotals.nativeRequests,
+            completedInferenceResponses: preflight.providerAccounting.completedInferenceResponses,
+          }
+        : null,
+      includingPreflightApiEquivalentCostUsd:
+        sumCost(ledger) === null || preflight?.experimentTotals.apiEquivalentCostUsd === null
+          ? null
+          : sumCost(ledger)! + (preflight?.experimentTotals.apiEquivalentCostUsd ?? 0),
       nativeRequests: ledger.length,
       ledger,
       note: 'All setup, revalidation, warmups, failed reads, incorrect outputs, outliers and measured requests retained. Unknown charges are not zero.',
