@@ -14,6 +14,10 @@ the same read-only workflow, with full results and explicit limits on billing an
 The [complete support-agent experiment](support-agent-experiment.md) keeps model-generated
 assessment and reply work, comparing a compiled tool with application prefetch. It measures
 2.15% and 49.78% total-token savings, respectively, on synthetic records with live inference.
+The [routing evaluation](routing-agent-experiment.md) separately tests application-owned task
+contracts and direct support-agent fallback, including partial/public tasks, held-out records,
+handwritten prefetch and service failures. The original compiler and SDK native fallback remain
+available.
 
 ## Architecture implemented
 

@@ -138,3 +138,10 @@ retry of the unchanged task/selection experiment is permitted; another provider/
 will end this evaluation as incomplete, with no final-set tuning or unbounded retry loop. Sanitized
 agent failure stages are now retained for diagnosis. Each corrected attempt retains its own
 request/estimate bounds, and all prior attempts remain separately accounted.
+
+That bounded retry stopped after eighteen of sixty measured task requests on a provider
+transport/inference error before the direct-fallback support agent reported usage. Its report is
+`complete: false`; the failed request and unknown cost are retained. Live inference ended at this
+gate. The final 120-request evaluation was not run, and its cases were not used to tune anything.
+The implementation remains opt-in with existing defaults. Resumption requires a separately bounded
+provider-stable development run with new retained evidence paths, followed by the frozen final set.

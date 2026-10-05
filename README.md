@@ -89,3 +89,8 @@ connector measurements with metered billing are still required.
 records and drafts a reply. [The three-arm results](docs/support-agent-experiment.md) compare
 original tools, the compiled context tool and application prefetch: measured total-token savings
 were 2.15% and 49.78%, respectively. The model still makes the recommendation and writes the reply.
+
+`npm run benchmark:routing-agent -- development` and `-- heldout` evaluate contract-based execution
+placement and opt-in direct support-agent fallback against original tools, a compiled tool,
+compiled prefetch and handwritten prefetch. See [the frozen bounded plan](docs/routing-agent-plan.md),
+[routing integration](docs/execution-routing.md) and [the evaluation report](docs/routing-agent-experiment.md).
