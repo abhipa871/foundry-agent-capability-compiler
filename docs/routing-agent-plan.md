@@ -130,3 +130,11 @@ was tuned. The corrected development run is bounded to sixty measured requests a
 $9 estimate stopping rule (including the two fully priced setup preflights). Because the interrupted
 stream is unpriced, no finite cumulative spending ceiling or fully known experiment total is
 claimed. The final evaluation remains one separate 120-request run; it has not started.
+
+The next attempt passed initial validation and three shadows but stopped at renewed shadow when
+the provider failed before reporting any response or making a read. Its cost remains unknown in
+[provider preflight evidence](routing-agent-development-provider-preflight.json). One bounded
+retry of the unchanged task/selection experiment is permitted; another provider/accounting block
+will end this evaluation as incomplete, with no final-set tuning or unbounded retry loop. Sanitized
+agent failure stages are now retained for diagnosis. Each corrected attempt retains its own
+request/estimate bounds, and all prior attempts remain separately accounted.

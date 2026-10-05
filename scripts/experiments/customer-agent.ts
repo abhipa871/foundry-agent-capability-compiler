@@ -181,6 +181,7 @@ export class CustomerContextAgent {
         status: string;
         responses: number;
         apiEquivalentCostUsd: number | null;
+        failure?: string;
       }) => void;
     },
   ) {
@@ -537,6 +538,7 @@ export class CustomerContextAgent {
       this.options.onRun?.({
         measurement: structuredClone(measured),
         status: 'failed',
+        failure: this.lastFailure,
         responses: ledger.responses,
         apiEquivalentCostUsd:
           turnCompleted && ledger.responses > 0
