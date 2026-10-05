@@ -103,3 +103,14 @@ unchanged. The corrected driver also retains each shadow status and observation 
 eight completed responses, 30.840 seconds and $0.107790 API-equivalent spending. This spending
 counts toward development's stopping threshold and is added to the corrected run's total.
 The corrected development run still has 60 measured tasks; no measured case was rerun or tuned.
+
+The second setup attempt passed all six initial/renewed shadows, then stopped because the driver
+attempted duplicate approval after revalidation. The existing local-demo compatibility path retains
+approval on successful revalidation; other tenants return to verified. The driver now respects that
+status and explicitly requires renewed shadow readiness before redeployment. Registry rules are
+unchanged, and a fixture regression exercises quarantine, verification, retained approval and
+redeployment. [Second preflight evidence](routing-agent-development-revalidation-preflight.json)
+retains eight context requests, sixteen responses, 53.157 seconds and $0.151033 estimated cost.
+Both attempts together used twelve requests, twenty-four responses and $0.258823; these count
+toward the same development budget. Neither attempt reached measured tasks. Selection rules,
+messages and the final set remain unchanged.

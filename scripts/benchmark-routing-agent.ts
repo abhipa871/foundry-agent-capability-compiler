@@ -64,14 +64,29 @@ const split = process.argv[2];
 if (split !== 'development' && split !== 'heldout')
   throw new Error('Choose development or heldout.');
 const output = `docs/routing-agent-${split}.json`;
-const preflightPath = 'docs/routing-agent-development-preflight.json';
-const preflight =
-  split === 'development' && existsSync(preflightPath)
-    ? (JSON.parse(readFileSync(preflightPath, 'utf8')) as {
-        experimentTotals: { apiEquivalentCostUsd: number | null; nativeRequests: number };
-        providerAccounting: { completedInferenceResponses: number };
-      })
-    : undefined;
+const preflights =
+  split === 'development'
+    ? [
+        'docs/routing-agent-development-preflight.json',
+        'docs/routing-agent-development-revalidation-preflight.json',
+      ]
+        .filter((path) => existsSync(path))
+        .map((path) => {
+          const evidence = JSON.parse(readFileSync(path, 'utf8')) as {
+            experimentTotals: { apiEquivalentCostUsd: number | null; nativeRequests: number };
+            providerAccounting: { completedInferenceResponses: number };
+          };
+          return {
+            path,
+            apiEquivalentCostUsd: evidence.experimentTotals.apiEquivalentCostUsd,
+            nativeRequests: evidence.experimentTotals.nativeRequests,
+            completedInferenceResponses: evidence.providerAccounting.completedInferenceResponses,
+          };
+        })
+    : [];
+const preflightCost = preflights.some((run) => run.apiEquivalentCostUsd === null)
+  ? null
+  : preflights.reduce((sum, run) => sum + run.apiEquivalentCostUsd!, 0);
 if (existsSync(output)) throw new Error('Refusing to overwrite retained live evidence.');
 const cases = split === 'development' ? developmentCases : heldoutCases;
 const repeats = split === 'development' ? 1 : 2;
@@ -241,10 +256,7 @@ const sumCost = (rows: typeof ledger) =>
 const budget = () => {
   if (budgetStopped) throw new Error(budgetStopped);
   const mainCost = sumCost(ledger);
-  const spent =
-    mainCost === null || preflight?.experimentTotals.apiEquivalentCostUsd === null
-      ? null
-      : mainCost + (preflight?.experimentTotals.apiEquivalentCostUsd ?? 0);
+  const spent = mainCost === null || preflightCost === null ? null : mainCost + preflightCost;
   if (spent === null || spent > 9)
     throw new Error('Live estimate unknown or $9 inference-equivalent budget reached; stopping.');
 };
@@ -724,7 +736,11 @@ try {
       guard(result.shadow.status === 'match', `Renewed shadow failed: ${result.shadow.status}.`);
     }
   });
-  server.service.jit.approve(candidateId, 'Revalidation passed before sandbox snapshots.');
+  // Local-demo compatibility retains an existing approval after successful verification.
+  // Other tenants return to verified and require approval again. Never mutate that lifecycle.
+  if (rechecked.status === 'verified')
+    server.service.jit.approve(candidateId, 'Revalidation passed before sandbox snapshots.');
+  guard(server.service.jit.shadowStatus(candidateId).ready, 'Renewed shadow coverage incomplete.');
   server.service.jit.deploy(candidateId);
   server.service.jit.configureRouting({ mode: 'live', rolloutPercent: 100 });
   guard(
@@ -896,18 +912,11 @@ try {
       elapsedMs: performance.now() - began,
       cpuMicros: process.cpuUsage(cpuStart),
       apiEquivalentCostUsd: sumCost(ledger),
-      preflight: preflight
-        ? {
-            path: preflightPath,
-            apiEquivalentCostUsd: preflight.experimentTotals.apiEquivalentCostUsd,
-            nativeRequests: preflight.experimentTotals.nativeRequests,
-            completedInferenceResponses: preflight.providerAccounting.completedInferenceResponses,
-          }
-        : null,
+      preflights,
       includingPreflightApiEquivalentCostUsd:
-        sumCost(ledger) === null || preflight?.experimentTotals.apiEquivalentCostUsd === null
+        sumCost(ledger) === null || preflightCost === null
           ? null
-          : sumCost(ledger)! + (preflight?.experimentTotals.apiEquivalentCostUsd ?? 0),
+          : sumCost(ledger)! + preflightCost,
       nativeRequests: ledger.length,
       ledger,
       note: 'All setup, revalidation, warmups, failed reads, incorrect outputs, outliers and measured requests retained. Unknown charges are not zero.',

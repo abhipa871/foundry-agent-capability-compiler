@@ -179,3 +179,28 @@ it('keeps freshness guards intact and starts each new shadow request with a fres
     store.close();
   }
 });
+
+it('revalidates and redeploys the local demo without requiring a second approval of an already approved artifact', async () => {
+  const store = new Store(':memory:');
+  const registry = new JitRegistry(store, () => {});
+  try {
+    registry.seed();
+    const verified = await registry.verify(registry.compile().id);
+    registry.approve(verified.id, 'Fixture approval');
+    registry.deploy(verified.id);
+    registry.quarantine(verified.id);
+    expect(registry.active()).toEqual([]);
+    const renewed = await registry.verify(verified.id);
+    expect(renewed.status).toBe('approved');
+    expect(renewed.verifiedDigest).toBe(renewed.digest);
+    expect(renewed.approvedDigest).toBe(renewed.digest);
+    expect(registry.health(verified.id).status).toBe('healthy');
+    expect(() => registry.approve(verified.id, 'Duplicate approval')).toThrow(
+      'passing verification',
+    );
+    registry.deploy(verified.id);
+    expect(registry.active().map((artifact) => artifact.id)).toEqual([verified.id]);
+  } finally {
+    store.close();
+  }
+});
