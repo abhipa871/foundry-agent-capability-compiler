@@ -84,3 +84,8 @@ and authenticated loopback API; it does not benchmark live model inference or cl
 [the real-agent results](docs/real-agent-experiment.md) for measured inference savings, complete
 latency, correctness, setup amortization and billing limitations. Production CRM/order/payment
 connector measurements with metered billing are still required.
+
+`npm run benchmark:support-agent` tests a complete live support task that assesses account
+records and drafts a reply. [The three-arm results](docs/support-agent-experiment.md) compare
+original tools, the compiled context tool and application prefetch: measured total-token savings
+were 2.15% and 49.78%, respectively. The model still makes the recommendation and writes the reply.

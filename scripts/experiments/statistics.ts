@@ -1,4 +1,8 @@
-import type { Measurement } from '../../src/telemetry/measurement.js';
+import {
+  emptyMeasurement,
+  measurementSchema,
+  type Measurement,
+} from '../../src/telemetry/measurement.js';
 export const numericKeys = [
   'inputTokens',
   'outputTokens',
@@ -44,4 +48,24 @@ export function latencySummary(runs: Measurement[]) {
       ['p95', 0.95],
     ].map(([name, fraction]) => [name, sorted[Math.ceil(sorted.length * Number(fraction)) - 1]]),
   );
+}
+export function sumMeasurements(measurements: Measurement[], elapsedMs: number) {
+  const result = emptyMeasurement();
+  if (!measurements.length) throw new Error('No component measurements.');
+  result.origin = measurements.every((m) => m.origin === measurements[0].origin)
+    ? measurements[0].origin
+    : 'estimated';
+  for (const key of [
+    ...numericKeys.filter((key) => key !== 'durationMs'),
+    'apiCalls',
+    'costUsd',
+  ] as const) {
+    const values = measurements.map((m) => m[key]);
+    result[key] = values.some((value) => value === null)
+      ? null
+      : values.reduce<number>((sum, value) => sum + value!, 0);
+  }
+  result.durationMs = elapsedMs;
+  result.outcome = measurements.every((m) => m.outcome === 'success') ? 'success' : 'failed';
+  return measurementSchema.parse(result);
 }

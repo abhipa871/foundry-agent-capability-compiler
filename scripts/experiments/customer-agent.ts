@@ -116,6 +116,18 @@ export class UsageLedger {
       throw new Error('Aggregate usage differs from provider cumulative usage.');
   }
 }
+export type AgentTask<T> = {
+  input: { customerId: string };
+  observer?: TrajectoryObserver;
+  tools: typeof tools;
+  executeTool: (observer: TrajectoryObserver, name: string, args: unknown) => Promise<unknown>;
+  prompt: string;
+  instructions: string;
+  outputSchema: unknown;
+  parseResult: (raw: unknown) => T;
+  complete: (result: T, observer: TrajectoryObserver) => Measurement;
+  effort?: 'none' | 'low';
+};
 type Message = {
   id?: number | string;
   method?: string;
@@ -210,6 +222,7 @@ export class CustomerContextAgent {
       hide_agent_reasoning: true,
       show_raw_agent_reasoning: false,
       web_search: 'disabled',
+      'tools.view_image': false,
       'history.persistence': 'none',
       'otel.exporter': 'none',
       'otel.trace_exporter': 'none',
@@ -274,12 +287,35 @@ export class CustomerContextAgent {
     this.startupMs = performance.now() - began;
   }
   readonly native: CustomerAgent = async (task, _checkpoint, supplied) => {
+    const input = customerInput.parse(task.input);
+    const run = await this.runTask({
+      input,
+      observer: supplied,
+      tools,
+      executeTool,
+      prompt: `Load the complete customer context for ${input.customerId}: customer, all orders, and complete refund history.`,
+      instructions:
+        'You retrieve customer context using supplied read tools. Return complete data faithfully. Do not invent values. Use only tools needed to complete the task. Return the required JSON object without commentary.',
+      outputSchema: z.toJSONSchema(fullContextSchema),
+      parseResult: (raw) => fullContextSchema.parse(raw),
+      complete: (result, observer) => observer.finish(result).measurement!,
+    });
+    return {
+      resolved: true,
+      summary: 'Provider-backed customer context.',
+      llmInvocations: run.measurement.modelCalls!,
+      tokens: run.measurement.totalTokens!,
+      measurement: run.measurement,
+      result: run.result,
+    };
+  };
+  async runTask<T>(task: AgentTask<T>) {
     if (this.running) throw new Error('Experiment provider supports one request at a time.');
     const input = customerInput.parse(task.input);
     const context = this.options.context();
     authorizeContext(context, input); // denial occurs before any inference or data access
     const observer =
-      supplied ??
+      task.observer ??
       new TrajectoryObserver({
         input,
         context,
@@ -290,6 +326,12 @@ export class CustomerContextAgent {
         apiCallsKnown: true,
       });
     const ledger = new UsageLedger(observer);
+    const toolCalls: {
+      name: string;
+      status: 'success' | 'failed';
+      startedAt: number;
+      completedAt: number;
+    }[] = [];
     this.running = true;
     let responseStarted = performance.now();
     let threadId: string | undefined;
@@ -305,17 +347,38 @@ export class CustomerContextAgent {
         this.onMessage = (message) => {
           const p = message.params;
           if (p?.threadId && threadId && p.threadId !== threadId) return;
-          if (message.method === 'item/tool/call') {
-            void executeTool(observer, String(p?.tool), p?.arguments).then(
-              (result) =>
+          if (
+            message.method === 'item/started' &&
+            p?.item?.type &&
+            !['userMessage', 'agentMessage', 'reasoning', 'dynamicToolCall'].includes(p.item.type)
+          ) {
+            reject(new Error('Unexpected provider built-in activity.'));
+          } else if (message.method === 'item/tool/call') {
+            const call = {
+              name: String(p?.tool),
+              status: 'success' as 'success' | 'failed',
+              startedAt: performance.now(),
+              completedAt: 0,
+            };
+            toolCalls.push(call);
+            if (toolCalls.length > 100) {
+              reject(new Error('Agent tool budget exceeded.'));
+              return;
+            }
+            void task.executeTool(observer, String(p?.tool), p?.arguments).then(
+              (result) => {
+                call.completedAt = performance.now();
                 this.send({
                   id: message.id,
                   result: {
                     contentItems: [{ type: 'inputText', text: JSON.stringify(result) }],
                     success: true,
                   },
-                }),
+                });
+              },
               () => {
+                call.status = 'failed';
+                call.completedAt = performance.now();
                 this.send({
                   id: message.id,
                   result: {
@@ -329,7 +392,7 @@ export class CustomerContextAgent {
           } else if (message.id !== undefined && message.method) {
             this.send({
               id: message.id,
-              error: { code: -32601, message: 'Experiment permits only the three read tools.' },
+              error: { code: -32601, message: 'Experiment permits only its declared read tools.' },
             });
             reject(new Error('Unexpected provider tool or approval request.'));
           } else if (message.method === 'thread/tokenUsage/updated') {
@@ -371,9 +434,8 @@ export class CustomerContextAgent {
         approvalPolicy: 'never',
         ephemeral: true,
         environments: [],
-        dynamicTools: tools,
-        baseInstructions:
-          'You retrieve customer context using supplied read tools. Return complete data faithfully. Do not invent values. Use only tools needed to complete the task. Return the required JSON object without commentary.',
+        dynamicTools: task.tools,
+        baseInstructions: task.instructions,
         developerInstructions:
           'The application binds every tool to the authorized customerId. No tool arguments are needed. You may call independent reads together.',
       });
@@ -385,13 +447,13 @@ export class CustomerContextAgent {
         input: [
           {
             type: 'text',
-            text: `Load the complete customer context for ${input.customerId}: customer, all orders, and complete refund history.`,
+            text: task.prompt,
           },
         ],
-        effort: 'none',
+        effort: task.effort ?? 'none',
         summary: 'none',
         serviceTierForTurn: 'default',
-        outputSchema: z.toJSONSchema(fullContextSchema),
+        outputSchema: task.outputSchema,
       });
       turnId = turn.turn.id;
       stage = 'provider completion/usage';
@@ -399,10 +461,10 @@ export class CustomerContextAgent {
       if (!ledger.responses)
         throw new Error('No provider-reported usage; refusing estimated tokens.');
       stage = 'final JSON validation';
-      const result = fullContextSchema.parse(JSON.parse(final));
-      const trace = observer.finish(result);
+      const result = task.parseResult(JSON.parse(final));
+      const measurement = task.complete(result, observer);
       this.options.onRun?.({
-        measurement: structuredClone(trace.measurement),
+        measurement: structuredClone(measurement),
         status: 'success',
         responses: ledger.responses,
         apiEquivalentCostUsd: apiEquivalentCost(
@@ -412,12 +474,10 @@ export class CustomerContextAgent {
         ),
       });
       return {
-        resolved: true,
-        summary: 'Provider-backed customer context.',
-        llmInvocations: ledger.responses,
-        tokens: observer.measurement.totalTokens!,
-        measurement: trace.measurement,
+        measurement,
         result,
+        toolCalls,
+        modelEvents: structuredClone(observer.modelEvents),
       };
     } catch (error) {
       this.lastFailure = `${stage}: ${error instanceof Error && /^(Provider|No provider|Unexpected|Agent tool)/.test(error.message) ? error.message : 'Boundary validation failed.'}`;
@@ -438,7 +498,7 @@ export class CustomerContextAgent {
       this.running = false;
       if (threadId) await this.rpc('thread/archive', { threadId }).catch(() => {});
     }
-  };
+  }
   async close() {
     if (this.child && this.child.exitCode === null) {
       this.child.stdin.end();

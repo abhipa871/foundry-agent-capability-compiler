@@ -20,7 +20,8 @@
     "analyze": "tsx scripts/analyze-patterns.ts",
     "build:sdk": "tsc -p tsconfig.sdk.json && tsx scripts/build-sdk.ts",
     "benchmark:optimization": "tsx scripts/benchmark-optimization.ts",
-    "benchmark:real-agent": "tsx scripts/benchmark-real-agent.ts"
+    "benchmark:real-agent": "tsx scripts/benchmark-real-agent.ts",
+    "benchmark:support-agent": "tsx scripts/benchmark-support-agent.ts"
   },
   "dependencies": {
     "express": "5.2.1",

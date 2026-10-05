@@ -11,6 +11,9 @@ correctness, live-agent profitability or production readiness.
 
 The subsequent [real-provider experiment](real-agent-experiment.md) measures live inference on
 the same read-only workflow, with full results and explicit limits on billing and production ROI.
+The [complete support-agent experiment](support-agent-experiment.md) keeps model-generated
+assessment and reply work, comparing a compiled tool with application prefetch. It measures
+2.15% and 49.78% total-token savings, respectively, on synthetic records with live inference.
 
 ## Architecture implemented
 
