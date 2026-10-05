@@ -247,3 +247,5 @@ export class FoundryClient {
 }
 export type { TaskRequest, DispatchOutcome, AdapterRunner, RuntimeContext };
 export { TrajectoryObserver };
+export { defineContextContract, selectExecution } from './selection.js';
+export type { ContextContract, ExecutionSelection } from './selection.js';

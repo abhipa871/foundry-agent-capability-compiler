@@ -12,6 +12,7 @@ import { TrajectoryObserver } from '../../src/exploration/observe.js';
 import { fullContextSchema } from '../../src/runtime/observable.js';
 import {
   authorizeContext,
+  authorizeReads,
   type AdapterRunner,
   type RuntimeContext,
 } from '../../src/runtime/adapters/registry.js';
@@ -127,6 +128,9 @@ export type AgentTask<T> = {
   parseResult: (raw: unknown) => T;
   complete: (result: T, observer: TrajectoryObserver) => Measurement;
   effort?: 'none' | 'low';
+  allowedOperations?: ReadOperation[];
+  maxModelCalls?: number;
+  maxToolCalls?: number;
 };
 type Message = {
   id?: number | string;
@@ -166,6 +170,8 @@ export class CustomerContextAgent {
       agentId: string;
       metricsEndpoint?: string;
       timeoutMs?: number;
+      maxModelCalls?: number;
+      maxToolCalls?: number;
       onRun?: (run: {
         measurement: ReturnType<TrajectoryObserver['finish']>['measurement'];
         status: string;
@@ -299,6 +305,8 @@ export class CustomerContextAgent {
       outputSchema: z.toJSONSchema(fullContextSchema),
       parseResult: (raw) => fullContextSchema.parse(raw),
       complete: (result, observer) => observer.finish(result).measurement!,
+      maxModelCalls: this.options.maxModelCalls,
+      maxToolCalls: this.options.maxToolCalls,
     });
     return {
       resolved: true,
@@ -313,7 +321,8 @@ export class CustomerContextAgent {
     if (this.running) throw new Error('Experiment provider supports one request at a time.');
     const input = customerInput.parse(task.input);
     const context = this.options.context();
-    authorizeContext(context, input); // denial occurs before any inference or data access
+    if (task.allowedOperations) authorizeReads(context, input, task.allowedOperations);
+    else authorizeContext(context, input); // denial occurs before any inference or data access
     const observer =
       task.observer ??
       new TrajectoryObserver({
@@ -324,6 +333,7 @@ export class CustomerContextAgent {
         provider,
         model,
         apiCallsKnown: true,
+        allowedOperations: task.allowedOperations,
       });
     const ledger = new UsageLedger(observer);
     const toolCalls: {
@@ -361,7 +371,7 @@ export class CustomerContextAgent {
               completedAt: 0,
             };
             toolCalls.push(call);
-            if (toolCalls.length > 100) {
+            if (toolCalls.length > (task.maxToolCalls ?? this.options.maxToolCalls ?? 100)) {
               reject(new Error('Agent tool budget exceeded.'));
               return;
             }
@@ -398,6 +408,8 @@ export class CustomerContextAgent {
           } else if (message.method === 'thread/tokenUsage/updated') {
             try {
               ledger.accept(p?.tokenUsage, responseStarted, performance.now());
+              if (ledger.responses > (task.maxModelCalls ?? this.options.maxModelCalls ?? 100))
+                throw new Error('Provider model budget exceeded.');
               responseStarted = performance.now();
             } catch {
               reject(new Error('Provider usage accounting failed.'));

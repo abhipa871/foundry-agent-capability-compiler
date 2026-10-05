@@ -4,6 +4,7 @@ import { DomainError } from '../domain.js';
 import { customerInput, type ReadOperation } from '../compiler/ir.js';
 import {
   authorizeContext,
+  authorizeReads,
   contracts,
   type AdapterRunner,
   type RuntimeContext,
@@ -46,6 +47,7 @@ export class TrajectoryObserver {
       privacyMode?: PrivacyMode;
       origin?: Measurement['origin'];
       apiCallsKnown?: boolean;
+      allowedOperations?: ReadOperation[];
     },
   ) {
     customerInput.parse(options.input);
@@ -61,7 +63,11 @@ export class TrajectoryObserver {
     if (this.toolAttempts >= 100) throw new DomainError('Trajectory tool budget exceeded.', 429);
     this.toolAttempts += 1;
     if (!(operation in contracts)) throw new DomainError('Unsupported adapter operation.', 403);
-    authorizeContext(this.options.context, this.options.input);
+    if (this.options.allowedOperations) {
+      if (!this.options.allowedOperations.includes(operation))
+        throw new DomainError('Read outside task contract.', 403);
+      authorizeReads(this.options.context, this.options.input, [operation]);
+    } else authorizeContext(this.options.context, this.options.input);
     let value: string;
     if (binding.source === 'task_input') value = this.options.input.customerId;
     else {

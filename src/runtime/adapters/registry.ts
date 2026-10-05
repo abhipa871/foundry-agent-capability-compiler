@@ -135,10 +135,22 @@ export function mockAdapters(
 }
 
 export function authorizeContext(context: RuntimeContext, rawInput: unknown) {
+  return authorizeReads(context, rawInput, Object.keys(contracts) as ReadOperation[]);
+}
+
+export function authorizeReads(
+  context: RuntimeContext,
+  rawInput: unknown,
+  operations: readonly ReadOperation[],
+) {
   const input = customerInput.parse(rawInput);
   if (
-    !Object.values(contracts).every((contract) => context.scopes.includes(contract.scope)) ||
-    (context.allowedCustomerIds && !context.allowedCustomerIds.includes(input.customerId))
+    operations.some(
+      (operation) => !contracts[operation] || !context.scopes.includes(contracts[operation].scope),
+    ) ||
+    (operations.length > 0 &&
+      context.allowedCustomerIds &&
+      !context.allowedCustomerIds.includes(input.customerId))
   )
     throw new DomainError('Customer context permission denied.', 403);
   return input;
