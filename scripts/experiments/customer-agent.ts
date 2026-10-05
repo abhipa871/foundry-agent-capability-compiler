@@ -19,6 +19,7 @@ import {
 import { AgentExecutionError } from '../../src/runtime/dispatcher.js';
 import { reportedUsageSchema } from '../../src/telemetry/measurement.js';
 import type { Measurement } from '../../src/telemetry/measurement.js';
+import { DomainError } from '../../src/domain.js';
 
 export function incompleteProviderMeasurement(measured: Measurement): Measurement {
   // A failed stream can have consumed inference without reporting usage. Report unknown total
@@ -131,6 +132,7 @@ export type AgentTask<T> = {
   allowedOperations?: ReadOperation[];
   maxModelCalls?: number;
   maxToolCalls?: number;
+  recoverReadFailures?: boolean;
 };
 type Message = {
   id?: number | string;
@@ -172,6 +174,8 @@ export class CustomerContextAgent {
       timeoutMs?: number;
       maxModelCalls?: number;
       maxToolCalls?: number;
+      recoverReadFailures?: boolean;
+      allowUnavailableContext?: boolean;
       onRun?: (run: {
         measurement: ReturnType<TrajectoryObserver['finish']>['measurement'];
         status: string;
@@ -294,6 +298,7 @@ export class CustomerContextAgent {
   }
   readonly native: CustomerAgent = async (task, _checkpoint, supplied) => {
     const input = customerInput.parse(task.input);
+    const unavailableSchema = z.object({ context: fullContextSchema.nullable() }).strict();
     const run = await this.runTask({
       input,
       observer: supplied,
@@ -301,20 +306,35 @@ export class CustomerContextAgent {
       executeTool,
       prompt: `Load the complete customer context for ${input.customerId}: customer, all orders, and complete refund history.`,
       instructions:
-        'You retrieve customer context using supplied read tools. Return complete data faithfully. Do not invent values. Use only tools needed to complete the task. Return the required JSON object without commentary.',
-      outputSchema: z.toJSONSchema(fullContextSchema),
-      parseResult: (raw) => fullContextSchema.parse(raw),
-      complete: (result, observer) => observer.finish(result).measurement!,
+        'You retrieve customer context using supplied read tools. Return complete data faithfully. Do not invent values. Use only tools needed to complete the task. Return the required JSON object without commentary.' +
+        (this.options.allowUnavailableContext
+          ? ' Return the full context in the context field, or null if any required service remains unavailable after one retry. Never replace unavailable evidence with an empty history.'
+          : ''),
+      outputSchema: z.toJSONSchema(
+        this.options.allowUnavailableContext ? unavailableSchema : fullContextSchema,
+      ),
+      parseResult: (raw) =>
+        this.options.allowUnavailableContext
+          ? unavailableSchema.parse(raw).context
+          : fullContextSchema.parse(raw),
+      complete: (result, observer) =>
+        result === null
+          ? observer.finishFailure().measurement!
+          : observer.finish(result).measurement!,
       maxModelCalls: this.options.maxModelCalls,
       maxToolCalls: this.options.maxToolCalls,
+      recoverReadFailures: this.options.recoverReadFailures,
     });
     return {
-      resolved: true,
-      summary: 'Provider-backed customer context.',
+      resolved: run.result !== null,
+      summary:
+        run.result === null
+          ? 'Required context service unavailable.'
+          : 'Provider-backed customer context.',
       llmInvocations: run.measurement.modelCalls!,
       tokens: run.measurement.totalTokens!,
       measurement: run.measurement,
-      result: run.result,
+      result: run.result ?? undefined,
     };
   };
   async runTask<T>(task: AgentTask<T>) {
@@ -343,11 +363,13 @@ export class CustomerContextAgent {
       completedAt: number;
     }[] = [];
     this.running = true;
+    this.lastFailure = undefined;
     let responseStarted = performance.now();
     let threadId: string | undefined;
     let turnId: string | undefined;
     let stage = 'thread/start';
     let final = '';
+    let turnCompleted = false;
     let timer: ReturnType<typeof setTimeout>;
     let rejectTurn: (error: Error) => void = () => {};
     try {
@@ -386,17 +408,29 @@ export class CustomerContextAgent {
                   },
                 });
               },
-              () => {
+              (error: unknown) => {
                 call.status = 'failed';
                 call.completedAt = performance.now();
+                const recoverable =
+                  (task.recoverReadFailures ?? this.options.recoverReadFailures) === true &&
+                  error instanceof DomainError &&
+                  error.status >= 500 &&
+                  error.status <= 599;
                 this.send({
                   id: message.id,
                   result: {
-                    contentItems: [{ type: 'inputText', text: 'Authorized read failed.' }],
+                    contentItems: [
+                      {
+                        type: 'inputText',
+                        text: recoverable
+                          ? 'Authorized read unavailable. Retry this read at most once, or report unavailable. Other completed reads remain valid.'
+                          : 'Authorized read failed.',
+                      },
+                    ],
                     success: false,
                   },
                 });
-                reject(new Error('Agent tool request failed.'));
+                if (!recoverable) reject(new Error('Agent tool request failed.'));
               },
             );
           } else if (message.id !== undefined && message.method) {
@@ -470,6 +504,7 @@ export class CustomerContextAgent {
       turnId = turn.turn.id;
       stage = 'provider completion/usage';
       await done;
+      turnCompleted = true;
       if (!ledger.responses)
         throw new Error('No provider-reported usage; refusing estimated tokens.');
       stage = 'final JSON validation';
@@ -477,7 +512,7 @@ export class CustomerContextAgent {
       const measurement = task.complete(result, observer);
       this.options.onRun?.({
         measurement: structuredClone(measurement),
-        status: 'success',
+        status: measurement.outcome === 'failed' ? 'failed' : 'success',
         responses: ledger.responses,
         apiEquivalentCostUsd: apiEquivalentCost(
           observer.measurement.inputTokens!,
@@ -496,12 +531,21 @@ export class CustomerContextAgent {
       rejectTurn(new Error('Experiment request aborted.'));
       if (threadId && turnId)
         await this.rpc('turn/interrupt', { threadId, turnId }).catch(() => {});
-      const measured = incompleteProviderMeasurement(observer.finishFailure().measurement!);
+      const failed = observer.finishFailure().measurement!;
+      const measured =
+        turnCompleted && ledger.responses > 0 ? failed : incompleteProviderMeasurement(failed);
       this.options.onRun?.({
         measurement: structuredClone(measured),
         status: 'failed',
         responses: ledger.responses,
-        apiEquivalentCostUsd: null,
+        apiEquivalentCostUsd:
+          turnCompleted && ledger.responses > 0
+            ? apiEquivalentCost(
+                measured.inputTokens!,
+                measured.cachedInputTokens!,
+                measured.outputTokens!,
+              )
+            : null,
       });
       throw new AgentExecutionError(measured);
     } finally {

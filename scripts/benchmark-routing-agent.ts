@@ -87,6 +87,36 @@ const preflights =
 const preflightCost = preflights.some((run) => run.apiEquivalentCostUsd === null)
   ? null
   : preflights.reduce((sum, run) => sum + run.apiEquivalentCostUsd!, 0);
+const interruptedPath = 'docs/routing-agent-development-interrupted.json';
+const interruptedEvidence =
+  split === 'development' && existsSync(interruptedPath)
+    ? (() => {
+        const evidence = JSON.parse(readFileSync(interruptedPath, 'utf8')) as {
+          experimentTotals: {
+            apiEquivalentCostUsd: number | null;
+            nativeRequests: number;
+            ledger: { apiEquivalentCostUsd: number | null }[];
+          };
+          providerAccounting: { completedInferenceResponses: number };
+          trials: { runs: Record<string, unknown> }[];
+        };
+        return {
+          path: interruptedPath,
+          apiEquivalentCostUsd: evidence.experimentTotals.apiEquivalentCostUsd,
+          knownCostSubtotalUsd: evidence.experimentTotals.ledger.reduce(
+            (sum, entry) => sum + (entry.apiEquivalentCostUsd ?? 0),
+            0,
+          ),
+          nativeRequests: evidence.experimentTotals.nativeRequests,
+          completedInferenceResponses: evidence.providerAccounting.completedInferenceResponses,
+          measuredTaskRequests: evidence.trials.reduce(
+            (sum, trial) => sum + Object.keys(trial.runs).length,
+            0,
+          ),
+          note: 'Interrupted stream cost remains unknown. Known subtotal excludes unreported work. Corrected run has its own bounded estimate stopping rule; no cumulative spending ceiling is claimed.',
+        };
+      })()
+    : null;
 if (existsSync(output)) throw new Error('Refusing to overwrite retained live evidence.');
 const cases = split === 'development' ? developmentCases : heldoutCases;
 const repeats = split === 'development' ? 1 : 2;
@@ -102,6 +132,9 @@ const sources = Object.fromEntries(
     'src/integration/selection.ts',
     'src/integration/client.ts',
     'src/integration/request-reads.ts',
+    'src/exploration/observe.ts',
+    'src/runtime/adapters/registry.ts',
+    'scripts/experiments/customer-agent.ts',
     'scripts/experiments/routing-task.ts',
     'scripts/benchmark-routing-agent.ts',
   ].map((path) => [path, sha(readFileSync(path))]),
@@ -145,6 +178,8 @@ const contextAgent = new CustomerContextAgent({
   maxModelCalls: 6,
   maxToolCalls: 10,
   timeoutMs: 60000,
+  recoverReadFailures: true,
+  allowUnavailableContext: true,
 });
 const supportAgent = new CustomerContextAgent({
   adapters: (...args) => activeAdapters(...args),
@@ -154,6 +189,7 @@ const supportAgent = new CustomerContextAgent({
   maxModelCalls: 6,
   maxToolCalls: 10,
   timeoutMs: 60000,
+  recoverReadFailures: true,
 });
 const native: ConstructorParameters<typeof FoundryClient>[0]['native'] = async (
   task,
@@ -182,6 +218,7 @@ const native: ConstructorParameters<typeof FoundryClient>[0]['native'] = async (
       apiCallsKnown: true,
     });
   const run = await contextAgent.native(task, checkpoint, observer);
+  if (!run.resolved) return run;
   const values = Object.fromEntries(
     observer.events
       .filter((e) => e.status === 'success')
@@ -913,10 +950,17 @@ try {
       cpuMicros: process.cpuUsage(cpuStart),
       apiEquivalentCostUsd: sumCost(ledger),
       preflights,
+      interruptedEvidence,
       includingPreflightApiEquivalentCostUsd:
         sumCost(ledger) === null || preflightCost === null
           ? null
           : sumCost(ledger)! + preflightCost,
+      includingAllDevelopmentAttemptsApiEquivalentCostUsd:
+        sumCost(ledger) === null ||
+        preflightCost === null ||
+        interruptedEvidence?.apiEquivalentCostUsd === null
+          ? null
+          : sumCost(ledger)! + preflightCost + (interruptedEvidence?.apiEquivalentCostUsd ?? 0),
       nativeRequests: ledger.length,
       ledger,
       note: 'All setup, revalidation, warmups, failed reads, incorrect outputs, outliers and measured requests retained. Unknown charges are not zero.',

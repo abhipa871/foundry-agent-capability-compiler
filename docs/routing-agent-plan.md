@@ -114,3 +114,19 @@ retains eight context requests, sixteen responses, 53.157 seconds and $0.151033 
 Both attempts together used twelve requests, twenty-four responses and $0.258823; these count
 toward the same development budget. Neither attempt reached measured tasks. Selection rules,
 messages and the final set remain unchanged.
+
+The third attempt reached fourteen measured requests, then correctly stopped on unknown provider
+usage after the original agent harness aborted a transient tool failure. The harness previously
+treated every tool error as fatal. This experiment now opts into returning authorized 5xx read
+failures to the model, allowing its bounded retry/unavailable behavior. Defaults and authorization
+denials stay terminal. A fixture provider-protocol test verifies recovery, denials, default behavior
+and accurate usage for a completed response rejected by the final schema.
+The context fallback's experiment-only output contract also allows explicit unavailability after
+bounded failed reads, instead of forcing a complete-context schema with missing evidence. That
+unresolved result retains measured inference. Other experiments keep their existing default schema.
+[Interrupted evidence](routing-agent-development-interrupted.json) retains all fourteen tasks,
+warmups and setup work, including the failure's unknown total cost. No prompt or selection rule
+was tuned. The corrected development run is bounded to sixty measured requests and its own
+$9 estimate stopping rule (including the two fully priced setup preflights). Because the interrupted
+stream is unpriced, no finite cumulative spending ceiling or fully known experiment total is
+claimed. The final evaluation remains one separate 120-request run; it has not started.
