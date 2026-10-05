@@ -24,6 +24,7 @@ import {
   type RuntimeTicket,
 } from './protocol.js';
 import type { ExecutionCheckpoint } from '../runtime/checkpoint.js';
+import { emptyMeasurement } from '../telemetry/measurement.js';
 
 export type CustomerAgent = (
   request: TaskRequest,
@@ -98,7 +99,10 @@ export class FoundryClient {
       await reader.cancel().catch(() => {});
     }
   }
-  async execute(request: TaskRequest): Promise<DispatchOutcome> {
+  async execute(
+    request: TaskRequest,
+    execution: { fallback?: 'native' | 'defer' } = {},
+  ): Promise<DispatchOutcome> {
     const started = performance.now();
     let apiCalls = 0;
     const remote = (path: string, body?: unknown) => {
@@ -125,10 +129,20 @@ export class FoundryClient {
           })
         : undefined;
     const native: AgentFallback = async (task, checkpoint) => {
+      if (execution.fallback === 'defer')
+        return {
+          resolved: false,
+          summary: 'Caller retains authoritative agent execution.',
+          llmInvocations: 0,
+          tokens: 0,
+          toolCalls: 0,
+          measurement: { ...emptyMeasurement(), outcome: 'unresolved' },
+        };
       let result: Awaited<ReturnType<CustomerAgent>>;
       try {
         result = await this.options.native(task, checkpoint, observer);
-      } catch {
+      } catch (error) {
+        if (error instanceof AgentExecutionError) throw error;
         if (!observer) throw new Error('Native execution failed.');
         const measured = observer.finishFailure().measurement!;
         throw new AgentExecutionError({
@@ -195,7 +209,7 @@ export class FoundryClient {
         : undefined;
     let result: DispatchOutcome;
     let shadowStatus: ClientTelemetry['shadowStatus'];
-    if (ticket?.mode === 'shadow' && selected) {
+    if (ticket?.mode === 'shadow' && selected && execution.fallback !== 'defer') {
       const run = await shadowExecute(request, selected, {
         adapters: this.options.adapters,
         context,
@@ -242,6 +256,8 @@ export class FoundryClient {
         /* never fail customer work for telemetry */
       }
     }
+    result.durationMs = performance.now() - started;
+    result.measurement.durationMs = result.durationMs;
     return result;
   }
 }
@@ -249,3 +265,4 @@ export type { TaskRequest, DispatchOutcome, AdapterRunner, RuntimeContext };
 export { TrajectoryObserver };
 export { defineContextContract, selectExecution } from './selection.js';
 export type { ContextContract, ExecutionSelection } from './selection.js';
+export { RequestReadCache } from './request-reads.js';
