@@ -148,6 +148,13 @@ agent requests, 21 completed responses, $0.198034 known API-equivalent estimate 
 of unknown cost. Under this plan's one-attempt rule, development v2.1 is incomplete and the
 held-out phase has not started.
 
+**User-authorized single retry.** The user authorized exactly one more v2.1 development attempt
+with no code, prompt, case or selection change, writing
+`docs/routing-agent-v2.1-development-retry.json`. If it passes its provider, accounting,
+correctness-reporting and authorization gates, the held-out set runs once into
+`docs/routing-agent-v2.1-heldout.json`. A provider failure in either phase ends live work and is
+reported as incomplete; there is no further retry.
+
 ## Plan v1 (superseded, retained)
 
 Approved scope: execution placement and read-only fallback for `load_customer_context`; no

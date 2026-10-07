@@ -74,7 +74,12 @@ if (split !== 'development' && split !== 'heldout')
 if (process.argv.length > 3) throw new Error('The only supported argument is the split.');
 // Each source version writes new evidence; earlier files stay untouched as prior accounting.
 const planVersion = 'routing-v2.1-12-case';
-const output = `docs/routing-agent-v2.1-${split}.json`;
+// The first v2.1 development attempt stopped on a provider timeout; its file is retained and the
+// single authorized retry writes a new name.
+const output =
+  split === 'development'
+    ? 'docs/routing-agent-v2.1-development-retry.json'
+    : 'docs/routing-agent-v2.1-heldout.json';
 const priorPaths = [
   'docs/routing-agent-development-preflight.json',
   'docs/routing-agent-development-revalidation-preflight.json',
@@ -82,7 +87,8 @@ const priorPaths = [
   'docs/routing-agent-development-provider-preflight.json',
   'docs/routing-agent-development.json',
   'docs/routing-agent-v2-development.json',
-  ...(split === 'heldout' ? ['docs/routing-agent-v2.1-development.json'] : []),
+  'docs/routing-agent-v2.1-development.json',
+  ...(split === 'heldout' ? ['docs/routing-agent-v2.1-development-retry.json'] : []),
 ];
 const priorEvidence = priorPaths
   .filter((path) => existsSync(path))
