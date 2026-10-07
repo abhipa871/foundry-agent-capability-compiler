@@ -139,6 +139,15 @@ Because both change behaviour, development is rerun completely (72 requests) int
 `docs/routing-agent-v2.1-heldout.json`. Results from different source versions are never pooled;
 the first v2 run stays in prior accounting.
 
+**v2.1 development attempt (incomplete).** Setup passed (two observations, compilation, 21
+artifact checks, three initial and three renewed shadow matches). The normal, compiled-tool and
+compiled-prefetch warmups passed. The handwritten-prefetch warmup's single model turn then hit the
+60-second provider turn timeout without reporting usage, and the warmup gate stopped the run
+before any measured request. [Retained evidence](routing-agent-v2.1-development.json): 12 provider
+agent requests, 21 completed responses, $0.198034 known API-equivalent estimate plus one request
+of unknown cost. Under this plan's one-attempt rule, development v2.1 is incomplete and the
+held-out phase has not started.
+
 ## Plan v1 (superseded, retained)
 
 Approved scope: execution placement and read-only fallback for `load_customer_context`; no
