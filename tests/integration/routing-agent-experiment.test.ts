@@ -6,6 +6,7 @@ import {
   experimentArms,
   assessRouting,
   routingFixture,
+  routingInstructions,
   allReads,
   type RoutingResponse,
 } from '../../scripts/experiments/routing-task.js';
@@ -76,6 +77,16 @@ it('rejects wrong normal-agent answers and unnecessary reads without making a ba
 });
 it('requires an unavailable answer rather than guessing missing evidence after a service failure', () => {
   const task = developmentCases.find((task) => task.category === 'permanent_failure')!;
+  // The instruction must name the same all-null evidence the unchanged oracle expects.
+  expect(routingInstructions).toContain(
+    'use unavailable and set eligible, orders, refunds and selectedOrderId all to null',
+  );
+  expect(task.expected).toMatchObject({
+    eligible: null,
+    orders: null,
+    refunds: null,
+    selectedOrderId: null,
+  });
   const response: RoutingResponse = {
     ...task.expected,
     reply:

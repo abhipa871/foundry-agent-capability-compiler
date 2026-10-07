@@ -9,8 +9,8 @@ evidence files are retained unchanged and are listed as prior accounting in ever
 and one direct-fallback request that failed on a provider transport/inference error with unknown
 usage. Its source hashes still match the v1 source, but v2 changes the case file, schedule and
 driver, so none of those requests match v2's case set, arm order or methodology. The driver has
-no resume support. v2 therefore runs a complete new development set into new evidence files:
-`docs/routing-agent-v2-development.json` and `docs/routing-agent-v2-heldout.json`.
+no resume support. v2 therefore runs a complete new development set into new, versioned evidence
+files (see the change log below for the current names).
 
 **Arms (unchanged).** Normal original tools; compiled context loader offered as a tool; compiled
 context prefetch; handwritten deterministic prefetch; Foundry-selected execution with native
@@ -117,6 +117,27 @@ fix; any behaviour change requires a complete new 72-request development run und
 evidence name, never mixed with older source versions. Code, prompts, selection rules, seeds
 (development 41107, held-out 71109) and this plan are frozen before the held-out phase, which is
 run once and never used for tuning.
+
+**Development change log.** The first complete v2 development run
+([`routing-agent-v2-development.json`](routing-agent-v2-development.json), source `1d36a09`)
+completed 72/72 requests with known usage: 92 provider agent requests, 161 completed responses
+and a $1.895439 API-equivalent estimate. It exposed two defects, each fixed in its own commit
+without changing the selector, SDK, guards, oracle or cases:
+
+1. **Direct handoff lost the retry budget (`51fb448`).** After one failed compiled refund read,
+   the handoff said `{status:'unavailable', attempts:1}`. In both read-failure cases the original
+   agent answered unavailable without its permitted retry; in the transient case every other arm
+   recovered. The shared read status now states `failedAttempts` and `retriesRemaining` under the
+   unchanged two-attempt budget for every arm. The same commit fixes per-response tool-call
+   attribution in the ledger (reporting only).
+2. **Ambiguous unavailable instruction.** "Use unavailable with all evidence fields and
+   selectedOrderId null" was read by three arms as "keep verified fields". The hand-stated oracle
+   (all evidence null) is unchanged; the instruction now names the null fields explicitly.
+
+Because both change behaviour, development is rerun completely (72 requests) into
+`docs/routing-agent-v2.1-development.json`. The held-out phase writes
+`docs/routing-agent-v2.1-heldout.json`. Results from different source versions are never pooled;
+the first v2 run stays in prior accounting.
 
 ## Plan v1 (superseded, retained)
 
