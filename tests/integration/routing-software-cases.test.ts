@@ -9,8 +9,11 @@ import {
   buildCallLedger,
   developmentCases,
   experimentArms,
+  failedReadStatus,
   heldoutCases,
   partialSoftwareReads,
+  readAttemptsPerRequest,
+  routingPrompt,
   partialSoftwareTool,
   routingFixture,
   routingResponseSchema,
@@ -216,10 +219,11 @@ it('records the software call, each follow-up and redundant reads separately wit
       { operation: 'payments.refundHistory', startedAt: 201, completedAt: 204, status: 'success' },
       { operation: 'orders.list', startedAt: 207, completedAt: 209, status: 'success' },
     ],
+    // Usage for a response arrives after the tool calls it emitted have started.
     modelEvents: [
-      { startMs: 0, endMs: 90, inputTokens: 1000, cachedInputTokens: 0, outputTokens: 10 },
-      { startMs: 110, endMs: 195, inputTokens: 1200, cachedInputTokens: 1000, outputTokens: 20 },
-      { startMs: 210, endMs: 300, inputTokens: 1400, cachedInputTokens: 1200, outputTokens: 90 },
+      { startMs: 0, endMs: 105, inputTokens: 1000, cachedInputTokens: 0, outputTokens: 10 },
+      { startMs: 110, endMs: 215, inputTokens: 1200, cachedInputTokens: 1000, outputTokens: 20 },
+      { startMs: 215, endMs: 300, inputTokens: 1400, cachedInputTokens: 1200, outputTokens: 90 },
     ],
     cost: apiEquivalentCost,
   });
@@ -251,6 +255,43 @@ it('records the software call, each follow-up and redundant reads separately wit
   expect(ledger.responses.map((response) => response.issuedToolCalls)).toEqual([[0], [1, 2], []]);
   expect(ledger.responses[0].apiEquivalentCostUsd).toBeCloseTo(0.0053, 10);
   expect(ledger.responses[2].apiEquivalentCostUsd).toBe(apiEquivalentCost(1400, 1200, 90));
+});
+
+it('hands off a failed compiled read with its remaining retry budget, not as an exhausted service', () => {
+  const task = byCategory(developmentCases, 'transient_failure');
+  // Development evidence: after one failed compiled refund read, a bare
+  // `{status:'unavailable', attempts:1}` handoff led the original agent to answer unavailable
+  // without its permitted retry, while every other arm recovered.
+  const afterCompiledMiss = [
+    { operation: 'crm.getCustomer' as const, status: 'success' },
+    { operation: 'orders.list' as const, status: 'success' },
+    { operation: 'payments.refundHistory' as const, status: 'failed' },
+  ];
+  const status = failedReadStatus(afterCompiledMiss);
+  expect(status).toEqual({
+    'payments.refundHistory': { status: 'failed', failedAttempts: 1, retriesRemaining: 1 },
+  });
+  const prompt = routingPrompt(task, { 'crm.getCustomer': {} }, true, status);
+  expect(prompt).toContain('"retriesRemaining":1');
+  expect(prompt).toContain(`at most ${readAttemptsPerRequest} times per request`);
+  expect(prompt).toContain('Retry a required failed read once');
+  expect(prompt).not.toContain('"status":"unavailable"');
+
+  const exhausted = failedReadStatus([
+    ...afterCompiledMiss,
+    { operation: 'payments.refundHistory', status: 'failed' },
+  ]);
+  expect(exhausted['payments.refundHistory']).toMatchObject({
+    failedAttempts: 2,
+    retriesRemaining: 0,
+  });
+  // A read that recovered is no longer reported as failed.
+  expect(
+    failedReadStatus([
+      ...afterCompiledMiss,
+      { operation: 'payments.refundHistory', status: 'success' },
+    ]),
+  ).toEqual({});
 });
 
 it('treats the Foundry loader as live software and does not flag cache-served first reads as redundant', () => {

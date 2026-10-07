@@ -55,6 +55,8 @@ import {
   experimentArms,
   balancedSchedule,
   buildCallLedger,
+  failedReadStatus,
+  readAttemptsPerRequest,
   runPartialSoftware,
   sandboxCustomerIds,
   softwareToolFor,
@@ -70,16 +72,17 @@ const split = process.argv[2];
 if (split !== 'development' && split !== 'heldout')
   throw new Error('Choose development or heldout.');
 if (process.argv.length > 3) throw new Error('The only supported argument is the split.');
-// Plan v2 (12 cases) writes new evidence; v1 files stay untouched and are listed as prior work.
-const planVersion = 'routing-v2-12-case';
-const output = `docs/routing-agent-v2-${split}.json`;
+// Each source version writes new evidence; earlier files stay untouched as prior accounting.
+const planVersion = 'routing-v2.1-12-case';
+const output = `docs/routing-agent-v2.1-${split}.json`;
 const priorPaths = [
   'docs/routing-agent-development-preflight.json',
   'docs/routing-agent-development-revalidation-preflight.json',
   'docs/routing-agent-development-interrupted.json',
   'docs/routing-agent-development-provider-preflight.json',
   'docs/routing-agent-development.json',
-  ...(split === 'heldout' ? ['docs/routing-agent-v2-development.json'] : []),
+  'docs/routing-agent-v2-development.json',
+  ...(split === 'heldout' ? ['docs/routing-agent-v2.1-development.json'] : []),
 ];
 const priorEvidence = priorPaths
   .filter((path) => existsSync(path))
@@ -348,7 +351,8 @@ async function executeCase(task: RoutingCase, arm: ExperimentArm) {
     authorizeReads(context, args, [operation]);
     const attempt = (attempts.get(operation) ?? 0) + 1;
     attempts.set(operation, attempt);
-    if (attempt > 2) throw new DomainError('Sandbox read retry budget exhausted.', 503);
+    if (attempt > readAttemptsPerRequest)
+      throw new DomainError('Sandbox read retry budget exhausted.', 503);
     const entry: BusinessRead = {
       operation,
       startedAt: performance.now(),
@@ -400,15 +404,7 @@ async function executeCase(task: RoutingCase, arm: ExperimentArm) {
     fetch: transport,
   });
   const contextRuns: DispatchOutcome[] = [];
-  const serviceStatus = () =>
-    Object.fromEntries(
-      allReads.flatMap((operation) => {
-        const reads = businessReads.filter((read) => read.operation === operation);
-        return reads.length && reads[reads.length - 1].status === 'failed'
-          ? [[operation, { status: 'unavailable', attempts: reads.length }]]
-          : [];
-      }),
-    );
+  const serviceStatus = () => failedReadStatus(businessReads);
   const started = performance.now();
   const ledgerStart = ledger.length;
   let response: RoutingResponse | undefined;

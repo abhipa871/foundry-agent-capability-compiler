@@ -330,13 +330,35 @@ export const developmentCases = cases('development');
 export const heldoutCases = cases('heldout');
 export const routingInstructions =
   'You are a read-only customer-support assistant. Interpret the message, retrieve only information it requires, and draft a courteous grounded 50–110 word reply. Original lookup tools can be used individually; the context-loader tool retrieves customer, orders and refunds together, so use it only when all are needed. All tool inputs are bound to the authorized customer. Return JSON: copy required record fields faithfully and set unneeded fields to null. For eligibility-only use eligibility_info; order-delay-only use order_status and select the most delayed order; public policy questions use policy_info. For full review apply the supplied policy. If a required service remains unavailable after one retry, use unavailable with all evidence fields and selectedOrderId null; never assume a failed refund read means no refunds. Read errors do not authorize any other record. Do not issue, approve, guarantee or claim any refund, order change or contact. Include selected order ID and its delay as digits when available. Do not provide private reasoning or separate analysis.';
+export const readAttemptsPerRequest = 2;
+// The status of every read whose latest attempt failed, including the retry budget it has left.
+// A handoff must state what remains permitted; a bare failure count was read as exhausted.
+export function failedReadStatus(reads: { operation: ReadOperation; status: string }[]) {
+  return Object.fromEntries(
+    allReads.flatMap((operation) => {
+      const attempts = reads.filter((read) => read.operation === operation);
+      return attempts.length && attempts[attempts.length - 1].status === 'failed'
+        ? [
+            [
+              operation,
+              {
+                status: 'failed',
+                failedAttempts: attempts.length,
+                retriesRemaining: Math.max(0, readAttemptsPerRequest - attempts.length),
+              },
+            ],
+          ]
+        : [];
+    }),
+  );
+}
 export function routingPrompt(
   task: RoutingCase,
   suppliedReads?: unknown,
   failedPrefetch = false,
   serviceStatus?: unknown,
 ) {
-  return `Customer: ${task.customerId}\nMessage: ${task.message}\n${supportPolicy}\n${suppliedReads === undefined ? '' : `Authorized reads already completed (use only fields needed for the message):\n${JSON.stringify(suppliedReads)}\n`}${failedPrefetch ? 'Prefetch was unavailable. Continue with your original authorized lookup tools where appropriate, reusing any valid supplied reads. Never infer missing evidence.\n' : ''}${serviceStatus === undefined ? '' : `Observed service status: ${JSON.stringify(serviceStatus)}. A service unavailable after two attempts has exhausted this request retry budget; do not retry it again.\n`}`;
+  return `Customer: ${task.customerId}\nMessage: ${task.message}\n${supportPolicy}\n${suppliedReads === undefined ? '' : `Authorized reads already completed (use only fields needed for the message):\n${JSON.stringify(suppliedReads)}\n`}${failedPrefetch ? 'Prefetch was unavailable. Continue with your original authorized lookup tools where appropriate, reusing any valid supplied reads. Never infer missing evidence.\n' : ''}${serviceStatus === undefined ? '' : `Observed read status: ${JSON.stringify(serviceStatus)}. Each read may be attempted at most ${readAttemptsPerRequest} times per request. Retry a required failed read once with its original tool when its retriesRemaining is above 0; when retriesRemaining is 0 its budget is exhausted, so do not retry it.\n`}`;
 }
 export function routingProjection(response: Expected) {
   return {
@@ -419,9 +441,9 @@ export function softwareReadsFor(task: RoutingCase): ReadOperation[] {
   return task.software === 'fixture_partial_order_summary' ? partialSoftwareReads : allReads;
 }
 
-// Per-call accounting for one request. Times are milliseconds from the request start. A model
-// response is attributed to the tool calls that began after it completed and before the next
-// response completed; token attribution per tool call is otherwise not reported by the provider.
+// Per-call accounting for one request. Times are milliseconds from the request start. Providers
+// report a response's usage after the tool calls it emitted have started, so a tool call belongs
+// to the earliest response completing at or after its start. Per-tool-call tokens are not reported.
 export type LedgerToolCall = {
   name: string;
   startedAt: number;
@@ -507,7 +529,7 @@ export function buildCallLedger(options: {
   });
   const sortedModels = [...options.modelEvents].sort((a, b) => a.endMs - b.endMs);
   const responses = sortedModels.map((event, index) => {
-    const next = sortedModels[index + 1]?.endMs ?? Infinity;
+    const previous = sortedModels[index - 1]?.endMs ?? -Infinity;
     const known =
       event.inputTokens !== null && event.outputTokens !== null && event.cachedInputTokens !== null;
     return {
@@ -522,8 +544,8 @@ export function buildCallLedger(options: {
       issuedToolCalls: calls
         .filter(
           (call) =>
-            options.toolCalls[call.index].startedAt >= event.endMs &&
-            options.toolCalls[call.index].startedAt < next,
+            options.toolCalls[call.index].startedAt > previous &&
+            options.toolCalls[call.index].startedAt <= event.endMs,
         )
         .map((call) => call.index),
     };
