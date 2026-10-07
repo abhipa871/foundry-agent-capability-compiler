@@ -155,6 +155,10 @@ correctness-reporting and authorization gates, the held-out set runs once into
 `docs/routing-agent-v2.1-heldout.json`. A provider failure in either phase ends live work and is
 reported as incomplete; there is no further retry.
 
+**Outcome.** The retry completed 72/72 requests with known usage and passed every gate; code was
+frozen at `2db497e` and the held-out set ran once, completing 144/144 with known usage. Results
+are in [the report](routing-agent-experiment.md).
+
 ## Plan v1 (superseded, retained)
 
 Approved scope: execution placement and read-only fallback for `load_customer_context`; no
