@@ -8,6 +8,7 @@ export type MetricRun = {
   unnecessaryReads: number;
   duplicateSuccessfulReads: number;
   selectorMs: number;
+  redundantToolCalls?: number;
 };
 const average = (values: (number | null)[]) =>
   !values.length || values.some((v) => v === null)
@@ -27,6 +28,7 @@ export function summarizeRouting(rows: MetricRun[]) {
     fallbackRate: rows.filter((r) => r.usedFallback).length / rows.length,
     meanUnnecessaryReads: average(rows.map((r) => r.unnecessaryReads)),
     meanDuplicateSuccessfulReads: average(rows.map((r) => r.duplicateSuccessfulReads)),
+    meanRedundantToolCalls: average(rows.map((r) => r.redundantToolCalls ?? null)),
     meanSelectorMs: average(rows.map((r) => r.selectorMs)),
   };
 }

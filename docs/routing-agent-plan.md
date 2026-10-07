@@ -1,5 +1,125 @@
 # Frozen routing evaluation plan
 
+## Plan v2: twelve cases (current)
+
+Plan v2 supersedes the ten-case plan below for new live work. The v1 text and all five v1
+evidence files are retained unchanged and are listed as prior accounting in every v2 report.
+
+**Why a fresh run.** The bounded v1 retry completed 18 of 60 requests: 17 with reported usage
+and one direct-fallback request that failed on a provider transport/inference error with unknown
+usage. Its source hashes still match the v1 source, but v2 changes the case file, schedule and
+driver, so none of those requests match v2's case set, arm order or methodology. The driver has
+no resume support. v2 therefore runs a complete new development set into new evidence files:
+`docs/routing-agent-v2-development.json` and `docs/routing-agent-v2-heldout.json`.
+
+**Arms (unchanged).** Normal original tools; compiled context loader offered as a tool; compiled
+context prefetch; handwritten deterministic prefetch; Foundry-selected execution with native
+context-agent fallback; Foundry-selected execution with direct handoff to the original support
+agent and request-local read reuse. The handwritten arm uses the same authorized adapters,
+schemas, output contract, snapshot and model settings. Its orchestration is a fixed
+`Promise.allSettled` of the contract's reads with one bounded retry per read, written by the
+application. It has no trace observation, compilation, artifact verification, trusted shadow,
+approval, signed offer, SDK telemetry, registry health or revalidation; those setup and
+verification costs are reported only for Foundry. It can also preload known partial context,
+which the compiled family cannot represent.
+
+**Cases.** Each split keeps the ten v1 categories (complete, partial, absent and model-decided
+context; denied access; quarantine; incompatible freshness; 120 ms slow read; transient and
+permanent read failure) and adds two:
+
+- `software_tool` (case type A): the application contract says the agent decides what it needs.
+  The selector offers the unchanged compiled `load_customer_context` alongside the original
+  lookup tools. The request genuinely needs eligibility, every order and refund history. The
+  tool input is application-bound to the authorized customer; the model chooses whether and when
+  to call it but cannot supply or change a customer ID or scope. Development uses C-111 and
+  held-out uses C-414.
+- `software_supplement` (case type B): the request needs eligibility, orders **and** refund
+  evidence. A valid software result covers eligibility and orders only, and the agent must add
+  refund history with the existing typed `lookup_refund_history` tool. Development uses C-212 and
+  held-out uses C-515. Both records contain a prior refund, so treating the partial result as
+  complete changes the evidence and the recommended action.
+
+**Limitation for case type B.** The existing compiled capability's only output contract is the
+full `context.v1` (customer, orders and refunds). A missing or failed read deoptimizes; it never
+returns a valid partial result, and every existing typed tool's resource is already in that
+result. No partial-but-valid live result can arise without changing the capability, which this
+plan forbids. Case B therefore offers a **labeled test fixture**, `load_order_summary`, in the
+software placements (manual compiled-tool and both selector arms). It reads eligibility and
+orders through the same authorized observer, adapters, schemas and snapshot, and fails closed on
+stale runtime context with the compiled artifact's 30-second window. It is never compiled,
+verified or deployed. Its rows use live agent inference but are excluded from Foundry-capability
+aggregates and paired comparisons and are reported separately. Fixture tests cover its supplement
+mechanics without inference.
+
+**Independent oracles.** Every case's request, expected structured answer, required reads,
+permitted reads and (for case B) necessary follow-up reads are hand-stated in
+`scripts/experiments/routing-task.ts`, not derived from the optimizer or an agent. The agent never
+sees the expected answer. The final response is scored against that oracle. v2 adds an
+`evidenceGrounded` check: a non-null eligibility, order or refund field fails unless that resource
+was read successfully in the same request, so guessed or partial evidence cannot pass. The normal
+agent is scored the same way and can lose.
+
+**Per-call accounting.** Each agent tool call is recorded separately (software call, follow-up
+call or original tool), with its business reads, latency, duplicate successful reads, redundant
+re-requests of already returned resources (including cache-served ones), unnecessary reads and
+whether it was a necessary follow-up. Each completed model response is recorded with
+input/cached/output tokens, API-equivalent cost and the tool calls it issued. Provider usage is
+reported per response, not per tool call.
+
+**Counts confirmed against the harness** (`balancedSchedule × experimentArms`, asserted in
+`tests/integration/routing-software-cases.test.ts`):
+
+| Live provider work                                   | Development |   Held-out |
+| ---------------------------------------------------- | ----------: | ---------: |
+| Cases × arms × repeats                               |  12 × 6 × 1 | 12 × 6 × 2 |
+| Measured support requests                            |          72 |        144 |
+| ... of which denied before inference (zero requests) |           6 |         12 |
+| Source observation context requests                  |           2 |          2 |
+| Initial trusted-shadow context requests              |           3 |          3 |
+| Revalidation shadow context requests                 |           3 |          3 |
+| Warmup support requests (development `all` case)     |           6 |          6 |
+| Maximum nested native context-fallback requests      |          12 |         24 |
+| **Maximum provider agent requests**                  |      **92** |    **170** |
+
+Both phases together plan at most 262 provider agent requests, each limited to six completed
+model responses, ten tool calls and a 60-second turn. Nested fallbacks occur only when a
+native-fallback arm (compiled tool, compiled prefetch or selector/native) meets quarantine,
+incompatible freshness, transient failure or permanent failure: four categories × three arms per
+repeat. Analysis, compilation and fixture validation make no model requests.
+
+**Estimate and uncertainty.** The 11 non-denied v1 measured requests with known usage averaged
+$0.0241 API-equivalent each (range $0.0100–$0.0412); an earlier interrupted attempt priced
+near-identical token counts up to $0.0472 because cache hits varied. Using $0.007–$0.047 per
+inference-bearing request plus v1's measured setup ($0.077), revalidation ($0.062) and warmups
+($0.108): development ≈ $1.9 (≈ $0.8–$3.6) and held-out ≈ $3.8 (≈ $1.5–$6.9), about $5.7
+(≈ $2.3–$10.5) combined. These are GPT-5.5 standard-rate estimates ($5 input, $0.50 cached input
+and $30 output per million tokens; official model page checked 2026-10-07), not ChatGPT billing.
+Prior v1 attempts add $1.398948 of known estimates plus three unpriced streams. No account
+allowance percentage can be derived from request counts.
+
+**Command.** The driver accepts exactly one argument, the split, and rejects anything else.
+The Codex CLI is not on `PATH` in this environment; the existing `FOUNDRY_CODEX_BIN` override
+selects the bundled CLI:
+
+```sh
+FOUNDRY_CODEX_BIN=/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex \
+  npm run benchmark:routing-agent -- development
+FOUNDRY_CODEX_BIN=/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex \
+  npm run benchmark:routing-agent -- heldout
+```
+
+**Stopping and freeze rules.** Each phase stops before its next request when its own known
+estimate becomes unknown or exceeds $9, when provider usage is incomplete, or when an
+authorization gate fails. In-flight work can cross the threshold. There is one live attempt per
+phase. On a provider failure, the partial evidence is retained and the phase is reported
+incomplete rather than retried in a loop. Development results may justify one documented, tested
+fix; any behaviour change requires a complete new 72-request development run under a new
+evidence name, never mixed with older source versions. Code, prompts, selection rules, seeds
+(development 41107, held-out 71109) and this plan are frozen before the held-out phase, which is
+run once and never used for tuning.
+
+## Plan v1 (superseded, retained)
+
 Approved scope: execution placement and read-only fallback for `load_customer_context`; no
 compiler rewrite, new capability family/provider, financial write or arbitrary generated code.
 The baseline is [the retained support experiment](support-agent-experiment.md): compiled tool

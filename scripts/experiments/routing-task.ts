@@ -1,8 +1,9 @@
 import { z } from 'zod';
 import { canonical, type ReadOperation } from '../../src/compiler/ir.js';
 import { defineContextContract, type ContextContract } from '../../src/integration/selection.js';
-import { supportPolicy } from './support-task.js';
-import { fixtureResult } from '../../src/runtime/adapters/registry.js';
+import { compiledContextTool, supportPolicy } from './support-task.js';
+import { fixtureResult, type RuntimeContext } from '../../src/runtime/adapters/registry.js';
+import type { TrajectoryObserver } from '../../src/exploration/observe.js';
 
 export const allReads: ReadOperation[] = [
   'crm.getCustomer',
@@ -35,6 +36,10 @@ export const routingResponseSchema = z
 export type RoutingResponse = z.infer<typeof routingResponseSchema>;
 export type Expected = Omit<RoutingResponse, 'reply'>;
 type Fault = 'none' | 'quarantined' | 'stale' | 'slow' | 'transient' | 'permanent' | 'denied';
+// Which software a "compiled tool" placement offers. Only the Foundry loader is live capability
+// evidence; the partial order summary is a labeled test fixture because context.v1 cannot
+// represent a valid partial result.
+export type SoftwareSource = 'foundry_context_loader' | 'fixture_partial_order_summary';
 export type RoutingCase = {
   id: string;
   category: string;
@@ -43,6 +48,9 @@ export type RoutingCase = {
   contract: ContextContract;
   requiredReads: ReadOperation[];
   permittedReads: ReadOperation[];
+  // Reads the agent must add itself after a valid software result; hand-stated, never derived.
+  followUpReads: ReadOperation[];
+  software: SoftwareSource;
   fault: Fault;
   expected: Expected;
 };
@@ -114,7 +122,48 @@ const full: Record<string, Expected> = {
     selectedOrderId: 'O-606',
     action: 'delivery_support',
   },
+  'C-111': {
+    customerId: 'C-111',
+    eligible: true,
+    orders: [
+      { id: 'O-111', daysLate: 4 },
+      { id: 'O-112', daysLate: 10 },
+    ],
+    refunds: [],
+    selectedOrderId: 'O-112',
+    action: 'refund_review',
+  },
+  'C-212': {
+    customerId: 'C-212',
+    eligible: true,
+    orders: [{ id: 'O-212', daysLate: 9 }],
+    refunds: [{ id: 'R-212', amount: 15 }],
+    selectedOrderId: 'O-212',
+    action: 'human_review',
+  },
+  'C-414': {
+    customerId: 'C-414',
+    eligible: false,
+    orders: [{ id: 'O-414', daysLate: 7 }],
+    refunds: [{ id: 'R-414', amount: 12 }],
+    selectedOrderId: 'O-414',
+    action: 'delivery_support',
+  },
+  'C-515': {
+    customerId: 'C-515',
+    eligible: true,
+    orders: [
+      { id: 'O-515', daysLate: 2 },
+      { id: 'O-516', daysLate: 11 },
+    ],
+    refunds: [{ id: 'R-515', amount: 20 }],
+    selectedOrderId: 'O-516',
+    action: 'human_review',
+  },
 };
+export const sandboxCustomerIds = ['C-101', 'C-202', 'C-303', ...Object.keys(full)].filter(
+  (id, index, all) => all.indexOf(id) === index,
+);
 export function routingFixture(operation: ReadOperation, customerId: string): unknown {
   if (['C-101', 'C-202', 'C-303'].includes(customerId)) return fixtureResult(operation, customerId);
   const value = full[customerId];
@@ -146,6 +195,8 @@ function cases(split: 'development' | 'heldout'): RoutingCase[] {
     requiredReads: ReadOperation[],
     expected: Expected,
     fault: Fault = 'none',
+    software: SoftwareSource = 'foundry_context_loader',
+    followUpReads: ReadOperation[] = [],
   ): RoutingCase => ({
     id: `${split}-${category}`,
     category,
@@ -154,9 +205,13 @@ function cases(split: 'development' | 'heldout'): RoutingCase[] {
     contract,
     requiredReads,
     permittedReads: [...requiredReads],
+    followUpReads,
+    software,
     expected,
     fault,
   });
+  const [toolCustomer, supplementCustomer] =
+    split === 'development' ? ['C-111', 'C-212'] : ['C-414', 'C-515'];
   const complaint =
     split === 'development'
       ? 'My delivery is late. Check my eligibility, every order and refund history, recommend the appropriate next step and draft a reply.'
@@ -243,6 +298,32 @@ function cases(split: 'development' | 'heldout'): RoutingCase[] {
       empty(orderId, 'unavailable'),
       'permanent',
     ),
+    // Case type A: the agent decides whether and when to call the software as a normal tool.
+    task(
+      'software_tool',
+      toolCustomer,
+      split === 'development'
+        ? 'Handle this inbound support note: "One of my packages still has not arrived. Based on my account, eligibility, orders and any refunds, what should happen next?"'
+        : 'Respond to this ticket after checking whatever account records it requires: "My shipment is overdue. Given my account standing, every order and whatever refunds I have had, what is the right next step?"',
+      registeredContracts.undecided,
+      allReads,
+      full[toolCustomer],
+    ),
+    // Case type B: a valid software result covers eligibility and orders only; the request also
+    // needs refund evidence, which the agent must add with an existing typed tool.
+    task(
+      'software_supplement',
+      supplementCustomer,
+      split === 'development'
+        ? 'Handle this inbound support note: "My order is over a week late. Before you suggest a refund, confirm whether I already received one, check my eligibility and orders, and tell me the next step."'
+        : 'Respond to this ticket after checking whatever account records it requires: "My latest order is very late. I think a refund may already have been paid once; please verify that, my eligibility and my orders before recommending anything."',
+      registeredContracts.undecided,
+      allReads,
+      full[supplementCustomer],
+      'none',
+      'fixture_partial_order_summary',
+      ['payments.refundHistory'],
+    ),
   ];
 }
 export const developmentCases = cases('development');
@@ -267,10 +348,12 @@ export function routingProjection(response: Expected) {
 export function assessRouting(
   response: RoutingResponse,
   task: RoutingCase,
-  reads: { operation: ReadOperation }[],
+  reads: { operation: ReadOperation; status?: 'success' | 'failed' }[],
 ) {
   const { reply, ...projection } = response;
   const selected = task.expected.orders?.find((o) => o.id === task.expected.selectedOrderId);
+  const succeeded = (operation: ReadOperation) =>
+    reads.some((r) => r.operation === operation && (r.status ?? 'success') === 'success');
   const checks = {
     exactEvidenceAndDecision:
       canonical(routingProjection(projection)) === canonical(routingProjection(task.expected)),
@@ -278,6 +361,12 @@ export function assessRouting(
     requiredReadsAttempted: task.requiredReads.every((operation) =>
       reads.some((r) => r.operation === operation),
     ),
+    // A correct-looking value without a successful read in this request is a guess.
+    evidenceGrounded:
+      (response.eligible === null || succeeded('crm.getCustomer')) &&
+      ((response.orders === null && response.selectedOrderId === null) ||
+        succeeded('orders.list')) &&
+      (response.refunds === null || succeeded('payments.refundHistory')),
     replyGrounded:
       !selected ||
       (reply.includes(selected.id) &&
@@ -294,6 +383,170 @@ export function assessRouting(
   };
   return { passed: Object.values(checks).every(Boolean), checks };
 }
+
+// Labeled test fixture for case type B. It is not a Foundry artifact and is never compiled,
+// verified or deployed. It reads through the same authorized observer, adapters, schemas and
+// snapshot, and fails closed on stale runtime context like the compiled freshness guard.
+export const partialSoftwareReads: ReadOperation[] = ['crm.getCustomer', 'orders.list'];
+export const partialSoftwareTool = {
+  type: 'function',
+  name: 'load_order_summary',
+  description:
+    "Read the authorized customer's eligibility record and all orders using the existing order-summary service. Returns the typed records; no recommendation or reply is generated.",
+  inputSchema: { type: 'object', properties: {}, required: [], additionalProperties: false },
+};
+export async function runPartialSoftware(
+  observer: TrajectoryObserver,
+  context: RuntimeContext,
+  maxAgeMs = 30000,
+  now = Date.now(),
+) {
+  const age = now - context.observedAt;
+  if (age < 0 || age > maxAgeMs) return { unavailable: true, reason: 'stale_runtime_context' };
+  const [customer, orders] = await Promise.all(
+    partialSoftwareReads.map((operation) =>
+      observer.read(operation, { source: 'task_input', key: 'customerId' }),
+    ),
+  );
+  return { customer: customer.value, orders: orders.value };
+}
+export function softwareToolFor(task: RoutingCase) {
+  return task.software === 'fixture_partial_order_summary'
+    ? partialSoftwareTool
+    : compiledContextTool[0];
+}
+export function softwareReadsFor(task: RoutingCase): ReadOperation[] {
+  return task.software === 'fixture_partial_order_summary' ? partialSoftwareReads : allReads;
+}
+
+// Per-call accounting for one request. Times are milliseconds from the request start. A model
+// response is attributed to the tool calls that began after it completed and before the next
+// response completed; token attribution per tool call is otherwise not reported by the provider.
+export type LedgerToolCall = {
+  name: string;
+  startedAt: number;
+  completedAt: number;
+  status: 'success' | 'failed';
+};
+export type LedgerRead = {
+  operation: ReadOperation;
+  startedAt: number;
+  completedAt: number;
+  status: 'success' | 'failed';
+};
+export type LedgerModelEvent = {
+  startMs: number;
+  endMs: number;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  cachedInputTokens: number | null;
+};
+export function buildCallLedger(options: {
+  task: RoutingCase;
+  toolCalls: LedgerToolCall[];
+  reads: LedgerRead[];
+  modelEvents: LedgerModelEvent[];
+  cost: (input: number, cached: number, output: number) => number;
+}) {
+  const software = softwareToolFor(options.task).name;
+  const toolOperation = (name: string): ReadOperation[] =>
+    name === software
+      ? softwareReadsFor(options.task)
+      : Object.hasOwn(toolReads, name)
+        ? toolReads[name]
+        : [];
+  const within = (read: LedgerRead, start: number, end: number) =>
+    read.startedAt >= start && read.startedAt <= end;
+  const earliestCall = Math.min(...options.toolCalls.map((call) => call.startedAt), Infinity);
+  const applicationReads = options.reads.filter(
+    (read) =>
+      !options.toolCalls.some((call) => within(read, call.startedAt, call.completedAt)) &&
+      read.startedAt < earliestCall,
+  );
+  const successfulBefore = (at: number) =>
+    new Set(
+      options.reads
+        .filter((read) => read.status === 'success' && read.completedAt <= at)
+        .map((read) => read.operation),
+    );
+  const softwareCalled = options.toolCalls.some((call) => call.name === software);
+  const calls = options.toolCalls.map((call, index) => {
+    const reads = options.reads.filter((read) => within(read, call.startedAt, call.completedAt));
+    const known = successfulBefore(call.startedAt);
+    const operations = toolOperation(call.name);
+    return {
+      index,
+      name: call.name,
+      kind:
+        call.name === software
+          ? options.task.software === 'fixture_partial_order_summary'
+            ? ('fixture_software' as const)
+            : ('foundry_software' as const)
+          : softwareCalled &&
+              options.toolCalls.some(
+                (prior) => prior.name === software && prior.startedAt < call.startedAt,
+              )
+            ? ('follow_up' as const)
+            : ('original_tool' as const),
+      status: call.status,
+      latencyMs: call.completedAt - call.startedAt,
+      businessReads: reads.map((read) => ({ operation: read.operation, status: read.status })),
+      // Already-returned resources requested again, whether or not a request cache served them.
+      redundant: operations.length > 0 && operations.every((operation) => known.has(operation)),
+      duplicateSuccessfulReads: reads.filter(
+        (read) => read.status === 'success' && known.has(read.operation),
+      ).length,
+      unnecessaryReads: reads.filter(
+        (read) => !options.task.permittedReads.includes(read.operation),
+      ).length,
+      necessaryFollowUp:
+        options.task.followUpReads.length > 0 &&
+        operations.some((operation) => options.task.followUpReads.includes(operation)) &&
+        !operations.every((operation) => known.has(operation)),
+    };
+  });
+  const sortedModels = [...options.modelEvents].sort((a, b) => a.endMs - b.endMs);
+  const responses = sortedModels.map((event, index) => {
+    const next = sortedModels[index + 1]?.endMs ?? Infinity;
+    const known =
+      event.inputTokens !== null && event.outputTokens !== null && event.cachedInputTokens !== null;
+    return {
+      index,
+      inputTokens: event.inputTokens,
+      cachedInputTokens: event.cachedInputTokens,
+      outputTokens: event.outputTokens,
+      apiEquivalentCostUsd: known
+        ? options.cost(event.inputTokens!, event.cachedInputTokens!, event.outputTokens!)
+        : null,
+      latencyMs: event.endMs - event.startMs,
+      issuedToolCalls: calls
+        .filter(
+          (call) =>
+            options.toolCalls[call.index].startedAt >= event.endMs &&
+            options.toolCalls[call.index].startedAt < next,
+        )
+        .map((call) => call.index),
+    };
+  });
+  return {
+    applicationReads: applicationReads.map((read) => ({
+      operation: read.operation,
+      status: read.status,
+      latencyMs: read.completedAt - read.startedAt,
+    })),
+    calls,
+    responses,
+    softwareCalls: calls.filter((call) => call.kind.endsWith('_software')).length,
+    followUpCalls: calls.filter((call) => call.kind === 'follow_up').length,
+    necessaryFollowUpCalls: calls.filter((call) => call.necessaryFollowUp).length,
+    redundantToolCalls: calls.filter((call) => call.redundant).length,
+  };
+}
+const toolReads: Record<string, ReadOperation[]> = {
+  lookup_customer: ['crm.getCustomer'],
+  lookup_orders: ['orders.list'],
+  lookup_refund_history: ['payments.refundHistory'],
+};
 
 export const experimentArms = [
   'normal',

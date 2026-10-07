@@ -21,14 +21,14 @@ import { Store } from '../../src/registry/store.js';
 import { JitRegistry } from '../../src/registry/jit.js';
 
 it('separates development and final IDs/messages and includes every required scenario', () => {
-  expect(developmentCases).toHaveLength(10);
-  expect(heldoutCases).toHaveLength(10);
+  expect(developmentCases).toHaveLength(12);
+  expect(heldoutCases).toHaveLength(12);
   const training = new Set(developmentCases.map((task) => task.customerId));
   expect(heldoutCases.every((task) => !training.has(task.customerId))).toBe(true);
   expect(
     heldoutCases.every((task) => !developmentCases.some((dev) => dev.message === task.message)),
   ).toBe(true);
-  expect(new Set(developmentCases.map((task) => task.category)).size).toBe(10);
+  expect(new Set(developmentCases.map((task) => task.category)).size).toBe(12);
   expect(developmentCases.find((task) => task.category === 'none')!.permittedReads).toEqual([]);
   expect(developmentCases.find((task) => task.category === 'partial')!.permittedReads).toEqual([
     'crm.getCustomer',
@@ -39,7 +39,7 @@ it('separates development and final IDs/messages and includes every required sce
 });
 it('balances all arm positions and changes repeat order independently of outcomes', () => {
   const rows = balancedSchedule(heldoutCases, 2, 71109);
-  expect(rows).toHaveLength(20);
+  expect(rows).toHaveLength(24);
   expect(rows).toEqual(balancedSchedule(heldoutCases, 2, 71109));
   for (const arm of experimentArms) {
     const counts = experimentArms.map(

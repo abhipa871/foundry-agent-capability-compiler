@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import { createHash, generateKeyPairSync } from 'node:crypto';
 import {
   copyFileSync,
@@ -41,7 +42,7 @@ import {
   model,
   rateCard,
 } from './experiments/customer-agent.js';
-import { compiledContextTool } from './experiments/support-task.js';
+import { codexLaunch } from '../src/agent/codex.js';
 import {
   developmentCases,
   heldoutCases,
@@ -53,6 +54,11 @@ import {
   assessRouting,
   experimentArms,
   balancedSchedule,
+  buildCallLedger,
+  runPartialSoftware,
+  sandboxCustomerIds,
+  softwareToolFor,
+  type LedgerToolCall,
   type RoutingCase,
   type ExperimentArm,
   type RoutingResponse,
@@ -63,64 +69,53 @@ import { summarizeRouting, pairedRouting } from './experiments/routing-statistic
 const split = process.argv[2];
 if (split !== 'development' && split !== 'heldout')
   throw new Error('Choose development or heldout.');
-const output = `docs/routing-agent-${split}.json`;
-const preflights =
-  split === 'development'
-    ? [
-        'docs/routing-agent-development-preflight.json',
-        'docs/routing-agent-development-revalidation-preflight.json',
-      ]
-        .filter((path) => existsSync(path))
-        .map((path) => {
-          const evidence = JSON.parse(readFileSync(path, 'utf8')) as {
-            experimentTotals: { apiEquivalentCostUsd: number | null; nativeRequests: number };
-            providerAccounting: { completedInferenceResponses: number };
-          };
-          return {
-            path,
-            apiEquivalentCostUsd: evidence.experimentTotals.apiEquivalentCostUsd,
-            nativeRequests: evidence.experimentTotals.nativeRequests,
-            completedInferenceResponses: evidence.providerAccounting.completedInferenceResponses,
-          };
-        })
-    : [];
-const preflightCost = preflights.some((run) => run.apiEquivalentCostUsd === null)
-  ? null
-  : preflights.reduce((sum, run) => sum + run.apiEquivalentCostUsd!, 0);
-const interruptedEvidence =
-  split === 'development'
-    ? [
-        'docs/routing-agent-development-interrupted.json',
-        'docs/routing-agent-development-provider-preflight.json',
-      ]
-        .filter((path) => existsSync(path))
-        .map((path) => {
-          const evidence = JSON.parse(readFileSync(path, 'utf8')) as {
-            experimentTotals: {
-              apiEquivalentCostUsd: number | null;
-              nativeRequests: number;
-              ledger: { apiEquivalentCostUsd: number | null }[];
-            };
-            providerAccounting: { completedInferenceResponses: number };
-            trials: { runs: Record<string, unknown> }[];
-          };
-          return {
-            path,
-            apiEquivalentCostUsd: evidence.experimentTotals.apiEquivalentCostUsd,
-            knownCostSubtotalUsd: evidence.experimentTotals.ledger.reduce(
-              (sum, entry) => sum + (entry.apiEquivalentCostUsd ?? 0),
-              0,
-            ),
-            nativeRequests: evidence.experimentTotals.nativeRequests,
-            completedInferenceResponses: evidence.providerAccounting.completedInferenceResponses,
-            measuredTaskRequests: evidence.trials.reduce(
-              (sum, trial) => sum + Object.keys(trial.runs).length,
-              0,
-            ),
-            note: 'Interrupted stream cost remains unknown. Known subtotal excludes unreported work. Corrected run has its own bounded estimate stopping rule; no cumulative spending ceiling is claimed.',
-          };
-        })
-    : [];
+if (process.argv.length > 3) throw new Error('The only supported argument is the split.');
+// Plan v2 (12 cases) writes new evidence; v1 files stay untouched and are listed as prior work.
+const planVersion = 'routing-v2-12-case';
+const output = `docs/routing-agent-v2-${split}.json`;
+const priorPaths = [
+  'docs/routing-agent-development-preflight.json',
+  'docs/routing-agent-development-revalidation-preflight.json',
+  'docs/routing-agent-development-interrupted.json',
+  'docs/routing-agent-development-provider-preflight.json',
+  'docs/routing-agent-development.json',
+  ...(split === 'heldout' ? ['docs/routing-agent-v2-development.json'] : []),
+];
+const priorEvidence = priorPaths
+  .filter((path) => existsSync(path))
+  .map((path) => {
+    const evidence = JSON.parse(readFileSync(path, 'utf8')) as {
+      plan?: { measuredSupportRequests?: number };
+      complete?: boolean;
+      experimentTotals: {
+        apiEquivalentCostUsd: number | null;
+        nativeRequests: number;
+        ledger: { apiEquivalentCostUsd: number | null }[];
+      };
+      providerAccounting: { completedInferenceResponses: number };
+      trials: { runs: Record<string, unknown> }[];
+    };
+    return {
+      path,
+      complete: evidence.complete ?? false,
+      plannedMeasuredRequests: evidence.plan?.measuredSupportRequests ?? null,
+      apiEquivalentCostUsd: evidence.experimentTotals.apiEquivalentCostUsd,
+      knownCostSubtotalUsd: evidence.experimentTotals.ledger.reduce(
+        (sum, entry) => sum + (entry.apiEquivalentCostUsd ?? 0),
+        0,
+      ),
+      unknownCostRequests: evidence.experimentTotals.ledger.filter(
+        (entry) => entry.apiEquivalentCostUsd === null,
+      ).length,
+      nativeRequests: evidence.experimentTotals.nativeRequests,
+      completedInferenceResponses: evidence.providerAccounting.completedInferenceResponses,
+      measuredTaskRequests: evidence.trials.reduce(
+        (sum, trial) => sum + Object.keys(trial.runs).length,
+        0,
+      ),
+      note: 'Prior attempt retained for accounting only; never pooled with this run. Unknown request costs are not zero.',
+    };
+  });
 if (existsSync(output)) throw new Error('Refusing to overwrite retained live evidence.');
 const cases = split === 'development' ? developmentCases : heldoutCases;
 const repeats = split === 'development' ? 1 : 2;
@@ -138,15 +133,32 @@ const sources = Object.fromEntries(
     'src/integration/request-reads.ts',
     'src/exploration/observe.ts',
     'src/runtime/adapters/registry.ts',
+    'src/runtime/dispatcher.ts',
+    'src/runtime/interpret.ts',
+    'src/compiler/compile-ir.ts',
     'scripts/experiments/customer-agent.ts',
+    'scripts/experiments/support-task.ts',
     'scripts/experiments/routing-task.ts',
+    'scripts/experiments/routing-statistics.ts',
     'scripts/benchmark-routing-agent.ts',
   ].map((path) => [path, sha(readFileSync(path))]),
 );
 const identity = {
   ...localIdentity,
-  customerIds: ['C-101', 'C-202', 'C-303', 'C-404', 'C-505', 'C-606'],
+  customerIds: [...sandboxCustomerIds],
 };
+const codexLaunchCommand = codexLaunch();
+const codexVersion = (() => {
+  const run = spawnSync(
+    codexLaunchCommand.command,
+    [...codexLaunchCommand.argsPrefix, '--version'],
+    {
+      encoding: 'utf8',
+      timeout: 10000,
+    },
+  );
+  return run.status === 0 ? (run.stdout.trim().split('\n').pop() ?? null) : null;
+})();
 const baseContext = (): RuntimeContext => ({
   ...localContext(),
   allowedCustomerIds: [...identity.customerIds],
@@ -296,8 +308,7 @@ const sumCost = (rows: typeof ledger) =>
     : rows.reduce((sum, r) => sum + r.apiEquivalentCostUsd!, 0);
 const budget = () => {
   if (budgetStopped) throw new Error(budgetStopped);
-  const mainCost = sumCost(ledger);
-  const spent = mainCost === null || preflightCost === null ? null : mainCost + preflightCost;
+  const spent = sumCost(ledger);
   if (spent === null || spent > 9)
     throw new Error('Live estimate unknown or $9 inference-equivalent budget reached; stopping.');
 };
@@ -450,6 +461,7 @@ async function executeCase(task: RoutingCase, arm: ExperimentArm) {
     } else if (arm !== 'normal')
       selectionReason = 'manual_prefetch_inapplicable_use_original_tools';
   }
+  const observerStartedAt = performance.now();
   const observer = new TrajectoryObserver({
     input: { customerId: task.customerId },
     context: activeContext,
@@ -461,6 +473,17 @@ async function executeCase(task: RoutingCase, arm: ExperimentArm) {
     allowedOperations: [...task.contract.reads],
   });
   const originalTools = tools.filter((tool) => task.contract.reads.includes(operations[tool.name]));
+  const softwareTool = softwareToolFor(task);
+  const agentToolCalls: LedgerToolCall[] = [];
+  const loadPartial = async () => {
+    if (loaderAttempted)
+      return {
+        unavailable: true,
+        message: 'Software was already attempted. Use valid available data or original tools.',
+      };
+    loaderAttempted = true;
+    return runPartialSoftware(observer, activeContext);
+  };
   const load = async () => {
     if (loaderAttempted)
       return {
@@ -520,13 +543,17 @@ async function executeCase(task: RoutingCase, arm: ExperimentArm) {
           .filter((operation) => operation in available!)
           .map((operation) => [operation, available![operation]]),
       );
-    } else if (!denied && selectedMode === 'compiled_prefetch') await load();
+    } else if (!denied && selectedMode === 'compiled_prefetch') {
+      if (task.software !== 'foundry_context_loader')
+        throw new Error('Fixture software is never prefetched as a Foundry capability.');
+      await load();
+    }
     if (!denied) {
       const agentTools =
         selectedMode === 'compiled_tool'
           ? task.contract.requirement === 'agent_decides' || arm === 'selector_direct_fallback'
-            ? [...originalTools, ...compiledContextTool]
-            : compiledContextTool
+            ? [...originalTools, softwareTool]
+            : [softwareTool]
           : (selectedMode === 'compiled_prefetch' || selectedMode === 'handwritten_prefetch') &&
               !prefetchFailed
             ? []
@@ -537,10 +564,33 @@ async function executeCase(task: RoutingCase, arm: ExperimentArm) {
         allowedOperations: [...task.contract.reads],
         tools: agentTools,
         executeTool: async (capture, name, args) => {
-          z.object({}).strict().parse(args);
-          if (denied) throw new DomainError('Access denied.', 403);
-          if (name === 'load_customer_context') return load();
-          return executeTool(capture, name, args);
+          const call: LedgerToolCall = {
+            name,
+            startedAt: performance.now(),
+            completedAt: 0,
+            status: 'success',
+          };
+          agentToolCalls.push(call);
+          try {
+            z.object({}).strict().parse(args);
+            if (denied) throw new DomainError('Access denied.', 403);
+            if (!agentTools.some((tool) => tool.name === name))
+              throw new DomainError('Tool not offered for this request.', 403);
+            if (name === softwareTool.name) {
+              const result: Record<string, unknown> = await (task.software ===
+              'fixture_partial_order_summary'
+                ? loadPartial()
+                : load());
+              if ('unavailable' in result || 'denied' in result) call.status = 'failed';
+              return result;
+            }
+            return await executeTool(capture, name, args);
+          } catch (error) {
+            call.status = 'failed';
+            throw error;
+          } finally {
+            call.completedAt = performance.now();
+          }
         },
         prompt: routingPrompt(
           task,
@@ -619,11 +669,37 @@ async function executeCase(task: RoutingCase, arm: ExperimentArm) {
           r.startedAt - prior.completedAt < 30000,
       ),
   ).length;
+  const callLedger = buildCallLedger({
+    task,
+    toolCalls: agentToolCalls.map((call) => ({
+      ...call,
+      startedAt: call.startedAt - started,
+      completedAt: (call.completedAt || performance.now()) - started,
+    })),
+    reads: businessReads.map((read) => ({
+      ...read,
+      startedAt: read.startedAt - started,
+      completedAt: read.completedAt - started,
+    })),
+    modelEvents: observer.modelEvents.map((event) => ({
+      ...event,
+      startMs: event.startMs + observerStartedAt - started,
+      endMs: event.endMs + observerStartedAt - started,
+    })),
+    cost: apiEquivalentCost,
+  });
   const result = {
     arm,
+    softwareSource: task.software,
+    softwareEvidence:
+      task.software === 'fixture_partial_order_summary'
+        ? 'Labeled test fixture software with live agent inference; not Foundry capability evidence.'
+        : 'Foundry compiled capability where invoked.',
     selectedMode,
     selectionReason,
     loaderAttempted,
+    callLedger,
+    redundantToolCalls: callLedger.redundantToolCalls,
     effectiveMode: denied
       ? 'denied'
       : prefetchFailed
@@ -671,20 +747,37 @@ let failure: string | undefined;
 let currentHost: Awaited<ReturnType<typeof host>> | undefined;
 const shadowGates: { phase: string; customerId: string; status: string; contextAgeMs: number }[] =
   [];
+const measuredSupportRequests = schedule.length * experimentArms.length;
+const deniedMeasuredRequests =
+  schedule.filter((row) => row.task.fault === 'denied').length * experimentArms.length;
+const livePlan = {
+  planVersion,
+  split,
+  output,
+  cases: cases.length,
+  arms: experimentArms.length,
+  repeats,
+  measuredSupportRequests,
+  deniedMeasuredRequestsWithoutInference: deniedMeasuredRequests,
+  observationContextRequests: 2,
+  initialShadowContextRequests: 3,
+  revalidationShadowContextRequests: 3,
+  warmupSupportRequests: experimentArms.length,
+  maxNestedContextFallbackRequests: maxNestedContextRequests,
+  maxProviderAgentRequests:
+    2 +
+    3 +
+    3 +
+    experimentArms.length +
+    measuredSupportRequests -
+    deniedMeasuredRequests +
+    maxNestedContextRequests,
+  maxCompletedResponsesPerAgentRequest: 6,
+  estimateStopUsd: 9,
+  seed,
+};
 try {
-  console.log(
-    JSON.stringify({
-      stage: 'plan',
-      split,
-      measuredSupportRequests: schedule.length * experimentArms.length,
-      warmupSupportRequests: 6,
-      setupContextRequests: 5,
-      revalidationContextRequests: 3,
-      maxNestedContextFallbackRequests: split === 'development' ? 12 : 24,
-      estimateBudgetUsd: 9,
-      seed,
-    }),
-  );
+  console.log(JSON.stringify({ stage: 'plan', ...livePlan, codexVersion }));
   await timed('providerInitialization', async () => {
     await contextAgent.start();
     await supportAgent.start();
@@ -830,6 +923,10 @@ try {
           models: run.measurement.modelCalls,
           reads: run.measurement.toolCalls,
           unnecessaryReads: run.unnecessaryReads,
+          duplicateReads: run.duplicateSuccessfulReads,
+          softwareCalls: run.callLedger.softwareCalls,
+          followUpCalls: run.callLedger.followUpCalls,
+          redundantToolCalls: run.callLedger.redundantToolCalls,
           latencyMs: run.measurement.durationMs,
           cost: run.apiEquivalentCostUsd,
         }),
@@ -859,9 +956,13 @@ try {
   await supportAgent.close();
   await contextAgent.close();
   const complete = results.filter((row) => experimentArms.every((arm) => row.runs[arm]));
-  const pair = (before: ExperimentArm, after: ExperimentArm) =>
+  const fixtureCategories = new Set(
+    cases.filter((task) => task.software !== 'foundry_context_loader').map((t) => t.category),
+  );
+  const liveSoftware = complete.filter((row) => !fixtureCategories.has(row.category));
+  const pair = (before: ExperimentArm, after: ExperimentArm, rows = liveSoftware) =>
     pairedRouting(
-      complete.map((row) => ({
+      rows.map((row) => ({
         caseId: row.caseId,
         baseline: row.runs[before]!,
         optimized: row.runs[after]!,
@@ -872,20 +973,13 @@ try {
     split,
     complete: !failure && complete.length === schedule.length,
     failure,
-    plan: {
-      measuredSupportRequests: schedule.length * experimentArms.length,
-      warmupRequests: 6,
-      setupContextRequests: 5,
-      revalidationContextRequests: 3,
-      repeats,
-      seed,
-      estimateBudgetUsd: 9,
-    },
+    plan: { ...livePlan, measuredSupportRequests: schedule.length * experimentArms.length },
     environment: {
       node: process.version,
       platform: `${process.platform}/${process.arch}`,
       provider,
       model,
+      codexVersion,
       authMode: 'ChatGPT',
       reasoningEffort: 'low support / none context',
       businessSnapshot: 'fixtures-v1 expanded synthetic records',
@@ -898,7 +992,13 @@ try {
       cases,
       trainingIds: ['C-101', 'C-202'],
       shadowIds: ['C-101', 'C-202', 'C-303'],
-      heldoutIds: ['C-404', 'C-505', 'C-606'],
+      developmentIds: [...new Set(developmentCases.map((task) => task.customerId))],
+      heldoutIds: [...new Set(heldoutCases.map((task) => task.customerId))],
+      fixtureSoftwareCategories: [...fixtureCategories],
+      fixtureSoftware:
+        'software_supplement offers a labeled fixture order-summary tool (eligibility and orders only) because the compiled context.v1 contract cannot return a valid partial result. Its rows use live agent inference but are excluded from Foundry-capability aggregates and paired comparisons.',
+      callLedger:
+        'Each agent tool call is recorded separately with its business reads, duplicate/redundant/unnecessary flags and latency. Each completed model response is recorded with tokens, API-equivalent cost and the tool calls it issued.',
       registryIsolation:
         'Each request forks the same actually validated, approved and shadowed SQLite snapshot; real quarantine is applied to its own fork.',
       freshnessContractMs: 30000,
@@ -909,11 +1009,11 @@ try {
       replyChecks:
         'Independent structured evidence/action labels, permitted/required reads, delay/order grounding and prohibited financial-action claims; no private reasoning or LLM judge.',
       uncertainty:
-        'Descriptive paired case-block bootstrap, retaining repeats together. Ten synthetic case blocks are not a production workload sample; no production p95 claim.',
+        'Descriptive paired case-block bootstrap, retaining repeats together. Eleven or twelve synthetic case blocks are not a production workload sample; no production p95 claim.',
     },
     pricing: {
       ...rateCard,
-      verifiedAt: '2026-10-05',
+      verifiedAt: '2026-10-07',
       kind: 'API-equivalent estimate; actual ChatGPT billing unknown',
       actualBilledCostUsd: null,
       hostingConnectorEngineeringCostUsd: null,
@@ -922,6 +1022,12 @@ try {
     revalidation,
     shadowGates,
     steadyState: Object.fromEntries(
+      experimentArms.map((arm) => [
+        arm,
+        summarizeRouting(liveSoftware.map((row) => row.runs[arm]!)),
+      ]),
+    ),
+    steadyStateIncludingFixtureSoftwareCase: Object.fromEntries(
       experimentArms.map((arm) => [arm, summarizeRouting(complete.map((row) => row.runs[arm]!))]),
     ),
     byCategory: Object.fromEntries(
@@ -942,6 +1048,10 @@ try {
       directVsNativeFallback: pair('selector_native_fallback', 'selector_direct_fallback'),
       directVsNormal: pair('normal', 'selector_direct_fallback'),
       directVsHandwritten: pair('handwritten_prefetch', 'selector_direct_fallback'),
+      compiledToolVsNormal: pair('normal', 'compiled_tool'),
+      compiledPrefetchVsNormal: pair('normal', 'compiled_prefetch'),
+      handwrittenVsNormal: pair('normal', 'handwritten_prefetch'),
+      compiledPrefetchVsHandwritten: pair('handwritten_prefetch', 'compiled_prefetch'),
     },
     providerAccounting: {
       completedInferenceResponses: ledger.reduce((sum, run) => sum + run.responses, 0),
@@ -953,20 +1063,14 @@ try {
       elapsedMs: performance.now() - began,
       cpuMicros: process.cpuUsage(cpuStart),
       apiEquivalentCostUsd: sumCost(ledger),
-      preflights,
-      interruptedEvidence,
-      includingPreflightApiEquivalentCostUsd:
-        sumCost(ledger) === null || preflightCost === null
-          ? null
-          : sumCost(ledger)! + preflightCost,
-      includingAllDevelopmentAttemptsApiEquivalentCostUsd:
-        sumCost(ledger) === null ||
-        preflightCost === null ||
-        interruptedEvidence.some((run) => run.apiEquivalentCostUsd === null)
+      knownCostSubtotalUsd: ledger.reduce((sum, row) => sum + (row.apiEquivalentCostUsd ?? 0), 0),
+      unknownCostRequests: ledger.filter((row) => row.apiEquivalentCostUsd === null).length,
+      priorEvidence,
+      includingPriorAttemptsApiEquivalentCostUsd:
+        sumCost(ledger) === null || priorEvidence.some((run) => run.apiEquivalentCostUsd === null)
           ? null
           : sumCost(ledger)! +
-            preflightCost +
-            interruptedEvidence.reduce((sum, run) => sum + run.apiEquivalentCostUsd!, 0),
+            priorEvidence.reduce((sum, run) => sum + run.apiEquivalentCostUsd!, 0),
       nativeRequests: ledger.length,
       ledger,
       note: 'All setup, revalidation, warmups, failed reads, incorrect outputs, outliers and measured requests retained. Unknown charges are not zero.',
