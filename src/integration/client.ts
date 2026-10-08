@@ -1,13 +1,16 @@
-import { customerInput } from '../compiler/ir.js';
+import { customerInput, type ReadOperation } from '../compiler/ir.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 import { TrajectoryObserver } from '../exploration/observe.js';
 import { replayTrace } from '../exploration/tool-events.js';
 import {
   authorizeContext,
+  authorizeReads,
   type AdapterRunner,
   type RuntimeContext,
 } from '../runtime/adapters/registry.js';
+import { resourceSelectionSchema } from '../runtime/selective.js';
+import type { ExecutionSelection } from './selection.js';
 import {
   dispatch,
   AgentExecutionError,
@@ -99,11 +102,21 @@ export class FoundryClient {
       await reader.cancel().catch(() => {});
     }
   }
+  // `resources` opts into selective execution of the approved capability; `selection` is the
+  // application's selector decision, recorded in telemetry only.
   async execute(
     request: TaskRequest,
-    execution: { fallback?: 'native' | 'defer' } = {},
+    execution: {
+      fallback?: 'native' | 'defer';
+      resources?: readonly ReadOperation[];
+      selection?: ExecutionSelection;
+    } = {},
   ): Promise<DispatchOutcome> {
     const started = performance.now();
+    const resources =
+      execution.resources === undefined
+        ? undefined
+        : resourceSelectionSchema.parse(execution.resources);
     let apiCalls = 0;
     const remote = (path: string, body?: unknown) => {
       apiCalls += 1;
@@ -126,6 +139,7 @@ export class FoundryClient {
             agentId: this.options.agentId,
             provider: this.options.provider,
             model: this.options.model,
+            allowedOperations: resources,
           })
         : undefined;
     const native: AgentFallback = async (task, checkpoint) => {
@@ -191,7 +205,8 @@ export class FoundryClient {
     };
     let ticket: RuntimeTicket | undefined;
     try {
-      authorizeContext(context, request.input);
+      if (resources) authorizeReads(context, request.input, resources);
+      else authorizeContext(context, request.input);
       if (request.kind === 'customer_context' && this.options.endpoint)
         ticket = verifyTicket(
           await remote('/api/v2/runtime/capability'),
@@ -209,7 +224,8 @@ export class FoundryClient {
         : undefined;
     let result: DispatchOutcome;
     let shadowStatus: ClientTelemetry['shadowStatus'];
-    if (ticket?.mode === 'shadow' && selected && execution.fallback !== 'defer') {
+    // Shadow evidence compares full contexts, so a subset request never runs a compiled shadow.
+    if (ticket?.mode === 'shadow' && selected && execution.fallback !== 'defer' && !resources) {
       const run = await shadowExecute(request, selected, {
         adapters: this.options.adapters,
         context,
@@ -222,8 +238,13 @@ export class FoundryClient {
         adapters: this.options.adapters,
         context,
         agent: native,
+        resources,
       });
     }
+    // An approved plan that cannot serve a subset was not attempted; it is not a capability fault.
+    const selectionMiss = result.guards.some(
+      (entry) => entry.name === 'resource_selection' && !entry.ok,
+    );
     if (result.measurement.apiCalls !== null) result.measurement.apiCalls += apiCalls;
     result.durationMs = performance.now() - started;
     result.measurement.durationMs = result.durationMs;
@@ -244,11 +265,28 @@ export class FoundryClient {
             ? 'denied'
             : result.mode === 'compiled'
               ? 'compiled'
-              : ticket?.mode === 'live' && selected
+              : ticket?.mode === 'live' && selected && !selectionMiss
                 ? 'fallback'
                 : 'native',
         shadowStatus,
         events: summary.events as ClientTelemetry['events'],
+        // Older control planes reject unknown telemetry fields, so they are sent only on opt-in.
+        ...(resources || execution.selection
+          ? {
+              selection: {
+                ...(execution.selection
+                  ? {
+                      mode: execution.selection.mode,
+                      reason: execution.selection.reason.slice(0, 80),
+                      durationMs: execution.selection.durationMs,
+                    }
+                  : {}),
+                resources: result.selection?.resources ?? resources ?? [],
+                prerequisites: result.selection?.prerequisites ?? [],
+                ...(result.fallbackReason ? { fallbackReason: result.fallbackReason } : {}),
+              },
+            }
+          : {}),
       };
       try {
         await remote('/api/v2/telemetry', telemetry);
@@ -266,3 +304,5 @@ export { TrajectoryObserver };
 export { defineContextContract, selectExecution } from './selection.js';
 export type { ContextContract, ExecutionSelection } from './selection.js';
 export { RequestReadCache } from './request-reads.js';
+export { planSelection, subsetContextProjection } from '../runtime/selective.js';
+export type { SelectionPlan, SubsetContext } from '../runtime/selective.js';

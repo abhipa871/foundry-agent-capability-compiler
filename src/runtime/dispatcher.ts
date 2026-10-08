@@ -2,15 +2,17 @@ import { performance } from 'node:perf_hooks';
 import { DomainError } from '../domain.js';
 import { redact } from '../exploration/privacy.js';
 import { emptyMeasurement, type Measurement } from '../telemetry/measurement.js';
-import { authorizeContext } from './adapters/registry.js';
+import { authorizeContext, authorizeReads, contracts } from './adapters/registry.js';
 import { randomUUID } from 'node:crypto';
-import { customerInput, irDigest, type IRArtifact } from '../compiler/ir.js';
+import { customerInput, irDigest, type IRArtifact, type ReadOperation } from '../compiler/ir.js';
 import type { ObservableResult } from '../exploration/tool-events.js';
 import { buildCheckpoint, type ExecutionCheckpoint } from './checkpoint.js';
-import { DeoptimizationError, interpret, type NodeTiming } from './interpret.js';
+import { DeoptimizationError, interpret, interpretSelected, type NodeTiming } from './interpret.js';
+import { planSelection, resourceSelectionSchema } from './selective.js';
 import type { AdapterRunner, RuntimeContext } from './adapters/registry.js';
 
-export type TaskRequest = { kind: string; input: unknown };
+// `resources` is set only for an application-selected subset so a fallback agent knows its scope.
+export type TaskRequest = { kind: string; input: unknown; resources?: readonly ReadOperation[] };
 export type GuardResult = { name: string; ok: boolean; detail: string };
 export type AgentFallback = (
   request: TaskRequest,
@@ -53,6 +55,8 @@ export type DispatchOutcome = {
   fallbackDetail?: string;
   checkpoint?: ExecutionCheckpoint;
   agentSummary?: string;
+  // Present only for a requested subset. Prerequisites were executed but not returned.
+  selection?: { resources: ReadOperation[]; prerequisites: ReadOperation[] };
   createdAt: string;
   outcome: Measurement['outcome'];
   measurement: Measurement;
@@ -61,15 +65,45 @@ export type DispatchOutcome = {
 
 // Last-mile selection is deterministic. Semantic similarity may propose a candidate elsewhere;
 // nothing runs until every schema, policy, permission, adapter-version and freshness guard holds.
+// With `resources`, the scope guard covers the requested reads; whether the approved plan can
+// produce them (and its prerequisites are authorized) is a separate, non-security guard.
 export function checkGuards(
   artifact: IRArtifact,
   request: TaskRequest,
   context: RuntimeContext,
   now = Date.now(),
+  resources?: readonly ReadOperation[],
 ): GuardResult[] {
   const ir = artifact.ir;
   const input = customerInput.safeParse(request.input);
-  const missingScopes = ir.requiredScopes.filter((scope) => !context.scopes.includes(scope));
+  const requiredScopes = resources
+    ? [...new Set(resources.map((operation) => contracts[operation].scope))]
+    : ir.requiredScopes;
+  const missingScopes = requiredScopes.filter((scope) => !context.scopes.includes(scope));
+  let selection: GuardResult | undefined;
+  if (resources) {
+    try {
+      const plan = planSelection(ir, resources);
+      if (plan.prerequisites.length) authorizeReads(context, request.input, plan.prerequisites);
+      selection = guard(
+        'resource_selection',
+        true,
+        plan.prerequisites.length
+          ? `prerequisites ${plan.prerequisites.join(', ')}`
+          : 'requested reads only',
+      );
+    } catch (error) {
+      selection = guard(
+        'resource_selection',
+        false,
+        error instanceof DomainError && error.status === 403
+          ? 'prerequisite read not authorized'
+          : error instanceof Error
+            ? error.message
+            : 'selection unavailable',
+      );
+    }
+  }
   const drifted = Object.entries(ir.adapterVersions).filter(
     ([operation, version]) =>
       context.adapterVersions[operation as keyof typeof context.adapterVersions] !== version,
@@ -112,13 +146,14 @@ export function checkGuards(
     guard(
       'scopes',
       missingScopes.length === 0,
-      missingScopes.length ? `missing ${missingScopes.join(', ')}` : ir.requiredScopes.join(', '),
+      missingScopes.length ? `missing ${missingScopes.join(', ')}` : requiredScopes.join(', '),
     ),
     guard(
       'data_freshness',
       age >= 0 && age <= ir.guards.maxAgeMs,
       `${age}ms observed against a ${ir.guards.maxAgeMs}ms window`,
     ),
+    ...(selection ? [selection] : []),
   ];
 }
 
@@ -130,10 +165,14 @@ export async function dispatch(
     context: RuntimeContext;
     agent?: AgentFallback;
     now?: number;
+    resources?: readonly ReadOperation[];
   },
 ): Promise<DispatchOutcome> {
   const started = performance.now();
   const runId = randomUUID();
+  const resources =
+    options.resources === undefined ? undefined : resourceSelectionSchema.parse(options.resources);
+  const task = resources ? { ...request, resources } : request;
   const base = {
     runId,
     taskKind: request.kind,
@@ -170,7 +209,8 @@ export async function dispatch(
   });
   if (request.kind === 'customer_context') {
     try {
-      authorizeContext(options.context, request.input);
+      if (resources) authorizeReads(options.context, request.input, resources);
+      else authorizeContext(options.context, request.input);
     } catch {
       return denied([], 'Task authorization or input validation denied.');
     }
@@ -178,7 +218,7 @@ export async function dispatch(
   let guards: GuardResult[] = [];
   let selected: IRArtifact | undefined;
   for (const candidate of [...candidates].sort((a, b) => b.version - a.version)) {
-    const evaluated = checkGuards(candidate, request, options.context, options.now);
+    const evaluated = checkGuards(candidate, request, options.context, options.now, resources);
     if (candidate.taskKind === request.kind) guards = evaluated;
     if (evaluated.every((entry) => entry.ok)) {
       selected = candidate;
@@ -196,7 +236,7 @@ export async function dispatch(
     let failed = false;
     let failedMeasurement: Measurement | undefined;
     try {
-      agent = await options.agent?.(request, checkpoint);
+      agent = await options.agent?.(task, checkpoint);
     } catch (error) {
       failed = true;
       if (error instanceof AgentExecutionError) failedMeasurement = error.measurement;
@@ -238,6 +278,14 @@ export async function dispatch(
         : {}),
       fallbackReason: reason,
       fallbackDetail: detail,
+      ...(resources
+        ? {
+            selection: {
+              resources,
+              prerequisites: selected ? planSelection(selected.ir, resources).prerequisites : [],
+            },
+          }
+        : {}),
       executedNodeIds: checkpoint?.completedNodeIds ?? [],
       nodeTimings: attempted?.nodeTimings ?? [],
       adapterCalls: (attempted?.adapterCalls ?? 0) + (agent?.toolCalls ?? 0),
@@ -264,10 +312,10 @@ export async function dispatch(
     );
   }
   try {
-    const run = await interpret(selected.ir, request.input, {
-      adapters: options.adapters,
-      context: options.context,
-    });
+    const execution = { adapters: options.adapters, context: options.context };
+    const run = resources
+      ? await interpretSelected(selected.ir, request.input, { ...execution, resources })
+      : await interpret(selected.ir, request.input, execution);
     const measurement = measure('success', run.adapterCalls);
     return {
       ...base,
@@ -285,7 +333,9 @@ export async function dispatch(
       peakParallel: run.peakParallel,
       durationMs: measurement.durationMs,
       result: run.result,
-      observable: run.observable,
+      ...('observable' in run
+        ? { observable: run.observable }
+        : { selection: { resources: run.resources, prerequisites: run.prerequisites } }),
     };
   } catch (error) {
     const deopt = error instanceof DeoptimizationError ? error : undefined;

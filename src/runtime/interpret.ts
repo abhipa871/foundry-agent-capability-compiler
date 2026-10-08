@@ -6,12 +6,19 @@ import {
   resolveExpression,
   type CapabilityIR,
   type IRNode,
+  type ReadOperation,
 } from '../compiler/ir.js';
 import type { ObservableResult } from '../exploration/tool-events.js';
 import { schedule } from '../compiler/passes/schedule.js';
 import { contracts, type AdapterRunner, type RuntimeContext } from './adapters/registry.js';
 import { bounded } from './bounded.js';
 import { contextProjection, normalizeObservable } from './observable.js';
+import {
+  planSelection,
+  resourceKeys,
+  subsetContextProjection,
+  type SubsetContext,
+} from './selective.js';
 
 export type NodeTiming = { id: string; operation?: string; startMs: number; endMs: number };
 export type CompiledRun = {
@@ -47,24 +54,105 @@ export class DeoptimizationError extends Error {
   }
 }
 
+type InterpretOptions = { adapters: AdapterRunner; context: RuntimeContext; signal?: AbortSignal };
+
 // The only executor for compiled capabilities. It walks compiler-owned IR through trusted
 // adapters: no eval, no generated source, no network, no credentials, and no model calls.
 // `llmInvocations` is 0 by construction, not by measurement of a model that was never asked.
 export async function interpret(
   ir: CapabilityIR,
   rawInput: unknown,
-  options: { adapters: AdapterRunner; context: RuntimeContext; signal?: AbortSignal },
+  options: InterpretOptions,
 ): Promise<CompiledRun> {
   ir = validateIR(ir);
   const input = customerInput.parse(rawInput);
+  const run = await runNodes(ir, ir.nodes, input, options);
+  const result = run.values.get(ir.outputNode) as Record<string, unknown>;
+  try {
+    contextProjection(result);
+    const observable = normalizeObservable(result);
+    if (observable.customerId !== input.customerId)
+      throw new DomainError('Output invariant customer_id_matches failed.', 409);
+    return {
+      result,
+      observable,
+      executedNodeIds: run.executedNodeIds,
+      nodeTimings: run.nodeTimings,
+      adapterCalls: run.adapterCalls(),
+      peakParallel: run.peakParallel(),
+      llmInvocations: 0,
+      durationMs: run.elapsed(),
+      observedResources: run.observedResources,
+    };
+  } catch (error) {
+    return run.fail(ir.outputNode, error);
+  }
+}
+
+export type SelectiveRun = Omit<CompiledRun, 'result' | 'observable'> & {
+  result: SubsetContext;
+  resources: ReadOperation[];
+  prerequisites: ReadOperation[];
+};
+
+// Runs only the requested reads and their approved prerequisites from the same validated IR.
+// Prerequisite values are executed but never returned; the output holds exactly the request.
+export async function interpretSelected(
+  ir: CapabilityIR,
+  rawInput: unknown,
+  options: InterpretOptions & { resources: readonly ReadOperation[] },
+): Promise<SelectiveRun> {
+  ir = validateIR(ir);
+  const input = customerInput.parse(rawInput);
+  const plan = planSelection(ir, options.resources);
+  const run = await runNodes(
+    ir,
+    ir.nodes.filter((node) => plan.nodeIds.includes(node.id)),
+    input,
+    options,
+  );
+  try {
+    const result = subsetContextProjection(
+      Object.fromEntries([
+        ['customer_id', input.customerId],
+        ...plan.resources.map((operation) => [
+          resourceKeys[operation],
+          run.values.get(plan.rootIds[operation]!),
+        ]),
+      ]),
+      plan.resources,
+    );
+    return {
+      result,
+      resources: plan.resources,
+      prerequisites: plan.prerequisites,
+      executedNodeIds: run.executedNodeIds,
+      nodeTimings: run.nodeTimings,
+      adapterCalls: run.adapterCalls(),
+      peakParallel: run.peakParallel(),
+      llmInvocations: 0,
+      durationMs: run.elapsed(),
+      observedResources: run.observedResources,
+    };
+  } catch (error) {
+    return run.fail(ir.outputNode, error);
+  }
+}
+
+async function runNodes(
+  ir: CapabilityIR,
+  nodes: IRNode[],
+  input: { customerId: string },
+  options: InterpretOptions,
+) {
   const started = performance.now();
   const values = new Map<string, unknown>();
   const executedNodeIds: string[] = [];
   const nodeTimings: NodeTiming[] = [];
   const observedResources: CompiledRun['observedResources'] = [];
-  const byId = new Map(ir.nodes.map((node) => [node.id, node]));
+  const byId = new Map(nodes.map((node) => [node.id, node]));
   const levels = schedule(
-    ir.nodes.map((node) => ({ id: node.id, deps: node.deps })),
+    nodes.map((node) => ({ id: node.id, deps: node.deps })),
     ir.concurrency,
   ).levels;
   const timeout = AbortSignal.timeout(ir.timeoutMs);
@@ -72,7 +160,7 @@ export async function interpret(
   let adapterCalls = 0;
   let inFlight = 0;
   let peakParallel = 0;
-  const remaining = () => ir.nodes.filter((node) => !values.has(node.id)).map((node) => node.id);
+  const remaining = () => nodes.filter((node) => !values.has(node.id)).map((node) => node.id);
   const fail = (nodeId: string, error: unknown): never => {
     const status = error instanceof DomainError ? error.status : signal.aborted ? 504 : 500;
     throw new DeoptimizationError(
@@ -127,26 +215,16 @@ export async function interpret(
     if (rejected && rejected.status === 'rejected')
       fail(level.find((id) => !values.has(id)) ?? level[0], rejected.reason);
   }
-  const result = values.get(ir.outputNode) as Record<string, unknown>;
-  try {
-    contextProjection(result);
-    const observable = normalizeObservable(result);
-    if (observable.customerId !== input.customerId)
-      throw new DomainError('Output invariant customer_id_matches failed.', 409);
-    return {
-      result,
-      observable,
-      executedNodeIds,
-      nodeTimings,
-      adapterCalls,
-      peakParallel,
-      llmInvocations: 0,
-      durationMs: performance.now() - started,
-      observedResources,
-    };
-  } catch (error) {
-    return fail(ir.outputNode, error);
-  }
+  return {
+    values,
+    executedNodeIds,
+    nodeTimings,
+    observedResources,
+    adapterCalls: () => adapterCalls,
+    peakParallel: () => peakParallel,
+    elapsed: () => performance.now() - started,
+    fail,
+  };
 }
 
 // Independent nodes run together only up to the concurrency the compiler recorded, which is

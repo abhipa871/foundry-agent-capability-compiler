@@ -1,6 +1,12 @@
 import { createPublicKey, verify } from 'node:crypto';
 import { z } from 'zod';
-import { irSchema, irDigest, validateIR, type IRArtifact } from '../compiler/ir.js';
+import {
+  irSchema,
+  irDigest,
+  operationSchema,
+  validateIR,
+  type IRArtifact,
+} from '../compiler/ir.js';
 import { tenantIdSchema } from '../security/identity.js';
 import { measurementSchema } from '../telemetry/measurement.js';
 import { DomainError } from '../domain.js';
@@ -148,6 +154,25 @@ export const telemetrySchema = z
     runtimeStatus: z.enum(['compiled', 'native', 'fallback', 'denied']),
     shadowStatus: z
       .enum(['match', 'mismatch', 'compiled_failure', 'baseline_unavailable', 'guard_miss'])
+      .optional(),
+    selection: z
+      .object({
+        mode: z.enum(['normal', 'compiled_tool', 'compiled_prefetch', 'denied']).optional(),
+        reason: z.string().max(80).optional(),
+        durationMs: z.number().nonnegative().optional(),
+        resources: z.array(operationSchema).max(3),
+        prerequisites: z.array(operationSchema).max(3),
+        fallbackReason: z
+          .enum([
+            'no_candidate',
+            'guard_miss',
+            'adapter_drift',
+            'unsupported_state',
+            'runtime_failure',
+          ])
+          .optional(),
+      })
+      .strict()
       .optional(),
   })
   .strict();

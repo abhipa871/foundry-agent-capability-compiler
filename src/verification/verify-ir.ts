@@ -1,7 +1,14 @@
 import { safeText } from '../exploration/privacy.js';
 import { performance } from 'node:perf_hooks';
 import type { Check } from '../domain.js';
-import { irDigest, validateIR, type CapabilityIR, type IRArtifact } from '../compiler/ir.js';
+import {
+  irDigest,
+  operationSchema,
+  validateIR,
+  type CapabilityIR,
+  type IRArtifact,
+} from '../compiler/ir.js';
+import { planSelection, resourceKeys, subsetContextProjection } from '../runtime/selective.js';
 import { validateEvidence } from './evidence.js';
 import { contextProjection, sameContext } from '../runtime/observable.js';
 import { traceScopeIds, type StoredToolTrace } from '../exploration/tool-events.js';
@@ -12,7 +19,7 @@ import {
   type RuntimeContext,
 } from '../runtime/adapters/registry.js';
 import { checkGuards } from '../runtime/dispatcher.js';
-import { DeoptimizationError, interpret } from '../runtime/interpret.js';
+import { DeoptimizationError, interpret, interpretSelected } from '../runtime/interpret.js';
 import { differences } from './equivalence.js';
 
 // Verification tests the candidate artifact itself: the IR that will execute, under the adapter
@@ -221,6 +228,57 @@ export async function verifyIR(
       'Parallel and sequential schedules disagree.',
       `concurrency ${artifact.ir.concurrency} matched a sequential run (peak parallel ${parallel.peakParallel})`,
     );
+  });
+  // Subsets the plan cannot serve are not selectable (they fall back at the guard), not failures.
+  await check('Selected resources match the full plan', 'regression', async () => {
+    const operations = operationSchema.options;
+    const subsets = Array.from({ length: (1 << operations.length) - 1 }, (_, index) =>
+      operations.filter((_, bit) => (index + 1) & (1 << bit)),
+    );
+    const full = await run(artifact.ir, { customerId: 'C-101' });
+    let selectable = 0;
+    for (const resources of subsets) {
+      let plan;
+      try {
+        plan = planSelection(artifact.ir, resources);
+      } catch {
+        continue;
+      }
+      selectable += 1;
+      const selected = await interpretSelected(
+        artifact.ir,
+        { customerId: 'C-101' },
+        {
+          adapters: build(),
+          context: {
+            ...localContext(),
+            tenantId: artifact.ir.guards.tenantId,
+            principalId: artifact.ir.guards.principalId ?? localContext().principalId,
+          },
+          resources,
+        },
+      );
+      const fullContext = full.result as Record<string, unknown>;
+      const reference = Object.fromEntries([
+        ['customer_id', 'C-101'],
+        ...resources.map((operation) => [
+          resourceKeys[operation],
+          fullContext[resourceKeys[operation]],
+        ]),
+      ]);
+      const reads = plan.nodeIds.filter(
+        (id) => artifact.ir.nodes.find((node) => node.id === id)?.opcode === 'adapter.read',
+      );
+      expect(
+        JSON.stringify(subsetContextProjection(selected.result, resources)) ===
+          JSON.stringify(subsetContextProjection(reference, resources)) &&
+          selected.adapterCalls === reads.length &&
+          [...selected.executedNodeIds].sort().join() === [...plan.nodeIds].sort().join(),
+        `Selection ${resources.join('+')} diverged from the full plan or its dependency closure.`,
+        '',
+      );
+    }
+    return `${selectable} of ${subsets.length} resource subsets are selectable and match the full plan`;
   });
   await check('Malformed input rejected', 'schema', () =>
     rejects(() => run(artifact.ir, { customerId: 'nope', extra: 1 }), 'invalid'),
