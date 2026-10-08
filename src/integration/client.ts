@@ -1,4 +1,4 @@
-import { customerInput, type ReadOperation } from '../compiler/ir.js';
+import { customerInput, operationSchema, type ReadOperation } from '../compiler/ir.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 import { TrajectoryObserver } from '../exploration/observe.js';
@@ -113,10 +113,13 @@ export class FoundryClient {
     } = {},
   ): Promise<DispatchOutcome> {
     const started = performance.now();
-    const resources =
+    const requested =
       execution.resources === undefined
         ? undefined
         : resourceSelectionSchema.parse(execution.resources);
+    // Every resource is complete context: the existing prefetch path and result shape apply.
+    const resources =
+      requested && requested.length < operationSchema.options.length ? requested : undefined;
     let apiCalls = 0;
     const remote = (path: string, body?: unknown) => {
       apiCalls += 1;
@@ -271,7 +274,7 @@ export class FoundryClient {
         shadowStatus,
         events: summary.events as ClientTelemetry['events'],
         // Older control planes reject unknown telemetry fields, so they are sent only on opt-in.
-        ...(resources || execution.selection
+        ...(requested || execution.selection
           ? {
               selection: {
                 ...(execution.selection
@@ -281,7 +284,7 @@ export class FoundryClient {
                       durationMs: execution.selection.durationMs,
                     }
                   : {}),
-                resources: result.selection?.resources ?? resources ?? [],
+                resources: result.selection?.resources ?? requested ?? [],
                 prerequisites: result.selection?.prerequisites ?? [],
                 ...(result.fallbackReason ? { fallbackReason: result.fallbackReason } : {}),
               },

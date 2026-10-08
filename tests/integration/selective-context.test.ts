@@ -450,6 +450,18 @@ describe('selective prefetch through the SDK', () => {
       expect(telemetry.at(-1)!.body).not.toHaveProperty('selection');
     });
   });
+  it('serves a request for every resource through the existing complete prefetch path', async () => {
+    await hosted(async ({ client, telemetry }) => {
+      const run = await client().execute(task, { resources: [...all].reverse() });
+      expect(run.mode).toBe('compiled');
+      expect(run.observable).toBeDefined();
+      expect(run.selection).toBeUndefined();
+      expect(telemetry.at(-1)!.body).toMatchObject({
+        runtimeStatus: 'compiled',
+        selection: { resources: all, prerequisites: [] },
+      });
+    });
+  });
   it('denies an unauthorized subset terminally, without native fallback or reads', async () => {
     await hosted(async ({ client, nativeTasks }) => {
       const crmOnly = () => ({ ...localContext(), scopes: ['crm:read'] });
