@@ -50,3 +50,18 @@ own duration is captured before transmission, while the returned request measure
 
 Second validation gate: 137 tests, TypeScript and SDK build. The expanded harness will compare the
 same selector with native fallback and direct handoff to isolate this change's effect.
+
+## Selective prefetch (opt-in, experimental)
+
+A `subset` contract names the exact reads a task needs before inference:
+`defineContextContract({ requirement: 'subset', reads: ['orders.list'] })`. `selectExecution`
+returns `compiled_prefetch` with `resources` set to those reads (reason
+`trusted_contract_requires_resource_subset`), or the complete-context result when all three are
+named. Pass them on: `client.execute(request, { resources: selection.resources, selection,
+fallback: 'defer' })`. Only the requested reads and their approved prerequisites execute, from the
+same signed, approved artifact; only requested resources are returned. Missing authorization for
+a requested resource is a terminal denial. A plan that cannot serve the subset, or an unauthorized
+prerequisite, falls back without reading. Subset requests never run compiled shadows. Existing
+`known` partial contracts still select `normal`, and `execute` without `resources` is unchanged.
+See [selective context](selective-context.md) for the design, tests and fixture validation; live
+gains are unmeasured.

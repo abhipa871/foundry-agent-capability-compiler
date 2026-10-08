@@ -85,12 +85,13 @@ for a mode and an explainable reason. The application applies that decision when
 agent. Registration establishes application provenance; the application must validate the
 meaning of its contract. Foundry does not infer trusted requirements from user/model prose.
 
-| Task contract                                            | Selected mode                                                            |
-| -------------------------------------------------------- | ------------------------------------------------------------------------ |
-| Known requirement for customer, orders and refunds       | Compiled context prefetch before the agent starts.                       |
-| The agent must decide whether complete context is needed | Offer the compiled context tool alongside appropriate original tools.    |
-| Partial context or no customer context required          | Normal execution; the current compiled family reads all three resources. |
-| Required tool/record authorization is denied             | Denial, without a fallback bypass.                                       |
+| Task contract                                            | Selected mode                                                         |
+| -------------------------------------------------------- | --------------------------------------------------------------------- |
+| Known requirement for customer, orders and refunds       | Compiled context prefetch before the agent starts.                    |
+| The agent must decide whether complete context is needed | Offer the compiled context tool alongside appropriate original tools. |
+| Opt-in `subset` contract naming one or two resources     | Compiled prefetch of only those reads (experimental; see below).      |
+| Partial context in a `known` contract, or no context     | Normal execution (unchanged).                                         |
+| Required tool/record authorization is denied             | Denial, without a fallback bypass.                                    |
 
 Placement does not override artifact compatibility, signature, rollout, freshness or health
 checks. The SDK's default miss behavior invokes its configured native context callback.
@@ -101,6 +102,11 @@ support agent use its original authorized tools instead.
 validates typed results, rechecks authorization and binds reuse to customer, tenant, principal,
 policy, snapshot and adapter versions. A partial result is never presented as complete context.
 See [the routing integration guide](docs/execution-routing.md) for the contract and handoff rules.
+
+Selective prefetch is opt-in: pass `execute(request, { resources })` with the resources a `subset`
+contract selected. The approved artifact runs only those reads plus genuine prerequisites and
+returns only the requested resources. Live token and latency effects are unmeasured; see
+[selective context](docs/selective-context.md).
 
 ## Try the compiler demo
 
@@ -134,6 +140,7 @@ The retained results measure different workloads and should not be pooled into o
 | [Context-only retrieval](docs/real-agent-experiment.md)             | Across 30 pairs, tokens fell from 8,533.67 to zero and model calls from two to zero.                                                                                        | Retrieval was the entire task; this is not 100% savings for a complete support agent.                               |
 | [Complete support task](docs/support-agent-experiment.md)           | Compiled tool saved 2.15% of total tokens; application prefetch saved 49.78% and one of two model calls.                                                                    | 18 matched trials, 54 outputs passing the study's evidence/action/reply checks.                                     |
 | [Routing and fallback evaluation](docs/routing-agent-experiment.md) | Held-out: selector with direct fallback used 18.4% fewer tokens than normal tools and 20.5% fewer than native fallback; handwritten prefetch used 42.5% fewer than Foundry. | 72 development + 144 held-out requests, all oracle checks passed; API-equivalent estimates on a synthetic workload. |
+| [Selective context prefetch](docs/selective-context.md)             | Harness validated with a no-inference fixture provider only; live token, call and latency effects are unmeasured.                                                           | 64 + 128 fixture requests; synthetic usage, not performance evidence.                                               |
 
 In the routing study's one completed quarantine pair, direct fallback saved **30.25% of tokens**
 and one of three model calls versus the same selector using a native context agent. It cost
@@ -165,7 +172,8 @@ npm run test:e2e         # Browser tests; run after build
 
 `npm test` and `npm run test:integration` run the smaller suites separately. Equivalent root
 `make` targets are available. Last recorded implementation validation passed **149 tests in
-29 files**, all existing evals, builds/lint, SDK smoke checks and **two browser tests**.
+29 files**, all existing evals, builds/lint, SDK smoke checks and **two browser tests**. After
+selective prefetch: **189 tests in 32 files**, evals, lint and SDK build (browser tests not re-run).
 
 The SDK package is private and unpublished. Its interpreter, schemas and observation wrappers
 are customer-side; matching, compilation, registry policy and verification stay server-side.
@@ -179,6 +187,8 @@ npm run benchmark:real-agent         # Live context-only agent experiment
 npm run benchmark:support-agent      # Live complete support-task experiment
 npm run benchmark:routing-agent -- development
 npm run benchmark:routing-agent -- heldout
+npm run benchmark:selective-agent -- development --provider fixture   # No inference
+npm run benchmark:selective-agent -- development --provider live --cap-usd 4
 ```
 
 Live commands require authenticated Codex access and consume provider inference. Normal tests
