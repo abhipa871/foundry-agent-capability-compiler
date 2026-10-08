@@ -22,7 +22,8 @@
     "benchmark:optimization": "tsx scripts/benchmark-optimization.ts",
     "benchmark:real-agent": "tsx scripts/benchmark-real-agent.ts",
     "benchmark:support-agent": "tsx scripts/benchmark-support-agent.ts",
-    "benchmark:routing-agent": "tsx scripts/benchmark-routing-agent.ts"
+    "benchmark:routing-agent": "tsx scripts/benchmark-routing-agent.ts",
+    "benchmark:selective-agent": "tsx scripts/benchmark-selective-agent.ts"
   },
   "dependencies": {
     "express": "5.2.1",
