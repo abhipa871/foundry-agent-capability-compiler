@@ -67,6 +67,10 @@ import {
   failedReadStatus,
   readAttemptsPerRequest,
   fixturePolicy,
+  selectivePlanVersion,
+  placement,
+  offeredTools,
+  type PlacementMode,
   type SelectiveCase,
   type SelectiveArm,
   type SelectiveResponse,
@@ -99,14 +103,30 @@ if (providerMode === 'live') {
     throw new Error('Live mode refuses the fixture provider.');
 } else if (flags['cap-usd'] !== undefined)
   throw new Error('Fixture mode runs no inference; --cap-usd does not apply.');
-const planVersion = 'selective-v1-16-case';
-const output = `docs/selective-agent-${providerMode === 'fixture' ? 'fixture-' : ''}${split}.json`;
+const planVersion = selectivePlanVersion;
+// v1 evidence (including the stopped live development attempt) is retained under its own names.
+const output = `docs/selective-agent-v1.1-${providerMode === 'fixture' ? 'fixture-' : ''}${split}.json`;
 if (existsSync(output)) throw new Error(`Refusing to overwrite retained evidence: ${output}.`);
 if (providerMode === 'live' && split === 'heldout') {
-  const development = 'docs/selective-agent-development.json';
+  const development = 'docs/selective-agent-v1.1-development.json';
   if (!existsSync(development) || !JSON.parse(readFileSync(development, 'utf8')).complete)
-    throw new Error('Held-out live run requires a complete live development run first.');
+    throw new Error('Held-out live run requires a complete live v1.1 development run first.');
 }
+const priorEvidence = (providerMode === 'live' ? ['docs/selective-agent-development.json'] : [])
+  .filter((path) => existsSync(path))
+  .map((path) => {
+    const evidence = JSON.parse(readFileSync(path, 'utf8'));
+    return {
+      path,
+      planVersion: evidence.plan?.planVersion ?? null,
+      complete: evidence.complete,
+      failure: evidence.failure ?? null,
+      apiEquivalentCostUsd: evidence.experimentTotals.apiEquivalentCostUsd,
+      providerAgentRequests: evidence.experimentTotals.providerAgentRequests,
+      completedInferenceResponses: evidence.providerAccounting.completedInferenceResponses,
+      note: 'Prior attempt retained for accounting only; never pooled with this run.',
+    };
+  });
 const directory = mkdtempSync(join(tmpdir(), 'foundry-selective-evaluation-'));
 const policyPath = join(directory, 'fixture-policy.json');
 if (providerMode === 'fixture') {
@@ -429,7 +449,7 @@ async function executeCase(task: SelectiveCase, arm: SelectiveArm) {
   let available: Partial<Record<ReadOperation, unknown>> | undefined;
   let selectorMs = 0;
   let selection: ExecutionSelection | undefined;
-  let mode: ExecutionSelection['mode'] | 'handwritten_prefetch' = 'normal';
+  let mode: PlacementMode = 'normal';
   let reason = 'manual_original_tools';
   try {
     authorizeReads(activeContext, { customerId: task.customerId }, contractReads);
@@ -446,16 +466,8 @@ async function executeCase(task: SelectiveCase, arm: SelectiveArm) {
         activeContext,
       );
       selectorMs = selection.durationMs;
-      mode = selection.mode;
-      reason = selection.reason;
-    } else if (
-      arm === 'handwritten_selective' &&
-      task.contract.requirement !== 'agent_decides' &&
-      contractReads.length
-    ) {
-      mode = 'handwritten_prefetch';
-      reason = 'manual_exact_contract_reads';
     }
+    ({ mode, reason } = placement(task, arm, selection));
   }
   const observerStartedAt = performance.now();
   const observer = new TrajectoryObserver({
@@ -554,12 +566,10 @@ async function executeCase(task: SelectiveCase, arm: SelectiveArm) {
     } else if (!denied && mode === 'compiled_prefetch')
       await load(arm === 'selective_direct' ? selection!.resources : undefined);
     if (!denied) {
-      const agentTools =
-        mode === 'compiled_tool'
-          ? [...originalTools, softwareTool]
-          : (mode === 'compiled_prefetch' || mode === 'handwritten_prefetch') && !prefetchFailed
-            ? []
-            : originalTools;
+      const offered = offeredTools(task, mode, prefetchFailed);
+      const agentTools = [...originalTools, softwareTool].filter((tool) =>
+        offered.includes(tool.name),
+      );
       if (providerMode === 'fixture')
         writeFileSync(policyPath, JSON.stringify(fixturePolicy(task)));
       supportRun = await supportAgent.runTask({
@@ -864,7 +874,13 @@ try {
   for (const arm of selectiveArms) {
     const run = await executeCase(developmentCases[0], arm);
     warmups.push(run);
-    guard(run.assessment.passed, 'Warmup failed.');
+    guard(
+      run.assessment.passed,
+      `Warmup failed: ${arm} ${Object.entries(run.assessment.checks)
+        .filter(([, passed]) => !passed)
+        .map(([name]) => name)
+        .join(', ')}.`,
+    );
   }
   for (const scheduled of schedule) {
     phase = 'measurement';
@@ -902,10 +918,18 @@ try {
           cost: run.apiEquivalentCostUsd,
         }),
       );
-      // Provider accounting and authorization failures stop the run; service faults are cases.
+      // Provider accounting, authorization and (from v1.1) any oracle failure stop the run;
+      // injected service faults are cases, not failures.
       if (run.measurement.totalTokens === null && run.measurement.outcome !== 'denied')
         throw new Error('Provider usage incomplete; bounded run stopped.');
       guard(run.authorizationViolations === 0, 'Authorization safety gate failed.');
+      guard(
+        run.assessment.passed,
+        `Correctness gate failed: ${entry.caseId} ${arm} ${Object.entries(run.assessment.checks)
+          .filter(([, passed]) => !passed)
+          .map(([name]) => name)
+          .join(', ')}.`,
+      );
       if (scheduled.task.fault.kind === 'denied')
         guard(
           run.measurement.outcome === 'denied' &&
@@ -1065,6 +1089,12 @@ try {
       knownCostSubtotalUsd: ledger.reduce((sum, row) => sum + (row.apiEquivalentCostUsd ?? 0), 0),
       unknownCostRequests: ledger.filter((row) => row.apiEquivalentCostUsd === null).length,
       providerAgentRequests: ledger.length,
+      priorEvidence,
+      includingPriorAttemptsApiEquivalentCostUsd:
+        sumCost(ledger) === null || priorEvidence.some((run) => run.apiEquivalentCostUsd === null)
+          ? null
+          : sumCost(ledger)! +
+            priorEvidence.reduce((sum, run) => sum + run.apiEquivalentCostUsd, 0),
       ledger,
       note: 'All setup, revalidation, warmups, failed reads, incorrect outputs and measured requests retained. Unknown charges are not zero.',
     },

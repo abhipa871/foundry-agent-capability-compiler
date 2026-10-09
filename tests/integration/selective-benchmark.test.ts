@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterAll, describe, it, expect } from 'vitest';
@@ -15,6 +15,10 @@ import {
   selectiveResponseSchema,
   selectiveSchedule,
   failedReadStatus,
+  lookupTools,
+  offeredTools,
+  placement,
+  taskScope,
   type SelectiveCase,
   type SelectiveResponse,
 } from '../../scripts/experiments/selective-task.js';
@@ -64,6 +68,12 @@ const answer = (task: SelectiveCase): SelectiveResponse => ({
   reply: reply(task),
 });
 type Read = { operation: ReadOperation; status: 'success' | 'failed' };
+const readName = (read: ReadOperation) =>
+  ({
+    'crm.getCustomer': 'customer eligibility record',
+    'orders.list': 'orders',
+    'payments.refundHistory': 'refund history',
+  })[read];
 const ok = (operations: ReadOperation[]): Read[] =>
   operations.map((operation) => ({ operation, status: 'success' }));
 
@@ -127,6 +137,122 @@ describe('frozen selective benchmark plan', () => {
       selectExecution(subset.existingContract, { customerId: subset.customerId }, localContext())
         .mode,
     ).toBe('normal');
+  });
+});
+
+describe('v1.1 task scope consistency', () => {
+  const all = [...developmentCases, ...heldoutCases];
+  const scopeLine = (prompt: string) =>
+    prompt.split('\n').filter((line) => line.startsWith('Task scope:'));
+  const policyPrefix = 'Support policy for this sandbox experiment';
+  it('keeps v1 cases, answers and permissions unchanged', () => {
+    const frozen = (cases: { contract: unknown }[]) =>
+      JSON.parse(JSON.stringify(cases)).map(
+        ({ contract, existingContract, ...rest }: Record<string, unknown>) => ({
+          ...rest,
+          contract,
+          existingContract,
+        }),
+      );
+    const v1 = (path: string) =>
+      JSON.parse(readFileSync(path, 'utf8')).methodology.cases as { contract: unknown }[];
+    expect(frozen(developmentCases)).toEqual(frozen(v1('docs/selective-agent-development.json')));
+    expect(frozen(heldoutCases)).toEqual(frozen(v1('docs/selective-agent-fixture-heldout.json')));
+  });
+  it('states required and out-of-scope records from the registered contract', () => {
+    for (const task of all) {
+      const scope = taskScope(task);
+      const prompt = selectivePrompt(task);
+      expect(scopeLine(prompt)).toEqual([scope.text]);
+      const reads = task.contract.reads;
+      if (task.contract.requirement === 'agent_decides') {
+        expect(scope.text).toContain('decide from the message');
+        expect(prompt).toContain(policyPrefix);
+      } else if (reads.length === 3) {
+        expect(scope.text).toContain('full review');
+        expect(prompt).toContain(policyPrefix);
+      } else if (!reads.length) {
+        expect(scope.text).toContain('No account records are required');
+        expect(prompt).not.toContain(policyPrefix);
+        expect(task.expected).toMatchObject({ eligible: null, orders: null, refunds: null });
+      } else {
+        expect(prompt).not.toContain(policyPrefix);
+        expect(scope.text).toContain('does not apply');
+        for (const read of allReads.filter((r) => !reads.includes(r))) {
+          const field = {
+            'crm.getCustomer': 'eligible',
+            'orders.list': 'orders',
+            'payments.refundHistory': 'refunds',
+          }[read] as 'eligible' | 'orders' | 'refunds';
+          expect(task.expected[field]).toBeNull();
+        }
+        const [required, outside = ''] = scope.text.split('Outside');
+        expect(reads.every((read) => required.includes(readName(read)))).toBe(true);
+        expect(reads.some((read) => outside.includes(readName(read)))).toBe(false);
+      }
+    }
+    expect(selectiveInstructions).toContain('only a full-review scope applies the support policy');
+  });
+  it('gives every arm the same scope and only contract tools, with a recovery path after a miss', () => {
+    for (const task of all) {
+      if (task.fault.kind === 'denied') continue;
+      const context = { ...localContext(), allowedCustomerIds: [task.customerId] };
+      const scope = taskScope(task).text;
+      const required = task.requiredReads.map((read) => lookupTools[read]);
+      const contractTools = task.contract.reads.map((read) => lookupTools[read]);
+      for (const arm of selectiveArms) {
+        const selection =
+          arm === 'selective_direct' || arm === 'existing_selector_direct'
+            ? selectExecution(
+                arm === 'selective_direct' ? task.contract : task.existingContract,
+                { customerId: task.customerId },
+                context,
+              )
+            : undefined;
+        const { mode } = placement(task, arm, selection);
+        for (const failed of [false, true]) {
+          const prompt = selectivePrompt(task, failed ? {} : undefined, failed, undefined);
+          expect(scopeLine(prompt)).toEqual([scope]);
+          const offered = offeredTools(task, mode, failed);
+          expect(
+            offered.every(
+              (tool) =>
+                contractTools.includes(tool) ||
+                (tool === 'load_customer_context' && mode === 'compiled_tool'),
+            ),
+          ).toBe(true);
+          const prefetch = mode === 'compiled_prefetch' || mode === 'handwritten_prefetch';
+          if (!prefetch || failed)
+            expect(required.every((tool) => offered.includes(tool))).toBe(true);
+        }
+      }
+    }
+  });
+  it('lets the normal baseline legitimately satisfy every oracle', () => {
+    for (const task of all) {
+      if (task.fault.kind === 'denied') {
+        expect(task.requiredReads).toEqual([]);
+        continue;
+      }
+      const offered = offeredTools(task, placement(task, 'normal').mode, false);
+      expect(task.requiredReads.every((read) => offered.includes(lookupTools[read]))).toBe(true);
+      const failing = task.fault.kind === 'permanent' ? task.fault.operation : undefined;
+      const reads = task.requiredReads.flatMap((operation): Read[] =>
+        operation === failing
+          ? [
+              { operation, status: 'failed' },
+              { operation, status: 'failed' },
+            ]
+          : [{ operation, status: 'success' }],
+      );
+      const response = {
+        ...answer(task),
+        ...(task.expected.action === 'unavailable'
+          ? { reply: 'The refund service is unavailable, so I cannot confirm these records yet.' }
+          : {}),
+      };
+      expect(assessSelective(response, task, reads)).toMatchObject({ passed: true });
+    }
   });
 });
 

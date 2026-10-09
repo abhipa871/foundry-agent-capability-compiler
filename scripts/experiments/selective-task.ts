@@ -3,8 +3,10 @@ import { canonical, type ReadOperation } from '../../src/compiler/ir.js';
 import { defineContextContract, type ContextContract } from '../../src/integration/selection.js';
 import { supportPolicy } from './support-task.js';
 
-// Selective-context benchmark (plan selective-v1). Cases, contracts and expected answers are
-// frozen here before any run; nothing in this file is derived from measured results.
+// Selective-context benchmark (plan selective-v1.1). Cases, contracts and expected answers are
+// frozen here before any run; nothing in this file is derived from measured results. v1.1 changes
+// only task-scope wording (see `taskScope`); cases, answers and permissions are unchanged from v1.
+export const selectivePlanVersion = 'selective-v1.1-16-case';
 export const allReads: ReadOperation[] = [
   'crm.getCustomer',
   'orders.list',
@@ -360,8 +362,40 @@ function cases(split: 'development' | 'heldout'): SelectiveCase[] {
 export const developmentCases = cases('development');
 export const heldoutCases = cases('heldout');
 
+// v1.1: the v1 prompt always carried the full-review policy, and a live eligibility-only warmup
+// treated orders and refunds as required. Scope now comes from the registered contract.
 export const selectiveInstructions =
-  'You are a read-only customer-support assistant. Interpret the message, retrieve only information it requires, and draft a courteous grounded 50–110 word reply. Original lookup tools can be used individually; the context-loader tool retrieves customer, orders and refunds together, so use it only when all are needed. All tool inputs are bound to the authorized customer. Return JSON: copy required record fields faithfully and set unneeded fields to null. Actions: eligibility only uses eligibility_info; most-delayed-order only uses order_status and selects the most delayed order; refund history only uses refund_status; any two of eligibility, orders and refunds uses records_summary (select the most delayed order when orders are included); public policy questions use policy_info; a full review applies the supplied policy. If a required service remains unavailable after one retry, use unavailable and set eligible, orders, refunds and selectedOrderId all to null; never assume a failed refund read means no refunds. Read errors do not authorize any other record. Do not issue, approve, guarantee or claim any refund, order change or contact. Include selected order ID and its delay as digits when available. Do not provide private reasoning or separate analysis.';
+  'You are a read-only customer-support assistant. Follow the stated task scope, retrieve only the records it requires, and draft a courteous grounded 50–110 word reply. Original lookup tools can be used individually; the context-loader tool retrieves customer, orders and refunds together, so use it only when all are needed. All tool inputs are bound to the authorized customer. Return JSON: copy required record fields faithfully and set fields outside the task scope to null. Records outside the task scope are neither required nor unavailable. Actions: eligibility only uses eligibility_info; most-delayed-order only uses order_status and selects the most delayed order; refund history only uses refund_status; any two of eligibility, orders and refunds uses records_summary (select the most delayed order when orders are included); public policy questions use policy_info; only a full-review scope applies the support policy. If a required service remains unavailable after one retry, use unavailable and set eligible, orders, refunds and selectedOrderId all to null; never assume a failed refund read means no refunds. Read errors do not authorize any other record. Do not issue, approve, guarantee or claim any refund, order change or contact. Include selected order ID and its delay as digits when available. Do not provide private reasoning or separate analysis.';
+const recordNames: Record<ReadOperation, string> = {
+  'crm.getCustomer': 'customer eligibility record',
+  'orders.list': 'orders',
+  'payments.refundHistory': 'refund history',
+};
+const named = (reads: ReadOperation[]) => reads.map((read) => recordNames[read]).join(', ');
+// Derived only from the application-registered contract, never from expected answers.
+export function taskScope(task: SelectiveCase) {
+  const { requirement, reads } = task.contract;
+  const outside = allReads.filter((read) => !reads.includes(read));
+  if (requirement === 'agent_decides')
+    return {
+      fullReview: 'possible' as const,
+      text: 'Task scope: decide from the message which records are required. Apply the full-review support policy only if the message asks for a full review.',
+    };
+  if (!reads.length)
+    return {
+      fullReview: false as const,
+      text: `Task scope: general policy information. No account records are required; ${named(allReads)} are outside this task's scope.`,
+    };
+  if (!outside.length)
+    return {
+      fullReview: true as const,
+      text: `Task scope: full review. Required records: ${named(reads)}. Apply the support policy below.`,
+    };
+  return {
+    fullReview: false as const,
+    text: `Task scope: selective. Required records: ${named(reads)}. Outside this task's scope (do not look up or report; set to null): ${named(outside)}. The full-review support policy does not apply.`,
+  };
+}
 export const readAttemptsPerRequest = 2;
 export function failedReadStatus(reads: { operation: ReadOperation; status: string }[]) {
   return Object.fromEntries(
@@ -393,7 +427,8 @@ export function selectivePrompt(
   failedPrefetch = false,
   serviceStatus?: unknown,
 ) {
-  return `Customer: ${task.customerId}\nMessage: ${task.message}\n${supportPolicy}\n${suppliedReads === undefined ? '' : `${suppliedMarker}\n${JSON.stringify(suppliedReads)}\n`}${failedPrefetch ? 'Prefetch was unavailable. Continue with your original authorized lookup tools where appropriate, reusing any valid supplied reads. Never infer missing evidence.\n' : ''}${serviceStatus === undefined ? '' : `${statusMarker}\n${JSON.stringify(serviceStatus)}\nEach read may be attempted at most ${readAttemptsPerRequest} times per request. Retry a required failed read once with its original tool when its retriesRemaining is above 0; when retriesRemaining is 0 its budget is exhausted, so do not retry it.\n`}`;
+  const scope = taskScope(task);
+  return `Customer: ${task.customerId}\nMessage: ${task.message}\n${scope.text}\n${scope.fullReview ? `${supportPolicy}\n` : ''}${suppliedReads === undefined ? '' : `${suppliedMarker}\n${JSON.stringify(suppliedReads)}\n`}${failedPrefetch ? 'Prefetch was unavailable. Continue with your original authorized lookup tools where appropriate, reusing any valid supplied reads. Never infer missing evidence.\n' : ''}${serviceStatus === undefined ? '' : `${statusMarker}\n${JSON.stringify(serviceStatus)}\nEach read may be attempted at most ${readAttemptsPerRequest} times per request. Retry a required failed read once with its original tool when its retriesRemaining is above 0; when retriesRemaining is 0 its budget is exhausted, so do not retry it.\n`}`;
 }
 const sorted = (response: Expected) => ({
   ...response,
@@ -448,6 +483,41 @@ export const selectiveArms = [
   'handwritten_selective',
 ] as const;
 export type SelectiveArm = (typeof selectiveArms)[number];
+export type PlacementMode =
+  'normal' | 'compiled_tool' | 'compiled_prefetch' | 'handwritten_prefetch' | 'denied';
+// How each arm places context. Selector arms apply the SDK selector's decision; the handwritten
+// comparator prefetches exactly the contract reads when the application states them in advance.
+export function placement(
+  task: SelectiveCase,
+  arm: SelectiveArm,
+  selection?: { mode: PlacementMode; reason: string },
+): { mode: PlacementMode; reason: string } {
+  if (arm === 'existing_selector_direct' || arm === 'selective_direct') {
+    if (!selection) throw new Error('Selector arms require a selection.');
+    return selection;
+  }
+  if (
+    arm === 'handwritten_selective' &&
+    task.contract.requirement !== 'agent_decides' &&
+    task.contract.reads.length
+  )
+    return { mode: 'handwritten_prefetch', reason: 'manual_exact_contract_reads' };
+  return { mode: 'normal', reason: 'manual_original_tools' };
+}
+export const lookupTools: Record<ReadOperation, string> = {
+  'crm.getCustomer': 'lookup_customer',
+  'orders.list': 'lookup_orders',
+  'payments.refundHistory': 'lookup_refund_history',
+};
+// Tools offered to the support agent: the contract's original lookups, the compiled context tool
+// when the agent decides, and none after a successful prefetch.
+export function offeredTools(task: SelectiveCase, mode: PlacementMode, prefetchFailed: boolean) {
+  const original = task.contract.reads.map((read) => lookupTools[read]);
+  if (mode === 'compiled_tool') return [...original, 'load_customer_context'];
+  if ((mode === 'compiled_prefetch' || mode === 'handwritten_prefetch') && !prefetchFailed)
+    return [];
+  return original;
+}
 // Randomized Latin rotations; seed retained. Order is never chosen from results.
 export function selectiveSchedule(tasks: SelectiveCase[], repeats: number, seed: number) {
   let state = seed >>> 0;
