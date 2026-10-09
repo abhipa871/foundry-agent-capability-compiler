@@ -1,0 +1,1681 @@
+{
+  "capturedAt": "2026-10-09T00:19:02.760Z",
+  "split": "development",
+  "providerMode": "live",
+  "evidenceKind": "Live provider inference; costs are API-equivalent estimates, not billed cost.",
+  "complete": false,
+  "failure": "Warmup failed.",
+  "plan": {
+    "planVersion": "selective-v1-16-case",
+    "split": "development",
+    "providerMode": "live",
+    "output": "docs/selective-agent-development.json",
+    "cases": 16,
+    "arms": ["normal", "existing_selector_direct", "selective_direct", "handwritten_selective"],
+    "repeats": 1,
+    "measuredSupportRequests": 64,
+    "deniedMeasuredRequestsWithoutInference": 4,
+    "observationContextRequests": 2,
+    "shadowContextRequests": 9,
+    "warmupSupportRequests": 4,
+    "maxProviderAgentRequests": 75,
+    "maxCompletedResponsesPerAgentRequest": 6,
+    "spendingCapUsd": 4,
+    "seed": 51203
+  },
+  "environment": {
+    "node": "v25.1.0",
+    "platform": "darwin/arm64",
+    "provider": "openai-codex-chatgpt",
+    "model": "gpt-5.5",
+    "providerVersion": "codex-cli 0.158.0-alpha.2.1",
+    "reasoningEffort": "low support / none context",
+    "businessSnapshot": "fixtures-v1 expanded synthetic records",
+    "readDelayMs": 2
+  },
+  "sourceHashes": {
+    "src/integration/selection.ts": "c1d9bbeb8e039d554cd8c4a44a5c08cea587dfbad61ee133efb5a8db271d03c0",
+    "src/integration/client.ts": "e5ce792bda24e2bc00a61df8dad3223018a90c968a3640b74658563bee914c26",
+    "src/integration/request-reads.ts": "b6a9781eb96e4d850b2a5c86d035c9bf3afbccd33c2d8b35aa1d6e3ff8d30ae1",
+    "src/integration/protocol.ts": "f5ad3e1c7e422d6b5a4f77f7d3c63389a982cebe5ee10a5985104721a08143f7",
+    "src/exploration/observe.ts": "a362491f27fc3b31d8420e5eb04ff4a274379ae4778443e9174bca2b232fc4e0",
+    "src/runtime/adapters/registry.ts": "7ead6a90f6f7ed44ac7ceb674b0827ddd5b774ce3c9af725d22b8cfd91142540",
+    "src/runtime/dispatcher.ts": "8c88a588c278dd1564a6f1e3b64b881ec5dc858f9c84440e99c299235b518788",
+    "src/runtime/interpret.ts": "a307b4edfe0be8c05dacdd7be859b7b727048adbeff3c513f3ccd2d3780dedef",
+    "src/runtime/selective.ts": "88a2d43c3dc0953ba7d7b20a95c57a44d8b006f2b0db1c93954bfdb883718201",
+    "src/verification/verify-ir.ts": "a100edf1a09aadbf69b0505e23fdd09c3002ce7856a9cdbe54932382669e8335",
+    "src/compiler/compile-ir.ts": "db922095a15f21d96b3544726fbb144e315bd4b53593f8beeeec57229270011d",
+    "scripts/experiments/customer-agent.ts": "c1bd50b10579a701b2b2c881ae4ba71cd14c924b62695aa55468e78f9c965bbe",
+    "scripts/experiments/support-task.ts": "3fb42f30cf4713b6c49c9baec50ce569152e9870bd7c660712c7c8ee5a339a22",
+    "scripts/experiments/routing-task.ts": "10b6f7d157b507d2f585e4093b0e450a7ca36fd9d5121c7b451f66e01d24025d",
+    "scripts/experiments/selective-task.ts": "487886b08835a77892d86c674f3c8aac2e447eb81b3d114826b67eb87cad430b",
+    "scripts/experiments/fixture-provider.mjs": "618716c29cc2ac378e59506abb88a8c6489829b775aaf71cc1801e7cf6219523",
+    "scripts/benchmark-selective-agent.ts": "fcec23a77239697085abe7ddfce38c520c15ca72808572f456be54e5225606ae"
+  },
+  "methodology": {
+    "cases": [
+      {
+        "id": "development-customer_only",
+        "category": "customer_only",
+        "group": "healthy_selective",
+        "customerId": "C-303",
+        "message": "Tell me only whether my account is currently eligible for delay support.",
+        "contract": { "requirement": "subset", "reads": ["crm.getCustomer"] },
+        "existingContract": { "requirement": "known", "reads": ["crm.getCustomer"] },
+        "requiredReads": ["crm.getCustomer"],
+        "permittedReads": ["crm.getCustomer"],
+        "approvedPrerequisites": [],
+        "artifact": "observed",
+        "fault": { "kind": "none" },
+        "expected": {
+          "customerId": "C-303",
+          "eligible": false,
+          "orders": null,
+          "refunds": null,
+          "selectedOrderId": null,
+          "action": "eligibility_info"
+        }
+      },
+      {
+        "id": "development-orders_only",
+        "category": "orders_only",
+        "group": "healthy_selective",
+        "customerId": "C-202",
+        "message": "Which of my orders is the most delayed, and by how many days?",
+        "contract": { "requirement": "subset", "reads": ["orders.list"] },
+        "existingContract": { "requirement": "known", "reads": ["orders.list"] },
+        "requiredReads": ["orders.list"],
+        "permittedReads": ["orders.list"],
+        "approvedPrerequisites": [],
+        "artifact": "observed",
+        "fault": { "kind": "none" },
+        "expected": {
+          "customerId": "C-202",
+          "eligible": null,
+          "orders": [
+            { "id": "O-202", "daysLate": 3 },
+            { "id": "O-extra", "daysLate": 6 }
+          ],
+          "refunds": null,
+          "selectedOrderId": "O-extra",
+          "action": "order_status"
+        }
+      },
+      {
+        "id": "development-refunds_only",
+        "category": "refunds_only",
+        "group": "healthy_selective",
+        "customerId": "C-212",
+        "message": "List every refund already paid on my account, with amounts.",
+        "contract": { "requirement": "subset", "reads": ["payments.refundHistory"] },
+        "existingContract": { "requirement": "known", "reads": ["payments.refundHistory"] },
+        "requiredReads": ["payments.refundHistory"],
+        "permittedReads": ["payments.refundHistory"],
+        "approvedPrerequisites": [],
+        "artifact": "observed",
+        "fault": { "kind": "none" },
+        "expected": {
+          "customerId": "C-212",
+          "eligible": null,
+          "orders": null,
+          "refunds": [{ "id": "R-212", "amount": 15 }],
+          "selectedOrderId": null,
+          "action": "refund_status"
+        }
+      },
+      {
+        "id": "development-customer_orders",
+        "category": "customer_orders",
+        "group": "healthy_selective",
+        "customerId": "C-111",
+        "message": "Am I eligible for delay support, and which of my orders is the most delayed?",
+        "contract": { "requirement": "subset", "reads": ["crm.getCustomer", "orders.list"] },
+        "existingContract": { "requirement": "known", "reads": ["crm.getCustomer", "orders.list"] },
+        "requiredReads": ["crm.getCustomer", "orders.list"],
+        "permittedReads": ["crm.getCustomer", "orders.list"],
+        "approvedPrerequisites": [],
+        "artifact": "observed",
+        "fault": { "kind": "none" },
+        "expected": {
+          "customerId": "C-111",
+          "eligible": true,
+          "orders": [
+            { "id": "O-111", "daysLate": 4 },
+            { "id": "O-112", "daysLate": 10 }
+          ],
+          "refunds": null,
+          "selectedOrderId": "O-112",
+          "action": "records_summary"
+        }
+      },
+      {
+        "id": "development-customer_refunds",
+        "category": "customer_refunds",
+        "group": "healthy_selective",
+        "customerId": "C-202",
+        "message": "Am I eligible for delay support, and what refunds have I already received?",
+        "contract": {
+          "requirement": "subset",
+          "reads": ["crm.getCustomer", "payments.refundHistory"]
+        },
+        "existingContract": {
+          "requirement": "known",
+          "reads": ["crm.getCustomer", "payments.refundHistory"]
+        },
+        "requiredReads": ["crm.getCustomer", "payments.refundHistory"],
+        "permittedReads": ["crm.getCustomer", "payments.refundHistory"],
+        "approvedPrerequisites": [],
+        "artifact": "observed",
+        "fault": { "kind": "none" },
+        "expected": {
+          "customerId": "C-202",
+          "eligible": true,
+          "orders": null,
+          "refunds": [{ "id": "R-202", "amount": 5 }],
+          "selectedOrderId": null,
+          "action": "records_summary"
+        }
+      },
+      {
+        "id": "development-orders_refunds",
+        "category": "orders_refunds",
+        "group": "healthy_selective",
+        "customerId": "C-101",
+        "message": "Show my most delayed order and every refund I have received.",
+        "contract": { "requirement": "subset", "reads": ["orders.list", "payments.refundHistory"] },
+        "existingContract": {
+          "requirement": "known",
+          "reads": ["orders.list", "payments.refundHistory"]
+        },
+        "requiredReads": ["orders.list", "payments.refundHistory"],
+        "permittedReads": ["orders.list", "payments.refundHistory"],
+        "approvedPrerequisites": [],
+        "artifact": "observed",
+        "fault": { "kind": "none" },
+        "expected": {
+          "customerId": "C-101",
+          "eligible": null,
+          "orders": [{ "id": "O-101", "daysLate": 8 }],
+          "refunds": [],
+          "selectedOrderId": "O-101",
+          "action": "records_summary"
+        }
+      },
+      {
+        "id": "development-complete",
+        "category": "complete",
+        "group": "healthy_complete",
+        "customerId": "C-212",
+        "message": "My delivery is late. Check my eligibility, every order and refund history, recommend the appropriate next step and draft a reply.",
+        "contract": {
+          "requirement": "subset",
+          "reads": ["crm.getCustomer", "orders.list", "payments.refundHistory"]
+        },
+        "existingContract": {
+          "requirement": "known",
+          "reads": ["crm.getCustomer", "orders.list", "payments.refundHistory"]
+        },
+        "requiredReads": ["crm.getCustomer", "orders.list", "payments.refundHistory"],
+        "permittedReads": ["crm.getCustomer", "orders.list", "payments.refundHistory"],
+        "approvedPrerequisites": [],
+        "artifact": "observed",
+        "fault": { "kind": "none" },
+        "expected": {
+          "customerId": "C-212",
+          "eligible": true,
+          "orders": [{ "id": "O-212", "daysLate": 9 }],
+          "refunds": [{ "id": "R-212", "amount": 15 }],
+          "selectedOrderId": "O-212",
+          "action": "human_review"
+        }
+      },
+      {
+        "id": "development-agent_decides",
+        "category": "agent_decides",
+        "group": "agent_decided",
+        "customerId": "C-303",
+        "message": "Read this incoming note and decide what information is needed to answer: \"How many days late is my most delayed order? I am not asking about refunds or eligibility.\"",
+        "contract": {
+          "requirement": "agent_decides",
+          "reads": ["crm.getCustomer", "orders.list", "payments.refundHistory"]
+        },
+        "existingContract": {
+          "requirement": "agent_decides",
+          "reads": ["crm.getCustomer", "orders.list", "payments.refundHistory"]
+        },
+        "requiredReads": ["orders.list"],
+        "permittedReads": ["orders.list"],
+        "approvedPrerequisites": [],
+        "artifact": "observed",
+        "fault": { "kind": "none" },
+        "expected": {
+          "customerId": "C-303",
+          "eligible": null,
+          "orders": [
+            { "id": "O-303", "daysLate": 3 },
+            { "id": "O-extra", "daysLate": 6 }
+          ],
+          "refunds": null,
+          "selectedOrderId": "O-extra",
+          "action": "order_status"
+        }
+      },
+      {
+        "id": "development-no_resource",
+        "category": "no_resource",
+        "group": "no_context",
+        "customerId": "C-101",
+        "message": "Explain the general delayed-delivery support policy. Do not access any account records.",
+        "contract": { "requirement": "known", "reads": [] },
+        "existingContract": { "requirement": "known", "reads": [] },
+        "requiredReads": [],
+        "permittedReads": [],
+        "approvedPrerequisites": [],
+        "artifact": "observed",
+        "fault": { "kind": "none" },
+        "expected": {
+          "customerId": "C-101",
+          "eligible": null,
+          "orders": null,
+          "refunds": null,
+          "selectedOrderId": null,
+          "action": "policy_info"
+        }
+      },
+      {
+        "id": "development-partial_compiled_failure",
+        "category": "partial_compiled_failure",
+        "group": "fallback",
+        "customerId": "C-111",
+        "message": "Show my most delayed order and every refund I have received.",
+        "contract": { "requirement": "subset", "reads": ["orders.list", "payments.refundHistory"] },
+        "existingContract": {
+          "requirement": "known",
+          "reads": ["orders.list", "payments.refundHistory"]
+        },
+        "requiredReads": ["orders.list", "payments.refundHistory"],
+        "permittedReads": ["orders.list", "payments.refundHistory"],
+        "approvedPrerequisites": [],
+        "artifact": "observed",
+        "fault": { "kind": "transient", "operation": "payments.refundHistory" },
+        "expected": {
+          "customerId": "C-111",
+          "eligible": null,
+          "orders": [
+            { "id": "O-111", "daysLate": 4 },
+            { "id": "O-112", "daysLate": 10 }
+          ],
+          "refunds": [],
+          "selectedOrderId": "O-112",
+          "action": "records_summary"
+        }
+      },
+      {
+        "id": "development-quarantined_selective",
+        "category": "quarantined_selective",
+        "group": "fallback",
+        "customerId": "C-101",
+        "message": "Am I eligible for delay support, and which of my orders is the most delayed?",
+        "contract": { "requirement": "subset", "reads": ["crm.getCustomer", "orders.list"] },
+        "existingContract": { "requirement": "known", "reads": ["crm.getCustomer", "orders.list"] },
+        "requiredReads": ["crm.getCustomer", "orders.list"],
+        "permittedReads": ["crm.getCustomer", "orders.list"],
+        "approvedPrerequisites": [],
+        "artifact": "observed",
+        "fault": { "kind": "quarantined" },
+        "expected": {
+          "customerId": "C-101",
+          "eligible": true,
+          "orders": [{ "id": "O-101", "daysLate": 8 }],
+          "refunds": null,
+          "selectedOrderId": "O-101",
+          "action": "records_summary"
+        }
+      },
+      {
+        "id": "development-incompatible_selective",
+        "category": "incompatible_selective",
+        "group": "fallback",
+        "customerId": "C-303",
+        "message": "Am I eligible for delay support, and what refunds have I already received?",
+        "contract": {
+          "requirement": "subset",
+          "reads": ["crm.getCustomer", "payments.refundHistory"]
+        },
+        "existingContract": {
+          "requirement": "known",
+          "reads": ["crm.getCustomer", "payments.refundHistory"]
+        },
+        "requiredReads": ["crm.getCustomer", "payments.refundHistory"],
+        "permittedReads": ["crm.getCustomer", "payments.refundHistory"],
+        "approvedPrerequisites": [],
+        "artifact": "observed",
+        "fault": { "kind": "stale" },
+        "expected": {
+          "customerId": "C-303",
+          "eligible": false,
+          "orders": null,
+          "refunds": [],
+          "selectedOrderId": null,
+          "action": "records_summary"
+        }
+      },
+      {
+        "id": "development-denied",
+        "category": "denied",
+        "group": "denied",
+        "customerId": "C-202",
+        "message": "Which of my orders is the most delayed, and by how many days?",
+        "contract": { "requirement": "subset", "reads": ["orders.list"] },
+        "existingContract": { "requirement": "known", "reads": ["orders.list"] },
+        "requiredReads": [],
+        "permittedReads": [],
+        "approvedPrerequisites": [],
+        "artifact": "observed",
+        "fault": { "kind": "denied" },
+        "expected": {
+          "customerId": "C-202",
+          "eligible": null,
+          "orders": null,
+          "refunds": null,
+          "selectedOrderId": null,
+          "action": "unavailable"
+        }
+      },
+      {
+        "id": "development-transient_failure",
+        "category": "transient_failure",
+        "group": "fallback",
+        "customerId": "C-202",
+        "message": "List every refund already paid on my account, with amounts.",
+        "contract": { "requirement": "subset", "reads": ["payments.refundHistory"] },
+        "existingContract": { "requirement": "known", "reads": ["payments.refundHistory"] },
+        "requiredReads": ["payments.refundHistory"],
+        "permittedReads": ["payments.refundHistory"],
+        "approvedPrerequisites": [],
+        "artifact": "observed",
+        "fault": { "kind": "transient", "operation": "payments.refundHistory" },
+        "expected": {
+          "customerId": "C-202",
+          "eligible": null,
+          "orders": null,
+          "refunds": [{ "id": "R-202", "amount": 5 }],
+          "selectedOrderId": null,
+          "action": "refund_status"
+        }
+      },
+      {
+        "id": "development-permanent_failure",
+        "category": "permanent_failure",
+        "group": "fallback",
+        "customerId": "C-212",
+        "message": "Show my most delayed order and every refund I have received.",
+        "contract": { "requirement": "subset", "reads": ["orders.list", "payments.refundHistory"] },
+        "existingContract": {
+          "requirement": "known",
+          "reads": ["orders.list", "payments.refundHistory"]
+        },
+        "requiredReads": ["orders.list", "payments.refundHistory"],
+        "permittedReads": ["orders.list", "payments.refundHistory"],
+        "approvedPrerequisites": [],
+        "artifact": "observed",
+        "fault": { "kind": "permanent", "operation": "payments.refundHistory" },
+        "expected": {
+          "customerId": "C-212",
+          "eligible": null,
+          "orders": null,
+          "refunds": null,
+          "selectedOrderId": null,
+          "action": "unavailable"
+        }
+      },
+      {
+        "id": "development-dependency",
+        "category": "dependency",
+        "group": "healthy_selective",
+        "customerId": "C-111",
+        "message": "Which of my orders is the most delayed, and by how many days?",
+        "contract": { "requirement": "subset", "reads": ["orders.list"] },
+        "existingContract": { "requirement": "known", "reads": ["orders.list"] },
+        "requiredReads": ["orders.list"],
+        "permittedReads": ["orders.list"],
+        "approvedPrerequisites": ["crm.getCustomer"],
+        "artifact": "dependency",
+        "fault": { "kind": "none" },
+        "expected": {
+          "customerId": "C-111",
+          "eligible": null,
+          "orders": [
+            { "id": "O-111", "daysLate": 4 },
+            { "id": "O-112", "daysLate": 10 }
+          ],
+          "refunds": null,
+          "selectedOrderId": "O-112",
+          "action": "order_status"
+        }
+      }
+    ],
+    "arms": {
+      "normal": "Original typed lookup tools for the contract reads; no prefetch.",
+      "existing_selector_direct": "Shipped selector on the existing contract vocabulary (subset expressed as known reads) with direct fallback; partial contexts run normally.",
+      "selective_direct": "Subset contract selector; validated subset executed from the approved artifact with direct fallback (complete subsets use the existing prefetch path).",
+      "handwritten_selective": "Comparator: the exact contract reads loaded by hand-written code with one retry; agent-decided and no-context cases run normally."
+    },
+    "trainingIds": ["C-101", "C-202"],
+    "shadowIds": ["C-101", "C-202", "C-303"],
+    "developmentIds": ["C-303", "C-202", "C-212", "C-111", "C-101"],
+    "heldoutIds": ["C-606", "C-505", "C-515", "C-414", "C-404"],
+    "dependencyCase": "Uses an artifact compiled from repository demo traces (a real customer→orders/refunds dependency) through the same verify, trusted-shadow, approve and deploy lifecycle; its prerequisite read is counted separately and is permitted, not unnecessary.",
+    "registryIsolation": "Each request forks the same validated, approved and shadowed SQLite snapshot; quarantine is applied to its own fork.",
+    "freshnessContractMs": 30000,
+    "replyChecks": "Exact structured evidence/action labels, permitted/required reads, evidence grounded in a successful read in this request, delay/order grounding, unavailable acknowledgement and prohibited financial-action claims; no LLM judge.",
+    "uncertainty": "Descriptive paired case-block bootstrap. Sixteen synthetic case blocks are not a production workload sample."
+  },
+  "pricing": {
+    "source": "https://developers.openai.com/api/docs/models/gpt-5.5",
+    "checkedAt": "2026-10-03",
+    "inputPerMillionUsd": 5,
+    "cachedInputPerMillionUsd": 0.5,
+    "outputPerMillionUsd": 30,
+    "kind": "API-equivalent estimate; actual billing unknown",
+    "actualBilledCostUsd": null
+  },
+  "setup": {
+    "observed": {
+      "artifactId": "75e63fe6-cccf-46cb-8421-8bbaba829156",
+      "digest": "d8a6b1fd5dd8e2a24765a115820ae5510f1e0f52d23e27e7ede704293dad53fd",
+      "readBindings": [
+        { "id": "crm_get_customer", "deps": [] },
+        { "id": "orders_list", "deps": [] },
+        { "id": "payments_refund_history", "deps": [] },
+        { "id": "context", "deps": ["crm_get_customer", "orders_list", "payments_refund_history"] }
+      ],
+      "concurrency": 3,
+      "apiEquivalentCostUsd": 0.15783,
+      "checks": [
+        {
+          "name": "IR structure and digest are intact",
+          "category": "schema",
+          "passed": true,
+          "detail": "digest d8a6b1fd5dd8 matches the validated IR",
+          "durationMs": 0.29979199999979755
+        },
+        {
+          "name": "Complete supporting evidence is present and coherent",
+          "category": "schema",
+          "passed": true,
+          "detail": "complete distinct source evidence",
+          "durationMs": 0.11020800000005693
+        },
+        {
+          "name": "Held-out full context agrees with independent fixture oracle",
+          "category": "regression",
+          "passed": true,
+          "detail": "all resource identities and values match, including C-303 held out from demo evidence",
+          "durationMs": 9.000041999999667
+        },
+        {
+          "name": "Tampered IR changes the digest",
+          "category": "schema",
+          "passed": true,
+          "detail": "a one-field mutation produces a different digest",
+          "durationMs": 0.11558400000103575
+        },
+        {
+          "name": "Observable result matches trace C-202",
+          "category": "sandbox",
+          "passed": true,
+          "detail": "{\"customerId\":\"C-202\",\"eligible\":true,\"orderCount\":2,\"refundCount\":1,\"refundTotal\":5} equals the recorded observable result",
+          "durationMs": 2.6692089999996824
+        },
+        {
+          "name": "Observable result matches trace C-101",
+          "category": "sandbox",
+          "passed": true,
+          "detail": "{\"customerId\":\"C-101\",\"eligible\":true,\"orderCount\":1,\"refundCount\":0,\"refundTotal\":0} equals the recorded observable result",
+          "durationMs": 2.7122500000004948
+        },
+        {
+          "name": "Compiled region invokes no model",
+          "category": "sandbox",
+          "passed": true,
+          "detail": "LLM calls inside compiled portion: 0",
+          "durationMs": 2.745875000000524
+        },
+        {
+          "name": "Distinct inputs produce distinct outputs",
+          "category": "sandbox",
+          "passed": true,
+          "detail": "the same artifact returns customer-specific results",
+          "durationMs": 2.9084579999998823
+        },
+        {
+          "name": "Duplicate reads were eliminated",
+          "category": "regression",
+          "passed": true,
+          "detail": "3 adapter calls for 3 read nodes",
+          "durationMs": 2.6027500000000146
+        },
+        {
+          "name": "Parallel schedule preserves results",
+          "category": "regression",
+          "passed": true,
+          "detail": "concurrency 3 matched a sequential run (peak parallel 3)",
+          "durationMs": 9.953874999999243
+        },
+        {
+          "name": "Selected resources match the full plan",
+          "category": "regression",
+          "passed": true,
+          "detail": "7 of 7 resource subsets are selectable and match the full plan",
+          "durationMs": 23.917374999999083
+        },
+        {
+          "name": "Malformed input rejected",
+          "category": "schema",
+          "passed": true,
+          "detail": "rejected: [ { \"origin\": \"string\", \"code\": \"invalid_format\", \"format\": \"regex\", \"pattern\": \"/^C-\\\\d{3}$/\", \"path\": [ \"customerId\" ], \"message\": \"Invalid string: must match pattern /^C-\\\\d{3}$/\" }, { \"code\": \"unrecogniz...",
+          "durationMs": 0.7400830000005953
+        },
+        {
+          "name": "Missing scope denied",
+          "category": "policy",
+          "passed": true,
+          "detail": "rejected: Missing scope for orders.list.",
+          "durationMs": 2.7183750000003783
+        },
+        {
+          "name": "Adapter drift rejected at the guard",
+          "category": "policy",
+          "passed": true,
+          "detail": "adapter_versions guard fails closed on drift",
+          "durationMs": 0.32254099999954633
+        },
+        {
+          "name": "Stale observation rejected at the guard",
+          "category": "policy",
+          "passed": true,
+          "detail": "data_freshness guard enforces the 30000ms window",
+          "durationMs": 0.10174999999981083
+        },
+        {
+          "name": "Read timeout fails closed",
+          "category": "failure",
+          "passed": true,
+          "detail": "rejected: Operation aborted.",
+          "durationMs": 40.54291699999885
+        },
+        {
+          "name": "Malformed adapter output rejected",
+          "category": "failure",
+          "passed": true,
+          "detail": "rejected: crm.getCustomer returned a value outside customer.v1.",
+          "durationMs": 2.842792000001282
+        },
+        {
+          "name": "Cross-customer response rejected",
+          "category": "failure",
+          "passed": true,
+          "detail": "rejected: Invariant customer_id_matches failed on crm.getCustomer.",
+          "durationMs": 2.648750000000291
+        },
+        {
+          "name": "Wrong data snapshot rejected",
+          "category": "failure",
+          "passed": true,
+          "detail": "rejected: crm.getCustomer returned a value outside customer.v1.",
+          "durationMs": 2.6703749999996944
+        },
+        {
+          "name": "Unsupported customer deoptimizes without a result",
+          "category": "regression",
+          "passed": true,
+          "detail": "checkpoint reason unsupported_state with 0 completed nodes",
+          "durationMs": 2.6737499999999272
+        },
+        {
+          "name": "No privilege expansion beyond the traces",
+          "category": "policy",
+          "passed": true,
+          "detail": "required scopes crm:read, orders:read, payments:read were all exercised in the traces",
+          "durationMs": 0.08562499999970896
+        },
+        {
+          "name": "Effect declaration is read-only",
+          "category": "policy",
+          "passed": true,
+          "detail": "every node declares a read or pure effect",
+          "durationMs": 0.02679100000023027
+        }
+      ]
+    },
+    "revalidation": {
+      "apiEquivalentCostUsd": 0.078563,
+      "checks": [
+        {
+          "name": "IR structure and digest are intact",
+          "category": "schema",
+          "passed": true,
+          "detail": "digest d8a6b1fd5dd8 matches the validated IR",
+          "durationMs": 0.17162499999903957
+        },
+        {
+          "name": "Complete supporting evidence is present and coherent",
+          "category": "schema",
+          "passed": true,
+          "detail": "complete distinct source evidence",
+          "durationMs": 0.06029100000159815
+        },
+        {
+          "name": "Held-out full context agrees with independent fixture oracle",
+          "category": "regression",
+          "passed": true,
+          "detail": "all resource identities and values match, including C-303 held out from demo evidence",
+          "durationMs": 8.1809170000015
+        },
+        {
+          "name": "Tampered IR changes the digest",
+          "category": "schema",
+          "passed": true,
+          "detail": "a one-field mutation produces a different digest",
+          "durationMs": 0.05729100000098697
+        },
+        {
+          "name": "Observable result matches trace C-202",
+          "category": "sandbox",
+          "passed": true,
+          "detail": "{\"customerId\":\"C-202\",\"eligible\":true,\"orderCount\":2,\"refundCount\":1,\"refundTotal\":5} equals the recorded observable result",
+          "durationMs": 2.561582999998791
+        },
+        {
+          "name": "Observable result matches trace C-101",
+          "category": "sandbox",
+          "passed": true,
+          "detail": "{\"customerId\":\"C-101\",\"eligible\":true,\"orderCount\":1,\"refundCount\":0,\"refundTotal\":0} equals the recorded observable result",
+          "durationMs": 2.59583300000304
+        },
+        {
+          "name": "Compiled region invokes no model",
+          "category": "sandbox",
+          "passed": true,
+          "detail": "LLM calls inside compiled portion: 0",
+          "durationMs": 2.5377499999995052
+        },
+        {
+          "name": "Distinct inputs produce distinct outputs",
+          "category": "sandbox",
+          "passed": true,
+          "detail": "the same artifact returns customer-specific results",
+          "durationMs": 2.8665000000000873
+        },
+        {
+          "name": "Duplicate reads were eliminated",
+          "category": "regression",
+          "passed": true,
+          "detail": "3 adapter calls for 3 read nodes",
+          "durationMs": 2.4868749999986903
+        },
+        {
+          "name": "Parallel schedule preserves results",
+          "category": "regression",
+          "passed": true,
+          "detail": "concurrency 3 matched a sequential run (peak parallel 3)",
+          "durationMs": 9.828042000001005
+        },
+        {
+          "name": "Selected resources match the full plan",
+          "category": "regression",
+          "passed": true,
+          "detail": "7 of 7 resource subsets are selectable and match the full plan",
+          "durationMs": 24.10045799999716
+        },
+        {
+          "name": "Malformed input rejected",
+          "category": "schema",
+          "passed": true,
+          "detail": "rejected: [ { \"origin\": \"string\", \"code\": \"invalid_format\", \"format\": \"regex\", \"pattern\": \"/^C-\\\\d{3}$/\", \"path\": [ \"customerId\" ], \"message\": \"Invalid string: must match pattern /^C-\\\\d{3}$/\" }, { \"code\": \"unrecogniz...",
+          "durationMs": 0.7004170000000158
+        },
+        {
+          "name": "Missing scope denied",
+          "category": "policy",
+          "passed": true,
+          "detail": "rejected: Missing scope for orders.list.",
+          "durationMs": 2.6537499999976717
+        },
+        {
+          "name": "Adapter drift rejected at the guard",
+          "category": "policy",
+          "passed": true,
+          "detail": "adapter_versions guard fails closed on drift",
+          "durationMs": 0.11708299999736482
+        },
+        {
+          "name": "Stale observation rejected at the guard",
+          "category": "policy",
+          "passed": true,
+          "detail": "data_freshness guard enforces the 30000ms window",
+          "durationMs": 0.062457999996695435
+        },
+        {
+          "name": "Read timeout fails closed",
+          "category": "failure",
+          "passed": true,
+          "detail": "rejected: Operation aborted.",
+          "durationMs": 41.660374999999476
+        },
+        {
+          "name": "Malformed adapter output rejected",
+          "category": "failure",
+          "passed": true,
+          "detail": "rejected: crm.getCustomer returned a value outside customer.v1.",
+          "durationMs": 2.8464999999996508
+        },
+        {
+          "name": "Cross-customer response rejected",
+          "category": "failure",
+          "passed": true,
+          "detail": "rejected: Invariant customer_id_matches failed on crm.getCustomer.",
+          "durationMs": 2.656042000002344
+        },
+        {
+          "name": "Wrong data snapshot rejected",
+          "category": "failure",
+          "passed": true,
+          "detail": "rejected: crm.getCustomer returned a value outside customer.v1.",
+          "durationMs": 2.6229160000002594
+        },
+        {
+          "name": "Unsupported customer deoptimizes without a result",
+          "category": "regression",
+          "passed": true,
+          "detail": "checkpoint reason unsupported_state with 0 completed nodes",
+          "durationMs": 1.9606670000030135
+        },
+        {
+          "name": "No privilege expansion beyond the traces",
+          "category": "policy",
+          "passed": true,
+          "detail": "required scopes crm:read, orders:read, payments:read were all exercised in the traces",
+          "durationMs": 0.02208299999983865
+        },
+        {
+          "name": "Effect declaration is read-only",
+          "category": "policy",
+          "passed": true,
+          "detail": "every node declares a read or pure effect",
+          "durationMs": 0.005292000001645647
+        }
+      ]
+    },
+    "dependency": {
+      "source": "repository demo traces (orders and refunds read through the customer record)",
+      "artifactId": "c4334769-fede-4053-bc2b-5c923ab6d984",
+      "digest": "ee468de7586954f69039abefe8a925be8f11ea574dfc4424431c53d4412d598d",
+      "readBindings": [
+        { "id": "crm_get_customer", "deps": [] },
+        { "id": "orders_list", "deps": ["crm_get_customer"] },
+        { "id": "payments_refund_history", "deps": ["crm_get_customer"] },
+        { "id": "context", "deps": ["crm_get_customer", "orders_list", "payments_refund_history"] }
+      ],
+      "checks": [
+        {
+          "name": "IR structure and digest are intact",
+          "category": "schema",
+          "passed": true,
+          "detail": "digest ee468de75869 matches the validated IR",
+          "durationMs": 0.41999999999825377
+        },
+        {
+          "name": "Complete supporting evidence is present and coherent",
+          "category": "schema",
+          "passed": true,
+          "detail": "complete distinct source evidence",
+          "durationMs": 0.04641700000502169
+        },
+        {
+          "name": "Held-out full context agrees with independent fixture oracle",
+          "category": "regression",
+          "passed": true,
+          "detail": "all resource identities and values match, including C-303 held out from demo evidence",
+          "durationMs": 13.464083999999275
+        },
+        {
+          "name": "Tampered IR changes the digest",
+          "category": "schema",
+          "passed": true,
+          "detail": "a one-field mutation produces a different digest",
+          "durationMs": 0.08175000000483124
+        },
+        {
+          "name": "Observable result matches trace C-202",
+          "category": "sandbox",
+          "passed": true,
+          "detail": "{\"customerId\":\"C-202\",\"eligible\":true,\"orderCount\":2,\"refundCount\":1,\"refundTotal\":5} equals the recorded observable result",
+          "durationMs": 5.248041999999259
+        },
+        {
+          "name": "Observable result matches trace C-101",
+          "category": "sandbox",
+          "passed": true,
+          "detail": "{\"customerId\":\"C-101\",\"eligible\":true,\"orderCount\":1,\"refundCount\":0,\"refundTotal\":0} equals the recorded observable result",
+          "durationMs": 5.053166000005149
+        },
+        {
+          "name": "Compiled region invokes no model",
+          "category": "sandbox",
+          "passed": true,
+          "detail": "LLM calls inside compiled portion: 0",
+          "durationMs": 4.906750000001921
+        },
+        {
+          "name": "Distinct inputs produce distinct outputs",
+          "category": "sandbox",
+          "passed": true,
+          "detail": "the same artifact returns customer-specific results",
+          "durationMs": 5.178167000005487
+        },
+        {
+          "name": "Duplicate reads were eliminated",
+          "category": "regression",
+          "passed": true,
+          "detail": "3 adapter calls for 3 read nodes",
+          "durationMs": 5.15545800000109
+        },
+        {
+          "name": "Parallel schedule preserves results",
+          "category": "regression",
+          "passed": true,
+          "detail": "concurrency 2 matched a sequential run (peak parallel 2)",
+          "durationMs": 12.048375000005763
+        },
+        {
+          "name": "Selected resources match the full plan",
+          "category": "regression",
+          "passed": true,
+          "detail": "7 of 7 resource subsets are selectable and match the full plan",
+          "durationMs": 39.375874999997905
+        },
+        {
+          "name": "Malformed input rejected",
+          "category": "schema",
+          "passed": true,
+          "detail": "rejected: [ { \"origin\": \"string\", \"code\": \"invalid_format\", \"format\": \"regex\", \"pattern\": \"/^C-\\\\d{3}$/\", \"path\": [ \"customerId\" ], \"message\": \"Invalid string: must match pattern /^C-\\\\d{3}$/\" }, { \"code\": \"unrecogniz...",
+          "durationMs": 0.4542089999958989
+        },
+        {
+          "name": "Missing scope denied",
+          "category": "policy",
+          "passed": true,
+          "detail": "rejected: Missing scope for orders.list.",
+          "durationMs": 2.5313330000062706
+        },
+        {
+          "name": "Adapter drift rejected at the guard",
+          "category": "policy",
+          "passed": true,
+          "detail": "adapter_versions guard fails closed on drift",
+          "durationMs": 0.10629099999641767
+        },
+        {
+          "name": "Stale observation rejected at the guard",
+          "category": "policy",
+          "passed": true,
+          "detail": "data_freshness guard enforces the 30000ms window",
+          "durationMs": 0.053957999996782746
+        },
+        {
+          "name": "Read timeout fails closed",
+          "category": "failure",
+          "passed": true,
+          "detail": "rejected: Operation aborted.",
+          "durationMs": 40.786542000001646
+        },
+        {
+          "name": "Malformed adapter output rejected",
+          "category": "failure",
+          "passed": true,
+          "detail": "rejected: crm.getCustomer returned a value outside customer.v1.",
+          "durationMs": 2.7602909999986878
+        },
+        {
+          "name": "Cross-customer response rejected",
+          "category": "failure",
+          "passed": true,
+          "detail": "rejected: Invariant customer_id_matches failed on crm.getCustomer.",
+          "durationMs": 2.615083999997296
+        },
+        {
+          "name": "Wrong data snapshot rejected",
+          "category": "failure",
+          "passed": true,
+          "detail": "rejected: crm.getCustomer returned a value outside customer.v1.",
+          "durationMs": 2.5483339999991586
+        },
+        {
+          "name": "Unsupported customer deoptimizes without a result",
+          "category": "regression",
+          "passed": true,
+          "detail": "checkpoint reason unsupported_state with 0 completed nodes",
+          "durationMs": 2.6260000000038417
+        },
+        {
+          "name": "No privilege expansion beyond the traces",
+          "category": "policy",
+          "passed": true,
+          "detail": "required scopes crm:read, orders:read, payments:read were all exercised in the traces",
+          "durationMs": 0.040790999999444466
+        },
+        {
+          "name": "Effect declaration is read-only",
+          "category": "policy",
+          "passed": true,
+          "detail": "every node declares a read or pure effect",
+          "durationMs": 0.01162500000646105
+        }
+      ],
+      "apiEquivalentCostUsd": 0.078563
+    },
+    "phases": {
+      "providerInitialization": 354.129959,
+      "observation": 11445.621917,
+      "analysisCompilation": 7.6834170000001905,
+      "observedValidation": 114.42025000000103,
+      "observedTrustedShadow": 13365.001708,
+      "revalidationValidation": 111.91762499999822,
+      "revalidationTrustedShadow": 14078.463458000002,
+      "dependencyCompilation": 1.446750000002794,
+      "dependencyValidation": 147.22583300000406,
+      "dependencyTrustedShadow": 11880.772375
+    },
+    "wallMs": 51707.124917
+  },
+  "shadowGates": [
+    { "phase": "observedTrustedShadow", "customerId": "C-101", "status": "match" },
+    { "phase": "observedTrustedShadow", "customerId": "C-202", "status": "match" },
+    { "phase": "observedTrustedShadow", "customerId": "C-303", "status": "match" },
+    { "phase": "revalidationTrustedShadow", "customerId": "C-101", "status": "match" },
+    { "phase": "revalidationTrustedShadow", "customerId": "C-202", "status": "match" },
+    { "phase": "revalidationTrustedShadow", "customerId": "C-303", "status": "match" },
+    { "phase": "dependencyTrustedShadow", "customerId": "C-101", "status": "match" },
+    { "phase": "dependencyTrustedShadow", "customerId": "C-202", "status": "match" },
+    { "phase": "dependencyTrustedShadow", "customerId": "C-303", "status": "match" }
+  ],
+  "steadyState": {
+    "normal": null,
+    "existing_selector_direct": null,
+    "selective_direct": null,
+    "handwritten_selective": null
+  },
+  "steadyStateReads": {
+    "normal": {
+      "meanPrerequisiteReads": null,
+      "authorizationViolations": 0,
+      "meanBusinessReads": null
+    },
+    "existing_selector_direct": {
+      "meanPrerequisiteReads": null,
+      "authorizationViolations": 0,
+      "meanBusinessReads": null
+    },
+    "selective_direct": {
+      "meanPrerequisiteReads": null,
+      "authorizationViolations": 0,
+      "meanBusinessReads": null
+    },
+    "handwritten_selective": {
+      "meanPrerequisiteReads": null,
+      "authorizationViolations": 0,
+      "meanBusinessReads": null
+    }
+  },
+  "byGroup": {
+    "healthy_selective": {
+      "summary": {
+        "normal": null,
+        "existing_selector_direct": null,
+        "selective_direct": null,
+        "handwritten_selective": null
+      },
+      "reads": {
+        "normal": {
+          "meanPrerequisiteReads": null,
+          "authorizationViolations": 0,
+          "meanBusinessReads": null
+        },
+        "existing_selector_direct": {
+          "meanPrerequisiteReads": null,
+          "authorizationViolations": 0,
+          "meanBusinessReads": null
+        },
+        "selective_direct": {
+          "meanPrerequisiteReads": null,
+          "authorizationViolations": 0,
+          "meanBusinessReads": null
+        },
+        "handwritten_selective": {
+          "meanPrerequisiteReads": null,
+          "authorizationViolations": 0,
+          "meanBusinessReads": null
+        }
+      }
+    },
+    "healthy_complete": {
+      "summary": {
+        "normal": null,
+        "existing_selector_direct": null,
+        "selective_direct": null,
+        "handwritten_selective": null
+      },
+      "reads": {
+        "normal": {
+          "meanPrerequisiteReads": null,
+          "authorizationViolations": 0,
+          "meanBusinessReads": null
+        },
+        "existing_selector_direct": {
+          "meanPrerequisiteReads": null,
+          "authorizationViolations": 0,
+          "meanBusinessReads": null
+        },
+        "selective_direct": {
+          "meanPrerequisiteReads": null,
+          "authorizationViolations": 0,
+          "meanBusinessReads": null
+        },
+        "handwritten_selective": {
+          "meanPrerequisiteReads": null,
+          "authorizationViolations": 0,
+          "meanBusinessReads": null
+        }
+      }
+    },
+    "agent_decided": {
+      "summary": {
+        "normal": null,
+        "existing_selector_direct": null,
+        "selective_direct": null,
+        "handwritten_selective": null
+      },
+      "reads": {
+        "normal": {
+          "meanPrerequisiteReads": null,
+          "authorizationViolations": 0,
+          "meanBusinessReads": null
+        },
+        "existing_selector_direct": {
+          "meanPrerequisiteReads": null,
+          "authorizationViolations": 0,
+          "meanBusinessReads": null
+        },
+        "selective_direct": {
+          "meanPrerequisiteReads": null,
+          "authorizationViolations": 0,
+          "meanBusinessReads": null
+        },
+        "handwritten_selective": {
+          "meanPrerequisiteReads": null,
+          "authorizationViolations": 0,
+          "meanBusinessReads": null
+        }
+      }
+    },
+    "no_context": {
+      "summary": {
+        "normal": null,
+        "existing_selector_direct": null,
+        "selective_direct": null,
+        "handwritten_selective": null
+      },
+      "reads": {
+        "normal": {
+          "meanPrerequisiteReads": null,
+          "authorizationViolations": 0,
+          "meanBusinessReads": null
+        },
+        "existing_selector_direct": {
+          "meanPrerequisiteReads": null,
+          "authorizationViolations": 0,
+          "meanBusinessReads": null
+        },
+        "selective_direct": {
+          "meanPrerequisiteReads": null,
+          "authorizationViolations": 0,
+          "meanBusinessReads": null
+        },
+        "handwritten_selective": {
+          "meanPrerequisiteReads": null,
+          "authorizationViolations": 0,
+          "meanBusinessReads": null
+        }
+      }
+    },
+    "fallback": {
+      "summary": {
+        "normal": null,
+        "existing_selector_direct": null,
+        "selective_direct": null,
+        "handwritten_selective": null
+      },
+      "reads": {
+        "normal": {
+          "meanPrerequisiteReads": null,
+          "authorizationViolations": 0,
+          "meanBusinessReads": null
+        },
+        "existing_selector_direct": {
+          "meanPrerequisiteReads": null,
+          "authorizationViolations": 0,
+          "meanBusinessReads": null
+        },
+        "selective_direct": {
+          "meanPrerequisiteReads": null,
+          "authorizationViolations": 0,
+          "meanBusinessReads": null
+        },
+        "handwritten_selective": {
+          "meanPrerequisiteReads": null,
+          "authorizationViolations": 0,
+          "meanBusinessReads": null
+        }
+      }
+    },
+    "denied": {
+      "summary": {
+        "normal": null,
+        "existing_selector_direct": null,
+        "selective_direct": null,
+        "handwritten_selective": null
+      },
+      "reads": {
+        "normal": {
+          "meanPrerequisiteReads": null,
+          "authorizationViolations": 0,
+          "meanBusinessReads": null
+        },
+        "existing_selector_direct": {
+          "meanPrerequisiteReads": null,
+          "authorizationViolations": 0,
+          "meanBusinessReads": null
+        },
+        "selective_direct": {
+          "meanPrerequisiteReads": null,
+          "authorizationViolations": 0,
+          "meanBusinessReads": null
+        },
+        "handwritten_selective": {
+          "meanPrerequisiteReads": null,
+          "authorizationViolations": 0,
+          "meanBusinessReads": null
+        }
+      }
+    }
+  },
+  "byCategory": {
+    "customer_only": {
+      "normal": null,
+      "existing_selector_direct": null,
+      "selective_direct": null,
+      "handwritten_selective": null
+    },
+    "orders_only": {
+      "normal": null,
+      "existing_selector_direct": null,
+      "selective_direct": null,
+      "handwritten_selective": null
+    },
+    "refunds_only": {
+      "normal": null,
+      "existing_selector_direct": null,
+      "selective_direct": null,
+      "handwritten_selective": null
+    },
+    "customer_orders": {
+      "normal": null,
+      "existing_selector_direct": null,
+      "selective_direct": null,
+      "handwritten_selective": null
+    },
+    "customer_refunds": {
+      "normal": null,
+      "existing_selector_direct": null,
+      "selective_direct": null,
+      "handwritten_selective": null
+    },
+    "orders_refunds": {
+      "normal": null,
+      "existing_selector_direct": null,
+      "selective_direct": null,
+      "handwritten_selective": null
+    },
+    "complete": {
+      "normal": null,
+      "existing_selector_direct": null,
+      "selective_direct": null,
+      "handwritten_selective": null
+    },
+    "agent_decides": {
+      "normal": null,
+      "existing_selector_direct": null,
+      "selective_direct": null,
+      "handwritten_selective": null
+    },
+    "no_resource": {
+      "normal": null,
+      "existing_selector_direct": null,
+      "selective_direct": null,
+      "handwritten_selective": null
+    },
+    "partial_compiled_failure": {
+      "normal": null,
+      "existing_selector_direct": null,
+      "selective_direct": null,
+      "handwritten_selective": null
+    },
+    "quarantined_selective": {
+      "normal": null,
+      "existing_selector_direct": null,
+      "selective_direct": null,
+      "handwritten_selective": null
+    },
+    "incompatible_selective": {
+      "normal": null,
+      "existing_selector_direct": null,
+      "selective_direct": null,
+      "handwritten_selective": null
+    },
+    "denied": {
+      "normal": null,
+      "existing_selector_direct": null,
+      "selective_direct": null,
+      "handwritten_selective": null
+    },
+    "transient_failure": {
+      "normal": null,
+      "existing_selector_direct": null,
+      "selective_direct": null,
+      "handwritten_selective": null
+    },
+    "permanent_failure": {
+      "normal": null,
+      "existing_selector_direct": null,
+      "selective_direct": null,
+      "handwritten_selective": null
+    },
+    "dependency": {
+      "normal": null,
+      "existing_selector_direct": null,
+      "selective_direct": null,
+      "handwritten_selective": null
+    }
+  },
+  "paired": {
+    "selectiveVsNormal": null,
+    "selectiveVsExisting": null,
+    "selectiveVsHandwritten": null,
+    "existingVsNormal": null,
+    "handwrittenVsNormal": null,
+    "healthySelective": {
+      "selectiveVsNormal": null,
+      "selectiveVsExisting": null,
+      "selectiveVsHandwritten": null
+    }
+  },
+  "providerAccounting": {
+    "completedInferenceResponses": 25,
+    "reroutes": 0,
+    "warnings": 24,
+    "transportRetries": null
+  },
+  "experimentTotals": {
+    "elapsedMs": 59378.005875,
+    "cpuMicros": { "user": 611991, "system": 86947 },
+    "apiEquivalentCostUsd": 0.37483799999999995,
+    "knownCostSubtotalUsd": 0.37483799999999995,
+    "unknownCostRequests": 0,
+    "providerAgentRequests": 12,
+    "ledger": [
+      {
+        "measurement": {
+          "origin": "observed",
+          "inputTokens": 8446,
+          "outputTokens": 170,
+          "cachedInputTokens": 3584,
+          "totalTokens": 8616,
+          "modelCalls": 2,
+          "toolCalls": 3,
+          "apiCalls": null,
+          "durationMs": 6880.295040999999,
+          "costUsd": null,
+          "outcome": "success"
+        },
+        "status": "success",
+        "responses": 2,
+        "apiEquivalentCostUsd": 0.031202,
+        "role": "context",
+        "phase": "observation"
+      },
+      {
+        "measurement": {
+          "origin": "observed",
+          "inputTokens": 8467,
+          "outputTokens": 191,
+          "cachedInputTokens": 3584,
+          "totalTokens": 8658,
+          "modelCalls": 2,
+          "toolCalls": 3,
+          "apiCalls": null,
+          "durationMs": 4444.942083000001,
+          "costUsd": null,
+          "outcome": "success"
+        },
+        "status": "success",
+        "responses": 2,
+        "apiEquivalentCostUsd": 0.031937,
+        "role": "context",
+        "phase": "observation"
+      },
+      {
+        "measurement": {
+          "origin": "observed",
+          "inputTokens": 8446,
+          "outputTokens": 170,
+          "cachedInputTokens": 0,
+          "totalTokens": 8616,
+          "modelCalls": 2,
+          "toolCalls": 3,
+          "apiCalls": 0,
+          "durationMs": 4655.3836660000015,
+          "costUsd": null,
+          "outcome": "success"
+        },
+        "status": "success",
+        "responses": 2,
+        "apiEquivalentCostUsd": 0.04733,
+        "role": "context",
+        "phase": "observedTrustedShadow"
+      },
+      {
+        "measurement": {
+          "origin": "observed",
+          "inputTokens": 8467,
+          "outputTokens": 191,
+          "cachedInputTokens": 3584,
+          "totalTokens": 8658,
+          "modelCalls": 2,
+          "toolCalls": 3,
+          "apiCalls": 0,
+          "durationMs": 4175.5796249999985,
+          "costUsd": null,
+          "outcome": "success"
+        },
+        "status": "success",
+        "responses": 2,
+        "apiEquivalentCostUsd": 0.031937,
+        "role": "context",
+        "phase": "observedTrustedShadow"
+      },
+      {
+        "measurement": {
+          "origin": "observed",
+          "inputTokens": 8456,
+          "outputTokens": 180,
+          "cachedInputTokens": 7168,
+          "totalTokens": 8636,
+          "modelCalls": 2,
+          "toolCalls": 3,
+          "apiCalls": 0,
+          "durationMs": 4433.334500000001,
+          "costUsd": null,
+          "outcome": "success"
+        },
+        "status": "success",
+        "responses": 2,
+        "apiEquivalentCostUsd": 0.015424,
+        "role": "context",
+        "phase": "observedTrustedShadow"
+      },
+      {
+        "measurement": {
+          "origin": "observed",
+          "inputTokens": 8446,
+          "outputTokens": 170,
+          "cachedInputTokens": 3584,
+          "totalTokens": 8616,
+          "modelCalls": 2,
+          "toolCalls": 3,
+          "apiCalls": 0,
+          "durationMs": 4394.146250000002,
+          "costUsd": null,
+          "outcome": "success"
+        },
+        "status": "success",
+        "responses": 2,
+        "apiEquivalentCostUsd": 0.031202,
+        "role": "context",
+        "phase": "revalidationTrustedShadow"
+      },
+      {
+        "measurement": {
+          "origin": "observed",
+          "inputTokens": 8467,
+          "outputTokens": 191,
+          "cachedInputTokens": 7168,
+          "totalTokens": 8658,
+          "modelCalls": 2,
+          "toolCalls": 3,
+          "apiCalls": 0,
+          "durationMs": 5875.638959,
+          "costUsd": null,
+          "outcome": "success"
+        },
+        "status": "success",
+        "responses": 2,
+        "apiEquivalentCostUsd": 0.015809,
+        "role": "context",
+        "phase": "revalidationTrustedShadow"
+      },
+      {
+        "measurement": {
+          "origin": "observed",
+          "inputTokens": 8456,
+          "outputTokens": 180,
+          "cachedInputTokens": 3584,
+          "totalTokens": 8636,
+          "modelCalls": 2,
+          "toolCalls": 3,
+          "apiCalls": 0,
+          "durationMs": 3712.655166999997,
+          "costUsd": null,
+          "outcome": "success"
+        },
+        "status": "success",
+        "responses": 2,
+        "apiEquivalentCostUsd": 0.031552,
+        "role": "context",
+        "phase": "revalidationTrustedShadow"
+      },
+      {
+        "measurement": {
+          "origin": "observed",
+          "inputTokens": 8446,
+          "outputTokens": 170,
+          "cachedInputTokens": 3584,
+          "totalTokens": 8616,
+          "modelCalls": 2,
+          "toolCalls": 3,
+          "apiCalls": 0,
+          "durationMs": 3506.025708000001,
+          "costUsd": null,
+          "outcome": "success"
+        },
+        "status": "success",
+        "responses": 2,
+        "apiEquivalentCostUsd": 0.031202,
+        "role": "context",
+        "phase": "dependencyTrustedShadow"
+      },
+      {
+        "measurement": {
+          "origin": "observed",
+          "inputTokens": 8467,
+          "outputTokens": 191,
+          "cachedInputTokens": 3584,
+          "totalTokens": 8658,
+          "modelCalls": 2,
+          "toolCalls": 3,
+          "apiCalls": 0,
+          "durationMs": 4397.960207999997,
+          "costUsd": null,
+          "outcome": "success"
+        },
+        "status": "success",
+        "responses": 2,
+        "apiEquivalentCostUsd": 0.031937,
+        "role": "context",
+        "phase": "dependencyTrustedShadow"
+      },
+      {
+        "measurement": {
+          "origin": "observed",
+          "inputTokens": 8456,
+          "outputTokens": 180,
+          "cachedInputTokens": 7168,
+          "totalTokens": 8636,
+          "modelCalls": 2,
+          "toolCalls": 3,
+          "apiCalls": 0,
+          "durationMs": 3872.004832999999,
+          "costUsd": null,
+          "outcome": "success"
+        },
+        "status": "success",
+        "responses": 2,
+        "apiEquivalentCostUsd": 0.015424,
+        "role": "context",
+        "phase": "dependencyTrustedShadow"
+      },
+      {
+        "measurement": {
+          "origin": "observed",
+          "inputTokens": 13126,
+          "outputTokens": 346,
+          "cachedInputTokens": 3584,
+          "totalTokens": 13472,
+          "modelCalls": 3,
+          "toolCalls": 1,
+          "apiCalls": 0,
+          "durationMs": 7597.863249999995,
+          "costUsd": null,
+          "outcome": "failed"
+        },
+        "status": "failed",
+        "responses": 3,
+        "apiEquivalentCostUsd": 0.059882,
+        "role": "support",
+        "phase": "warmup"
+      }
+    ],
+    "note": "All setup, revalidation, warmups, failed reads, incorrect outputs and measured requests retained. Unknown charges are not zero."
+  },
+  "warmups": [
+    {
+      "arm": "normal",
+      "artifact": "observed",
+      "selectedMode": "normal",
+      "selectionReason": "manual_original_tools",
+      "requestedResources": [],
+      "selectorMs": 0,
+      "measurement": {
+        "origin": "observed",
+        "inputTokens": 13126,
+        "outputTokens": 346,
+        "cachedInputTokens": 3584,
+        "totalTokens": 13472,
+        "modelCalls": 3,
+        "toolCalls": 1,
+        "apiCalls": 0,
+        "durationMs": 7628.529624999996,
+        "costUsd": null,
+        "outcome": "failed"
+      },
+      "apiEquivalentCostUsd": 0.059882,
+      "assessment": {
+        "passed": false,
+        "checks": {
+          "exactEvidenceAndDecision": false,
+          "permittedReads": true,
+          "requiredReadsAttempted": true,
+          "evidenceGrounded": true,
+          "replyGrounded": true,
+          "unavailableAcknowledged": true,
+          "noFinancialActionClaim": true
+        }
+      },
+      "response": {
+        "customerId": "C-303",
+        "eligible": null,
+        "orders": null,
+        "refunds": null,
+        "selectedOrderId": null,
+        "action": "unavailable",
+        "reply": "I’m sorry, but I can’t reliably determine your current delay-support recommendation because the required order and refund records are unavailable. I can’t use an incomplete record to apply the support policy or assume there are no prior refunds. Please try again later or contact support so the full account records can be reviewed."
+      },
+      "usedFallback": false,
+      "fallbackReasons": [],
+      "prefetchFailed": false,
+      "loaderAttempted": false,
+      "suppliedReadOperations": [],
+      "unnecessaryReads": 0,
+      "prerequisiteReads": 0,
+      "duplicateSuccessfulReads": 0,
+      "authorizationViolations": 0,
+      "redundantToolCalls": 0,
+      "cacheHits": 0,
+      "toolCalls": [
+        {
+          "name": "lookup_customer",
+          "status": "success",
+          "latencyMs": 4.441500000000815,
+          "businessReads": [{ "operation": "crm.getCustomer", "status": "success" }]
+        }
+      ],
+      "responses": [
+        {
+          "inputTokens": 4301,
+          "cachedInputTokens": 0,
+          "outputTokens": 69,
+          "latencyMs": 3089.342375,
+          "endMs": 3090,
+          "apiEquivalentCostUsd": 0.023575
+        },
+        {
+          "inputTokens": 4388,
+          "cachedInputTokens": 0,
+          "outputTokens": 14,
+          "latencyMs": 802.1003750000018,
+          "endMs": 3893,
+          "apiEquivalentCostUsd": 0.02236
+        },
+        {
+          "inputTokens": 4437,
+          "cachedInputTokens": 3584,
+          "outputTokens": 263,
+          "latencyMs": 3698.0185000000056,
+          "endMs": 7591,
+          "apiEquivalentCostUsd": 0.013947
+        }
+      ],
+      "businessReads": [
+        {
+          "operation": "crm.getCustomer",
+          "startedAt": 3869,
+          "completedAt": 3871,
+          "status": "success"
+        }
+      ],
+      "contextRuns": []
+    }
+  ],
+  "trials": []
+}
