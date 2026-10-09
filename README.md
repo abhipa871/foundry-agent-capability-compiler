@@ -135,12 +135,12 @@ execution; restoring changed files requires version control or backups.
 Live experiments use real provider inference with synthetic, read-only business records.
 The retained results measure different workloads and should not be pooled into one savings claim.
 
-| Experiment                                                          | Retained finding                                                                                                                                                            | Scope                                                                                                               |
-| ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| [Context-only retrieval](docs/real-agent-experiment.md)             | Across 30 pairs, tokens fell from 8,533.67 to zero and model calls from two to zero.                                                                                        | Retrieval was the entire task; this is not 100% savings for a complete support agent.                               |
-| [Complete support task](docs/support-agent-experiment.md)           | Compiled tool saved 2.15% of total tokens; application prefetch saved 49.78% and one of two model calls.                                                                    | 18 matched trials, 54 outputs passing the study's evidence/action/reply checks.                                     |
-| [Routing and fallback evaluation](docs/routing-agent-experiment.md) | Held-out: selector with direct fallback used 18.4% fewer tokens than normal tools and 20.5% fewer than native fallback; handwritten prefetch used 42.5% fewer than Foundry. | 72 development + 144 held-out requests, all oracle checks passed; API-equivalent estimates on a synthetic workload. |
-| [Selective context prefetch](docs/selective-context.md)             | Harness validated with a no-inference fixture provider only; live token, call and latency effects are unmeasured.                                                           | 64 + 128 fixture requests; synthetic usage, not performance evidence.                                               |
+| Experiment                                                          | Retained finding                                                                                                                                                                 | Scope                                                                                                                 |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| [Context-only retrieval](docs/real-agent-experiment.md)             | Across 30 pairs, tokens fell from 8,533.67 to zero and model calls from two to zero.                                                                                             | Retrieval was the entire task; this is not 100% savings for a complete support agent.                                 |
+| [Complete support task](docs/support-agent-experiment.md)           | Compiled tool saved 2.15% of total tokens; application prefetch saved 49.78% and one of two model calls.                                                                         | 18 matched trials, 54 outputs passing the study's evidence/action/reply checks.                                       |
+| [Routing and fallback evaluation](docs/routing-agent-experiment.md) | Held-out: selector with direct fallback used 18.4% fewer tokens than normal tools and 20.5% fewer than native fallback; handwritten prefetch used 42.5% fewer than Foundry.      | 72 development + 144 held-out requests, all oracle checks passed; API-equivalent estimates on a synthetic workload.   |
+| [Selective context prefetch](docs/selective-context.md)             | Harness validated with a no-inference fixture provider; two capped live development attempts stopped early (v1 prompt defect, v1.1 provider timeout), so effects are unmeasured. | 64 + 128 fixture requests (synthetic usage); live attempts $0.805 API-equivalent known plus one unknown-cost request. |
 
 In the routing study's one completed quarantine pair, direct fallback saved **30.25% of tokens**
 and one of three model calls versus the same selector using a native context agent. It cost
@@ -173,7 +173,8 @@ npm run test:e2e         # Browser tests; run after build
 `npm test` and `npm run test:integration` run the smaller suites separately. Equivalent root
 `make` targets are available. Last recorded implementation validation passed **149 tests in
 29 files**, all existing evals, builds/lint, SDK smoke checks and **two browser tests**. After
-selective prefetch: **189 tests in 32 files**, evals, lint and SDK build (browser tests not re-run).
+selective prefetch and benchmark v1.1: **193 tests in 32 files**, evals, lint and SDK build (browser
+tests not re-run).
 
 The SDK package is private and unpublished. Its interpreter, schemas and observation wrappers
 are customer-side; matching, compilation, registry policy and verification stay server-side.
