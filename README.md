@@ -105,8 +105,8 @@ See [the routing integration guide](docs/execution-routing.md) for the contract 
 
 Selective prefetch is opt-in: pass `execute(request, { resources })` with the resources a `subset`
 contract selected. The approved artifact runs only those reads plus genuine prerequisites and
-returns only the requested resources. Live evidence so far is one development run (held-out
-unrun); see [selective context](docs/selective-context.md).
+returns only the requested resources. Live development and held-out results (synthetic records)
+are in [selective context](docs/selective-context.md).
 
 ## Try the compiler demo
 
@@ -135,12 +135,12 @@ execution; restoring changed files requires version control or backups.
 Live experiments use real provider inference with synthetic, read-only business records.
 The retained results measure different workloads and should not be pooled into one savings claim.
 
-| Experiment                                                          | Retained finding                                                                                                                                                                          | Scope                                                                                                                          |
-| ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| [Context-only retrieval](docs/real-agent-experiment.md)             | Across 30 pairs, tokens fell from 8,533.67 to zero and model calls from two to zero.                                                                                                      | Retrieval was the entire task; this is not 100% savings for a complete support agent.                                          |
-| [Complete support task](docs/support-agent-experiment.md)           | Compiled tool saved 2.15% of total tokens; application prefetch saved 49.78% and one of two model calls.                                                                                  | 18 matched trials, 54 outputs passing the study's evidence/action/reply checks.                                                |
-| [Routing and fallback evaluation](docs/routing-agent-experiment.md) | Held-out: selector with direct fallback used 18.4% fewer tokens than normal tools and 20.5% fewer than native fallback; handwritten prefetch used 42.5% fewer than Foundry.               | 72 development + 144 held-out requests, all oracle checks passed; API-equivalent estimates on a synthetic workload.            |
-| [Selective context prefetch](docs/selective-context.md)             | Development: on 7 healthy selective rows, selective prefetch used 1 model call and 4,404 mean tokens, matching handwritten prefetch (4,416) and 49.8% below normal tools; held-out unrun. | 64 live development requests, all correct; $1.70 API-equivalent ($2.51 known across three attempts, one unknown-cost request). |
+| Experiment                                                          | Retained finding                                                                                                                                                                             | Scope                                                                                                                                            |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [Context-only retrieval](docs/real-agent-experiment.md)             | Across 30 pairs, tokens fell from 8,533.67 to zero and model calls from two to zero.                                                                                                         | Retrieval was the entire task; this is not 100% savings for a complete support agent.                                                            |
+| [Complete support task](docs/support-agent-experiment.md)           | Compiled tool saved 2.15% of total tokens; application prefetch saved 49.78% and one of two model calls.                                                                                     | 18 matched trials, 54 outputs passing the study's evidence/action/reply checks.                                                                  |
+| [Routing and fallback evaluation](docs/routing-agent-experiment.md) | Held-out: selector with direct fallback used 18.4% fewer tokens than normal tools and 20.5% fewer than native fallback; handwritten prefetch used 42.5% fewer than Foundry.                  | 72 development + 144 held-out requests, all oracle checks passed; API-equivalent estimates on a synthetic workload.                              |
+| [Selective context prefetch](docs/selective-context.md)             | Held-out: on 14 healthy selective rows, selective prefetch used 1 model call and 4,402 mean tokens, matching handwritten prefetch (4,394) and 49.8% below normal tools and existing Foundry. | 128 held-out + 64 development live requests, all correct; held-out $2.20 API-equivalent ($4.71 known across all runs, one unknown-cost request). |
 
 In the routing study's one completed quarantine pair, direct fallback saved **30.25% of tokens**
 and one of three model calls versus the same selector using a native context agent. It cost

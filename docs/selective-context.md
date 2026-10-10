@@ -1,10 +1,11 @@
 # Selective context prefetch
 
 **Status: implemented as an opt-in, experimental SDK option. The harness is validated with a
-labeled no-inference fixture provider and one completed live development run (64 requests, all
-correct): on healthy selective tasks, selective prefetch matched handwritten prefetch (one model
-call, about half the tokens of normal tools). Held-out is unrun; two earlier development
-attempts stopped early and are retained.**
+labeled no-inference fixture provider, a completed live development run and one completed live
+held-out run (128 requests, all correct, 0 authorization violations). On held-out healthy
+selective tasks, selective prefetch matched handwritten prefetch: one model call and 4,402 mean
+tokens versus 4,394, and 49.8% fewer tokens than normal tools and existing Foundry. Synthetic
+records; not production evidence.**
 
 ## A. Architecture
 
@@ -128,6 +129,7 @@ were not added; an unavailable resource is a failed read in the checkpoint and r
 | `docs/selective-agent-v1.1-fixture-*.json`             | v1.1 fixture validation output (synthetic usage).                                                           |
 | `docs/selective-agent-v1.1-development.json`           | Stopped v1.1 live development attempt (partial evidence).                                                   |
 | `docs/selective-agent-v1.1-development-attempt-2.json` | Completed v1.1 live development run.                                                                        |
+| `docs/selective-agent-v1.1-heldout.json`               | Completed v1.1 live held-out run.                                                                           |
 | `package.json`, `README.md`, docs                      | `benchmark:selective-agent` script and documentation.                                                       |
 
 ### Compatibility
@@ -191,10 +193,62 @@ Stale context fell back at the freshness guard, quarantine at ticket selection (
 and partial failures at the failed read with a checkpoint. Both artifacts passed "7 of 7 resource
 subsets are selectable and match the full plan".
 
-**Live results: development only.** Three authorized development attempts, each capped at $4
-API-equivalent; the third completed. Attempts are never pooled. Held-out has not been run, so the
-figures below are development-set results on synthetic records (gpt-5.5 via Codex, one repeat),
-not held-out or production evidence.
+**Live results.** One held-out run ($7 cap) after a completed development run (three
+development attempts, $4 cap each). Runs are never pooled. All are synthetic records with gpt-5.5
+via Codex; API-equivalent costs are estimates, not billed cost.
+
+#### Held-out run (`selective-agent-v1.1-heldout.json`)
+
+Frozen v1.1 plan, unchanged held-out cases (C-404, C-505, C-606, C-414, C-515), seed 81307, two
+repeats. Setup passed (22 of 22 checks on both artifacts; 9 of 9 trusted shadows matched), all four
+warmups passed, and **all 128 measured requests passed the oracle in every arm**. Across arms:
+0 authorization violations, 0 unnecessary reads, 0 duplicate successful reads, 0 redundant tool
+calls; denial was terminal with no reads or inference. 135 provider requests, 228 completed
+responses, all usage reported; **$2.200564 API-equivalent**. An earlier launch of this run never
+started (it stayed at the permission prompt, with no process, log or inference) and was cancelled
+before this single run.
+
+| Group (rows)           | A normal         | B existing Foundry | C selective prefetch | D handwritten prefetch |
+| ---------------------- | ---------------- | ------------------ | -------------------- | ---------------------- |
+| Healthy selective (14) | 8,772 tok / 2.00 | 8,772 / 2.00       | **4,402 / 1.00**     | 4,394 / 1.00           |
+| Healthy complete (2)   | 9,265 / 2        | 4,617 / 1          | 4,618 / 1            | 4,648 / 1              |
+| Agent decides (2)      | 9,077 / 2        | 9,193 / 2          | 9,186 / 2            | 9,092 / 2              |
+| No context (2)         | 4,345 / 1        | 4,364 / 1          | 4,382 / 1            | 4,343 / 1              |
+| Fallback (10)          | 11,522 / 2.60    | 11,514 / 2.60      | 9,004 / 2.00         | 4,477 / 1.00           |
+| Denied (2)             | 0 / 0            | 0 / 0              | 0 / 0                | 0 / 0                  |
+
+Mean total tokens / model calls per request. Paired comparisons use a case-block bootstrap 95%
+interval of the per-row difference (descriptive, 16 cases).
+
+| Arm C versus (rows)                 | Tokens                               | Model calls  | API-equivalent cost              | p50 latency       |
+| ----------------------------------- | ------------------------------------ | ------------ | -------------------------------- | ----------------- |
+| Normal, healthy selective (14)      | 49.8% fewer (4,326 to 4,421 per row) | 2.00 to 1.00 | 50.0% lower ($0.0063 to $0.0119) | 4.46 s to 3.55 s  |
+| Existing Foundry, healthy sel. (14) | 49.8% fewer (4,335 to 4,413)         | 2.00 to 1.00 | 49.9% lower ($0.0061 to $0.0127) | 4.44 s to 3.55 s  |
+| Handwritten, healthy sel. (14)      | 0.18% more (1 to 20 per row)         | 1.00 to 1.00 | 9.4% lower (interval spans zero) | 3.05 s to 3.55 s  |
+| Normal, all rows (32)               | 33.6% fewer (1,872 to 3,862)         | 2.00 to 1.31 | 32.1% lower ($0.0023 to $0.0106) | 13.7% lower mean  |
+| Existing Foundry, all rows (32)     | 31.5% fewer (1,600 to 3,771)         | 1.94 to 1.31 | 24.4% lower ($0.0016 to $0.0073) | 13.7% lower mean  |
+| Handwritten, all rows (32)          | 32.0% more (572 to 2,551)            | 1.00 to 1.31 | 33.9% higher                     | 20.8% higher mean |
+
+What the held-out run shows:
+
+- **Healthy selective (the targeted gap): closed.** Arm C used one model call on all 14 rows, like
+  handwritten prefetch, and about half the tokens and API-equivalent cost of normal tools and of
+  existing Foundry, which falls back to normal tools for subsets. Token parity with handwritten
+  prefetch is within 0.2%. Arm C was slower than handwritten prefetch (per-row interval 41 to
+  1,017 ms); its latency gain over normal tools is not established (interval spans zero). The
+  dependency case read its prerequisite once per row (0.14 prerequisite reads per healthy row),
+  never returned to the agent.
+- **Complete context.** Arms B, C and D all used one call; arm C matches existing Foundry.
+- **Agent decides and no context.** No difference in calls; arms B and C carry about 100 extra
+  tokens for the context-loader tool definition when the agent decides.
+- **Fallback.** Arm C fell back on all 10 rows and used 2.00 calls versus 2.60 for normal tools and
+  existing Foundry. On runtime read failures (partial, transient, permanent) it reused completed
+  reads: about 9,100 tokens and 2 calls versus about 13,350 and 3. On stale and quarantined
+  artifacts it matched normal tools (about 90 extra tokens). Arm D always used one call because it
+  has no artifact guards and retries reads itself, so it is not a like-for-like comparator there,
+  and it accounts for most of arm C's all-row gap to handwritten prefetch.
+- **Consistent with development.** Healthy-selective arm C means were 4,404 tokens (development)
+  and 4,402 (held-out), both with one call.
 
 #### Completed development run (`selective-agent-v1.1-development-attempt-2.json`)
 
@@ -256,22 +310,13 @@ Mean total tokens / model calls per request. What this run shows:
   API-equivalent cost $0.430476 plus one request of unknown cost (its usage was not reported and
   is not counted as zero).
 
-Across all three development attempts: $2.508176 API-equivalent known, plus one request of
-unknown cost; not billed cost.
+Across all live selective runs (three development attempts and the held-out run): $4.708740
+API-equivalent known, plus one request of unknown cost; not billed cost.
 
 The driver writes numbered attempt files instead of overwriting, records every prior live attempt
 (known cost and unknown-cost request count) in each new report, refuses a live run when a
 complete v1.1 result for that split exists, and refuses held-out without a complete v1.1
-development run. Held-out, only with explicit authorization:
-
-```sh
-FOUNDRY_CODEX_BIN=/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex \
-   npm run benchmark:selective-agent -- heldout --provider live --cap-usd 7
-```
-
-Held-out plans 135 provider requests (two repeats). Scaling the completed development run's
-$1.70 for 75 requests gives roughly $3 to $4 API-equivalent; the cap stops the run if the estimate
-reaches it.
+development run.
 
 ### Baseline (retained v2.1 held-out evidence, not re-run)
 
@@ -285,16 +330,18 @@ reaches it.
 
 On partial context, existing Foundry spent one extra model call and about 4,400 more tokens than
 handwritten prefetch because it fell back to normal execution. That gap is what selective prefetch
-targets. The completed v1.1 development run closed it on healthy selective rows (above); these
-v2.1 figures use a different case mix and are not pooled with it.
+targets. The v1.1 development and held-out runs closed it on healthy selective rows (above); these
+v2.1 figures use a different case mix and are not pooled with them.
 
 ## E. Limitations
 
-- Live evidence is one development run: 16 cases, one repeat, mostly one row per category, on
-  synthetic records. Held-out is unrun. Model-call counts vary even between identical
-  configurations (the no-context row), so single-row differences are not effects. One earlier
-  attempt stopped on a provider timeout of unknown cause (provider warnings are counted, not
-  retained).
+- Live evidence is one development run (16 rows) and one held-out run (32 rows, two repeats) on
+  five synthetic customers per split, one model and one provider. Most categories have one or
+  two rows per run, so only the healthy-selective and pooled comparisons carry weight; intervals
+  are descriptive. Model-call counts vary even between identical configurations (the development
+  no-context row). One development attempt stopped on a provider timeout of unknown cause
+  (provider warnings are counted, not retained).
+- Latency: no established gain over normal tools; slower than handwritten prefetch.
 - One compiled family (customer, orders, refunds) with three resources; subsets are limited to
   reads the approved plan outputs exactly once.
 - Subset requests have no compiled shadow; their trust rests on full-context shadows plus the
@@ -310,8 +357,10 @@ v2.1 figures use a different case mix and are not pooled with it.
 ## F. Recommendation
 
 Keep selective prefetch **experimental and opt-in**. It preserves every existing default and
-governance check, and its safety properties are covered by tests, fixture validation and a live
-development run with no correctness or authorization failures. That run met the development
-criterion (correctness intact; the healthy-selective gap to handwritten prefetch closed), so the
-next step is one held-out run, which needs explicit authorization. Do not change defaults or
-claim production gains on development evidence alone.
+governance check, and its safety properties are covered by tests, fixture validation, and live
+development and held-out runs with no correctness or authorization failures. On held-out
+synthetic tasks it closed the gap it targets: for registered subset contracts it matched
+handwritten prefetch and halved tokens and model calls relative to normal tools and existing
+Foundry. That supports offering it to SDK consumers as an opt-in for trusted subset contracts. It
+does not justify changing defaults or claiming production savings: that needs real connectors,
+more customers and models, metered billing and latency evidence.
