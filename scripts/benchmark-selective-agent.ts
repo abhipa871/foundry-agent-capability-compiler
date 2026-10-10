@@ -5,6 +5,7 @@ import {
   existsSync,
   mkdtempSync,
   readFileSync,
+  readdirSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
@@ -104,29 +105,43 @@ if (providerMode === 'live') {
 } else if (flags['cap-usd'] !== undefined)
   throw new Error('Fixture mode runs no inference; --cap-usd does not apply.');
 const planVersion = selectivePlanVersion;
-// v1 evidence (including the stopped live development attempt) is retained under its own names.
-const output = `docs/selective-agent-v1.1-${providerMode === 'fixture' ? 'fixture-' : ''}${split}.json`;
-if (existsSync(output)) throw new Error(`Refusing to overwrite retained evidence: ${output}.`);
-if (providerMode === 'live' && split === 'heldout') {
-  const development = 'docs/selective-agent-v1.1-development.json';
-  if (!existsSync(development) || !JSON.parse(readFileSync(development, 'utf8')).complete)
+// Every live attempt (v1 and v1.1, stopped or complete) is retained under its own name.
+const liveEvidence = readdirSync('docs')
+  .filter((name) =>
+    /^selective-agent-(v1\.1-)?(development|heldout)(-attempt-\d+)?\.json$/.test(name),
+  )
+  .sort()
+  .map((name) => ({ path: `docs/${name}`, ...JSON.parse(readFileSync(`docs/${name}`, 'utf8')) }));
+const completeV11 = (target: string) =>
+  liveEvidence.some(
+    (evidence) =>
+      evidence.split === target &&
+      evidence.plan?.planVersion === selectivePlanVersion &&
+      evidence.complete === true,
+  );
+let output = `docs/selective-agent-v1.1-fixture-${split}.json`;
+if (providerMode === 'live') {
+  if (completeV11(split))
+    throw new Error(`A complete live ${planVersion} ${split} run is already retained.`);
+  if (split === 'heldout' && !completeV11('development'))
     throw new Error('Held-out live run requires a complete live v1.1 development run first.');
+  output = `docs/selective-agent-v1.1-${split}.json`;
+  for (let attempt = 2; existsSync(output); attempt++)
+    output = `docs/selective-agent-v1.1-${split}-attempt-${attempt}.json`;
 }
-const priorEvidence = (providerMode === 'live' ? ['docs/selective-agent-development.json'] : [])
-  .filter((path) => existsSync(path))
-  .map((path) => {
-    const evidence = JSON.parse(readFileSync(path, 'utf8'));
-    return {
-      path,
-      planVersion: evidence.plan?.planVersion ?? null,
-      complete: evidence.complete,
-      failure: evidence.failure ?? null,
-      apiEquivalentCostUsd: evidence.experimentTotals.apiEquivalentCostUsd,
-      providerAgentRequests: evidence.experimentTotals.providerAgentRequests,
-      completedInferenceResponses: evidence.providerAccounting.completedInferenceResponses,
-      note: 'Prior attempt retained for accounting only; never pooled with this run.',
-    };
-  });
+if (existsSync(output)) throw new Error(`Refusing to overwrite retained evidence: ${output}.`);
+const priorEvidence = (providerMode === 'live' ? liveEvidence : []).map((evidence) => ({
+  path: evidence.path,
+  planVersion: evidence.plan?.planVersion ?? null,
+  complete: evidence.complete,
+  failure: evidence.failure ?? null,
+  apiEquivalentCostUsd: evidence.experimentTotals.apiEquivalentCostUsd as number | null,
+  knownCostSubtotalUsd: evidence.experimentTotals.knownCostSubtotalUsd as number,
+  unknownCostRequests: evidence.experimentTotals.unknownCostRequests as number,
+  providerAgentRequests: evidence.experimentTotals.providerAgentRequests,
+  completedInferenceResponses: evidence.providerAccounting.completedInferenceResponses,
+  note: 'Prior attempt retained for accounting only; never pooled with this run.',
+}));
 const directory = mkdtempSync(join(tmpdir(), 'foundry-selective-evaluation-'));
 const policyPath = join(directory, 'fixture-policy.json');
 if (providerMode === 'fixture') {
@@ -1094,7 +1109,13 @@ try {
         sumCost(ledger) === null || priorEvidence.some((run) => run.apiEquivalentCostUsd === null)
           ? null
           : sumCost(ledger)! +
-            priorEvidence.reduce((sum, run) => sum + run.apiEquivalentCostUsd, 0),
+            priorEvidence.reduce((sum, run) => sum + run.apiEquivalentCostUsd!, 0),
+      includingPriorAttemptsKnownCostSubtotalUsd:
+        ledger.reduce((sum, row) => sum + (row.apiEquivalentCostUsd ?? 0), 0) +
+        priorEvidence.reduce((sum, run) => sum + run.knownCostSubtotalUsd, 0),
+      includingPriorAttemptsUnknownCostRequests:
+        ledger.filter((row) => row.apiEquivalentCostUsd === null).length +
+        priorEvidence.reduce((sum, run) => sum + run.unknownCostRequests, 0),
       ledger,
       note: 'All setup, revalidation, warmups, failed reads, incorrect outputs and measured requests retained. Unknown charges are not zero.',
     },
