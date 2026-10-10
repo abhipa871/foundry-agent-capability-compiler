@@ -1,9 +1,10 @@
 # Selective context prefetch
 
 **Status: implemented as an opt-in, experimental SDK option. The harness is validated with a
-labeled no-inference fixture provider. Live performance is unmeasured: two capped live
-development attempts stopped early (a benchmark prompt defect in v1, then a provider timeout in
-v1.1), so no complete live result exists.**
+labeled no-inference fixture provider and one completed live development run (64 requests, all
+correct): on healthy selective tasks, selective prefetch matched handwritten prefetch (one model
+call, about half the tokens of normal tools). Held-out is unrun; two earlier development
+attempts stopped early and are retained.**
 
 ## A. Architecture
 
@@ -108,25 +109,26 @@ were not added; an unavailable resource is a failed read in the checkpoint and r
 
 ## B. Modified files
 
-| File                                            | Purpose                                                                                                     |
-| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `src/runtime/selective.ts` (new)                | Resource-subset schema, dependency-closure planning, strict subset projection.                              |
-| `src/runtime/interpret.ts`                      | Node loop extracted into `runNodes` (unchanged behaviour); new `interpretSelected`.                         |
-| `src/runtime/dispatcher.ts`                     | Optional `resources`: subset authorization, requested-scope guard, `resource_selection` guard, `selection`. |
-| `src/integration/selection.ts`                  | Opt-in `subset` requirement; `resources` on every selection.                                                |
-| `src/integration/client.ts`                     | `execute` options `resources`/`selection`; scoped observation; no subset shadow; opt-in telemetry.          |
-| `src/integration/protocol.ts`                   | Optional strict `selection` telemetry object.                                                               |
-| `src/verification/verify-ir.ts`                 | Check 22: every selectable subset matches the full plan and executes exactly its closure.                   |
-| `tests/integration/selective-context.test.ts`   | Runtime, guard, SDK, fallback and governance tests.                                                         |
-| `scripts/experiments/selective-task.ts`         | Frozen cases, contracts, oracle, prompt, arms and schedule.                                                 |
-| `scripts/experiments/fixture-provider.mjs`      | Labeled no-inference provider for harness validation.                                                       |
-| `scripts/benchmark-selective-agent.ts`          | Four-arm driver; fixture or capped live mode; never overwrites evidence.                                    |
-| `tests/integration/selective-benchmark.test.ts` | Plan, oracle, task-scope consistency and fixture-provider tests.                                            |
-| `docs/selective-agent-fixture-*.json`           | v1 fixture validation output (synthetic usage).                                                             |
-| `docs/selective-agent-development.json`         | Failed v1 live development attempt, retained with its cost.                                                 |
-| `docs/selective-agent-v1.1-fixture-*.json`      | v1.1 fixture validation output (synthetic usage).                                                           |
-| `docs/selective-agent-v1.1-development.json`    | Stopped v1.1 live development attempt (partial evidence).                                                   |
-| `package.json`, `README.md`, docs               | `benchmark:selective-agent` script and documentation.                                                       |
+| File                                                   | Purpose                                                                                                     |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `src/runtime/selective.ts` (new)                       | Resource-subset schema, dependency-closure planning, strict subset projection.                              |
+| `src/runtime/interpret.ts`                             | Node loop extracted into `runNodes` (unchanged behaviour); new `interpretSelected`.                         |
+| `src/runtime/dispatcher.ts`                            | Optional `resources`: subset authorization, requested-scope guard, `resource_selection` guard, `selection`. |
+| `src/integration/selection.ts`                         | Opt-in `subset` requirement; `resources` on every selection.                                                |
+| `src/integration/client.ts`                            | `execute` options `resources`/`selection`; scoped observation; no subset shadow; opt-in telemetry.          |
+| `src/integration/protocol.ts`                          | Optional strict `selection` telemetry object.                                                               |
+| `src/verification/verify-ir.ts`                        | Check 22: every selectable subset matches the full plan and executes exactly its closure.                   |
+| `tests/integration/selective-context.test.ts`          | Runtime, guard, SDK, fallback and governance tests.                                                         |
+| `scripts/experiments/selective-task.ts`                | Frozen cases, contracts, oracle, prompt, arms and schedule.                                                 |
+| `scripts/experiments/fixture-provider.mjs`             | Labeled no-inference provider for harness validation.                                                       |
+| `scripts/benchmark-selective-agent.ts`                 | Four-arm driver; fixture or capped live mode; never overwrites evidence.                                    |
+| `tests/integration/selective-benchmark.test.ts`        | Plan, oracle, task-scope consistency and fixture-provider tests.                                            |
+| `docs/selective-agent-fixture-*.json`                  | v1 fixture validation output (synthetic usage).                                                             |
+| `docs/selective-agent-development.json`                | Failed v1 live development attempt, retained with its cost.                                                 |
+| `docs/selective-agent-v1.1-fixture-*.json`             | v1.1 fixture validation output (synthetic usage).                                                           |
+| `docs/selective-agent-v1.1-development.json`           | Stopped v1.1 live development attempt (partial evidence).                                                   |
+| `docs/selective-agent-v1.1-development-attempt-2.json` | Completed v1.1 live development run.                                                                        |
+| `package.json`, `README.md`, docs                      | `benchmark:selective-agent` script and documentation.                                                       |
 
 ### Compatibility
 
@@ -189,9 +191,48 @@ Stale context fell back at the freshness guard, quarantine at ticket selection (
 and partial failures at the failed read with a checkpoint. Both artifacts passed "7 of 7 resource
 subsets are selectable and match the full plan".
 
-**Live results: no complete run.** Token, call, cost and latency gains are **unmeasured**. Both
-attempts were authorized development runs with a $4 API-equivalent cap; neither is pooled with
-the other.
+**Live results: development only.** Three authorized development attempts, each capped at $4
+API-equivalent; the third completed. Attempts are never pooled. Held-out has not been run, so the
+figures below are development-set results on synthetic records (gpt-5.5 via Codex, one repeat),
+not held-out or production evidence.
+
+#### Completed development run (`selective-agent-v1.1-development-attempt-2.json`)
+
+Setup passed (22 of 22 verification checks on both artifacts; 9 of 9 trusted shadows matched), all
+four warmups passed, and all 64 measured requests passed the oracle in every arm. Across arms:
+0 authorization violations, 0 unnecessary reads, 0 duplicate successful reads; denial was terminal
+with no reads or inference. 75 provider requests, 131 completed responses, all usage reported;
+$1.702862 API-equivalent (not billed cost).
+
+| Group (rows)          | A normal         | B existing selector | C selective prefetch | D handwritten prefetch |
+| --------------------- | ---------------- | ------------------- | -------------------- | ---------------------- |
+| Healthy selective (7) | 8,767 tok / 2.00 | 8,770 / 2.00        | 4,404 / 1.00         | 4,416 / 1.00           |
+| Healthy complete (1)  | 9,251 / 2        | 4,593 / 1           | 4,594 / 1            | 4,595 / 1              |
+| Agent decides (1)     | 9,101 / 2        | 9,193 / 2           | 9,204 / 2            | 9,121 / 2              |
+| No context (1)        | 8,722 / 2        | 8,696 / 2           | 4,328 / 1            | 8,703 / 2              |
+| Fallback (5)          | 11,515 / 2.60    | 11,501 / 2.60       | 9,005 / 2.00         | 4,464 / 1.00           |
+| Denied (1)            | 0 / 0            | 0 / 0               | 0 / 0                | 0 / 0                  |
+
+Mean total tokens / model calls per request. What this run shows:
+
+- **Healthy selective (the targeted gap).** Arm C used one model call on all 7 rows, like
+  handwritten prefetch: 4,404 versus 4,416 mean tokens, and 49.8% fewer tokens than both normal
+  tools and the existing selector, which falls back to normal execution for subsets (paired
+  case-block bootstrap 95% interval of the per-row saving versus normal: 4,319 to 4,408 tokens).
+  API-equivalent cost was 60% below normal but 17% above handwritten, because prompt-cache hits
+  differed; latency (p50 4.05 s versus 3.84 s normal, 3.19 s handwritten) showed no gain.
+- **Fallback.** Arm C fell back on all 5 rows (stale, quarantined, partial, transient, permanent)
+  and used 2.00 calls versus 2.60 for normal tools, reusing completed reads. Arm D used 1.00 because
+  it ignores artifact guards and retries reads itself; this group is not like for like.
+- **No context is noise, not an effect.** All four arms ran the same configuration (normal mode,
+  no tools). Arms A, B and D sent a short interim message before answering; arm C did not. This
+  row inflates the all-row comparison (arm C 35.6% fewer tokens than normal across all 16 rows) and
+  should not be attributed to Foundry.
+- **One latency outlier.** On the stale incompatible-subset row, arm C's second model response took
+  16.2 s (18.9 s total) with normal token counts; the previous attempt timed out on the same
+  request. Single observations; the cause is unknown.
+
+#### Stopped attempts (retained with their costs)
 
 - **v1 (`selective-agent-development.json`): stopped at warmup.** Setup passed (22 of 22
   verification checks on both artifacts, 9 of 9 trusted shadows matched). The normal arm answered
@@ -215,31 +256,22 @@ the other.
   API-equivalent cost $0.430476 plus one request of unknown cost (its usage was not reported and
   is not counted as zero).
 
-Across both attempts: $0.805314 API-equivalent known, plus one request of unknown cost; not
-billed cost. The only measured rows (one eligibility-only request per arm, plus the matching
-warmups) are a single case and are not evidence of an effect: normal 8,647 tokens / 2 model calls,
-existing selector 8,652 / 2, selective prefetch 4,317 / 1, handwritten prefetch 4,352 / 1.
+Across all three development attempts: $2.508176 API-equivalent known, plus one request of
+unknown cost; not billed cost.
 
-To rerun, only with explicit authorization (the driver writes v1.1 file names and refuses a live
-held-out run without a complete v1.1 development result):
+The driver writes numbered attempt files instead of overwriting, records every prior live attempt
+(known cost and unknown-cost request count) in each new report, refuses a live run when a
+complete v1.1 result for that split exists, and refuses held-out without a complete v1.1
+development run. Held-out, only with explicit authorization:
 
 ```sh
-FOUNDRY_CODEX_BIN=/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex \
-  npm run benchmark:selective-agent -- development --provider live --cap-usd 4
-# then, only if development completed:
 FOUNDRY_CODEX_BIN=/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex \
    npm run benchmark:selective-agent -- heldout --provider live --cap-usd 7
 ```
 
-The driver refuses to overwrite retained evidence, so another development attempt needs a new
-output name, and its prior-attempt accounting must then include the stopped v1.1 attempt as well
-as v1.
-
-Planned provider requests: 75 (development) and 135 (held-out), including observation, nine trusted
-shadows and four warmups. From the retained v2.1 live ledgers (support requests averaged $0.016 to
-$0.021, 95th percentile $0.031 to $0.036 API-equivalent), the expected API-equivalent cost is about
-$1.5 to $2.7 for development and $2.2 to $4.9 for held-out. The cap stops the run when the
-estimate reaches it. These are API-equivalent estimates, not billed cost.
+Held-out plans 135 provider requests (two repeats). Scaling the completed development run's
+$1.70 for 75 requests gives roughly $3 to $4 API-equivalent; the cap stops the run if the estimate
+reaches it.
 
 ### Baseline (retained v2.1 held-out evidence, not re-run)
 
@@ -253,14 +285,16 @@ estimate reaches it. These are API-equivalent estimates, not billed cost.
 
 On partial context, existing Foundry spent one extra model call and about 4,400 more tokens than
 handwritten prefetch because it fell back to normal execution. That gap is what selective prefetch
-targets. Whether it closes live is unmeasured, and these figures are not comparable with the new
-case mix.
+targets. The completed v1.1 development run closed it on healthy selective rows (above); these
+v2.1 figures use a different case mix and are not pooled with it.
 
 ## E. Limitations
 
-- No complete live measurement; the fixture provider shows plumbing and safety behaviour, not
-  model behaviour, tokens or latency. The v1.1 live attempt measured one case before a provider
-  timeout; the cause of the timeout is unknown (provider warnings are counted, not retained).
+- Live evidence is one development run: 16 cases, one repeat, mostly one row per category, on
+  synthetic records. Held-out is unrun. Model-call counts vary even between identical
+  configurations (the no-context row), so single-row differences are not effects. One earlier
+  attempt stopped on a provider timeout of unknown cause (provider warnings are counted, not
+  retained).
 - One compiled family (customer, orders, refunds) with three resources; subsets are limited to
   reads the approved plan outputs exactly once.
 - Subset requests have no compiled shadow; their trust rests on full-context shadows plus the
@@ -276,7 +310,8 @@ case mix.
 ## F. Recommendation
 
 Keep selective prefetch **experimental and opt-in**. It preserves every existing default and
-governance check, and its safety properties are covered by tests and fixture validation, but its
-benefit is unmeasured. A further development attempt needs explicit authorization; only if
-development completes with correctness intact and the healthy-selective gap to handwritten
-prefetch closes, run held-out once before considering broader use.
+governance check, and its safety properties are covered by tests, fixture validation and a live
+development run with no correctness or authorization failures. That run met the development
+criterion (correctness intact; the healthy-selective gap to handwritten prefetch closed), so the
+next step is one held-out run, which needs explicit authorization. Do not change defaults or
+claim production gains on development evidence alone.
