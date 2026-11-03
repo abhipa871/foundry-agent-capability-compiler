@@ -11,7 +11,7 @@ retrieval region; the remaining reasoning and response generation still use the 
 **Branch: `nikil-dev`.** This branch includes the v2 compiler, optimization overlay, private
 Node SDK, contract-based execution selection, optional direct agent fallback, and live-agent
 evaluation harnesses. It is a local integration prototype, not a production SaaS service.
-The latest routing evaluation is **incomplete**; its held-out run has not started.
+Completed routing and selective-context held-out evaluations are retained under `docs/`.
 
 ## Quick start
 
@@ -37,6 +37,28 @@ If you already have the repository, switch to `nikil-dev` before installing and 
 The server binds to loopback. `FOUNDRY_DB` overrides the database path.
 `FOUNDRY_CODEX_DRY_RUN=true` enables explicitly labeled simulated coding runs; their model/token
 measurements are fixtures. Live-provider benchmarks refuse dry-run mode.
+
+### Interactive benchmark workspace
+
+The UI opens to a prompt playground with paired normal-agent/Foundry execution, token and cache
+breakdowns, latency, actual reads, correctness checks, traces, JSON exports and session history.
+The **API & SDK** section explains integration with your existing agent and includes an
+architecture diagram and copyable example. **Developer console** provides a guided
+**Build → Validate → Run** workflow. The sidebar has five main destinations; advanced and legacy
+tools are grouped in a contextual menu. All views share one design, and switching views preserves
+prompt drafts, benchmark history and compiler inputs.
+
+Preview mode performs no inference and reports no token savings. For real usage measurements,
+use an authenticated Codex CLI and explicitly enable a model available to your account:
+
+```sh
+FOUNDRY_BENCHMARK_LIVE=true FOUNDRY_BENCHMARK_MODEL=gpt-6.1-sol npm run dev
+```
+
+Select **Live** before comparing. Runs are bounded to 1–3 pairs; savings are not guaranteed.
+Pricing for models without a matching rate card remains unknown. The initial dashboard shows
+dated retained benchmark evidence, not a result for your prompt. See the
+[workspace guide](docs/benchmark-workspace.md) for measurement details and limitations.
 
 ## How Foundry works
 
@@ -153,7 +175,7 @@ costs are unknown. Cache usage, setup, shadow, revalidation, fallback, failures 
 retained. Small samples do not establish production tail-latency gains.
 
 Before production use, the project still needs real connector/snapshot validation, metered billing,
-a completed held-out routing evaluation, broader reply-quality assessment and deployment-specific
+broader held-out workloads, broader reply-quality assessment and deployment-specific
 security/operations integration. There is no automatic profitability-driven compilation, compiled
 checkpoint resumption, real financial-write capability, arbitrary generated-code execution in the
 compiled read runtime, or production external-write effect ledger. Operators must schedule maintenance/revalidation; there is no scheduler.

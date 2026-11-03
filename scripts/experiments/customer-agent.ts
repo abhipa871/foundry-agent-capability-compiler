@@ -170,6 +170,8 @@ export class CustomerContextAgent {
       adapters: AdapterRunner;
       context: () => RuntimeContext;
       agentId: string;
+      // Interactive callers may pin another model. Existing studies keep the default unchanged.
+      model?: string;
       metricsEndpoint?: string;
       timeoutMs?: number;
       maxModelCalls?: number;
@@ -341,6 +343,7 @@ export class CustomerContextAgent {
   async runTask<T>(task: AgentTask<T>) {
     if (this.running) throw new Error('Experiment provider supports one request at a time.');
     const input = customerInput.parse(task.input);
+    const selectedModel = this.options.model ?? model;
     const context = this.options.context();
     if (task.allowedOperations) authorizeReads(context, input, task.allowedOperations);
     else authorizeContext(context, input); // denial occurs before any inference or data access
@@ -352,7 +355,7 @@ export class CustomerContextAgent {
         adapters: this.options.adapters,
         agentId: this.options.agentId,
         provider,
-        model,
+        model: selectedModel,
         apiCallsKnown: true,
         allowedOperations: task.allowedOperations,
       });
@@ -472,7 +475,7 @@ export class CustomerContextAgent {
       // Avoid leaking an unhandled rejection if thread/start fails before awaiting completion.
       void done.catch(() => {});
       const thread = await this.rpc('thread/start', {
-        model,
+        model: selectedModel,
         modelProvider: 'openai',
         allowProviderModelFallback: false,
         serviceTier: 'default',
@@ -487,7 +490,8 @@ export class CustomerContextAgent {
           'The application binds every tool to the authorized customerId. No tool arguments are needed. You may call independent reads together.',
       });
       threadId = thread.thread.id;
-      if (thread.model !== model) throw new Error('Provider did not accept the pinned model.');
+      if (thread.model !== selectedModel)
+        throw new Error('Provider did not accept the pinned model.');
       stage = 'turn/start';
       const turn = await this.rpc('turn/start', {
         threadId,
@@ -515,11 +519,14 @@ export class CustomerContextAgent {
         measurement: structuredClone(measurement),
         status: measurement.outcome === 'failed' ? 'failed' : 'success',
         responses: ledger.responses,
-        apiEquivalentCostUsd: apiEquivalentCost(
-          observer.measurement.inputTokens!,
-          observer.measurement.cachedInputTokens!,
-          observer.measurement.outputTokens!,
-        ),
+        apiEquivalentCostUsd:
+          selectedModel === model
+            ? apiEquivalentCost(
+                observer.measurement.inputTokens!,
+                observer.measurement.cachedInputTokens!,
+                observer.measurement.outputTokens!,
+              )
+            : null,
       });
       return {
         measurement,
@@ -541,7 +548,7 @@ export class CustomerContextAgent {
         failure: this.lastFailure,
         responses: ledger.responses,
         apiEquivalentCostUsd:
-          turnCompleted && ledger.responses > 0
+          selectedModel === model && turnCompleted && ledger.responses > 0
             ? apiEquivalentCost(
                 measured.inputTokens!,
                 measured.cachedInputTokens!,

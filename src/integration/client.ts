@@ -305,7 +305,12 @@ export class FoundryClient {
 export type { TaskRequest, DispatchOutcome, AdapterRunner, RuntimeContext };
 export { TrajectoryObserver };
 export { defineContextContract, selectExecution } from './selection.js';
-export type { ContextContract, ExecutionSelection } from './selection.js';
+export type {
+  ContextContract,
+  ExecutionSelection,
+  ExecutionSelectionOptions,
+  PrefetchCostComparison,
+} from './selection.js';
 export { RequestReadCache } from './request-reads.js';
 export { planSelection, subsetContextProjection } from '../runtime/selective.js';
 export type { SelectionPlan, SubsetContext } from '../runtime/selective.js';

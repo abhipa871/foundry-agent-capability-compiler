@@ -1,0 +1,144 @@
+{
+  "evidenceKind": "implementation smoke test; not a held-out study",
+  "businessData": "synthetic read-only fixtures",
+  "run": {
+    "id": "31d91013-b7de-4212-83cd-038f15dbfeda",
+    "createdAt": "2026-11-03T13:49:32.426Z",
+    "request": {
+      "prompt": "Which of my orders is the most delayed, and by how many days? I only need order information.",
+      "customerId": "C-101",
+      "scope": "orders",
+      "execution": "live",
+      "repeats": 1
+    },
+    "provider": "openai-codex-chatgpt",
+    "model": "gpt-6.1-sol",
+    "setup": {
+      "durationMs": 149.84875000000002,
+      "modelCalls": 0,
+      "costUsd": 0,
+      "checks": 25
+    },
+    "pricing": {
+      "source": "https://developers.openai.com/api/docs/models/gpt-5.5",
+      "checkedAt": "2026-10-03",
+      "inputPerMillionUsd": 5,
+      "cachedInputPerMillionUsd": 0.5,
+      "outputPerMillionUsd": 30,
+      "model": "gpt-5.5",
+      "applicable": false
+    },
+    "pairs": [
+      {
+        "order": ["normal", "foundry"],
+        "normal": {
+          "arm": "normal",
+          "mode": "normal",
+          "reason": "Original authorized tools; no Foundry prefetch.",
+          "measurement": {
+            "origin": "observed",
+            "inputTokens": 14723,
+            "outputTokens": 137,
+            "cachedInputTokens": 7168,
+            "totalTokens": 14860,
+            "modelCalls": 2,
+            "toolCalls": 1,
+            "apiCalls": null,
+            "durationMs": 8059.826833,
+            "costUsd": null,
+            "outcome": "success"
+          },
+          "estimatedCostUsd": null,
+          "response": {
+            "customerId": "C-101",
+            "eligible": null,
+            "orders": [
+              {
+                "id": "O-101",
+                "daysLate": 8
+              }
+            ],
+            "refunds": null,
+            "selectedOrderId": "O-101",
+            "action": "order_status",
+            "reply": "Your most delayed order is O-101, which is 8 days late according to the available order records. It is the only order listed in those records, so there are no other listed orders to compare. As requested, this response is limited to order information; I have not reviewed eligibility or refund history."
+          },
+          "checks": {
+            "exactEvidenceAndDecision": true,
+            "permittedReads": true,
+            "requiredReadsAttempted": true,
+            "evidenceGrounded": true,
+            "replyGrounded": true,
+            "unavailableAcknowledged": true,
+            "noFinancialActionClaim": true
+          },
+          "verification": "contract",
+          "reads": [
+            {
+              "operation": "orders.list",
+              "status": "success",
+              "durationMs": 1.2705000000000837
+            }
+          ],
+          "selectorMs": 0,
+          "fallback": false,
+          "failure": null
+        },
+        "foundry": {
+          "arm": "foundry",
+          "mode": "compiled_prefetch",
+          "reason": "trusted_contract_requires_resource_subset",
+          "measurement": {
+            "origin": "observed",
+            "inputTokens": 7323,
+            "outputTokens": 119,
+            "cachedInputTokens": 0,
+            "totalTokens": 7442,
+            "modelCalls": 1,
+            "toolCalls": 1,
+            "apiCalls": null,
+            "durationMs": 5972.954125,
+            "costUsd": null,
+            "outcome": "success"
+          },
+          "estimatedCostUsd": null,
+          "response": {
+            "customerId": "C-101",
+            "eligible": null,
+            "orders": [
+              {
+                "id": "O-101",
+                "daysLate": 8
+              }
+            ],
+            "refunds": null,
+            "selectedOrderId": "O-101",
+            "action": "order_status",
+            "reply": "Your most delayed order is O-101, which is 8 days late. Based on the order information provided, it is the only order listed, so there are no other listed orders to compare. This summary is limited to your order information, as requested; it does not include an estimated delivery date."
+          },
+          "checks": {
+            "exactEvidenceAndDecision": true,
+            "permittedReads": true,
+            "requiredReadsAttempted": true,
+            "evidenceGrounded": true,
+            "replyGrounded": true,
+            "unavailableAcknowledged": true,
+            "noFinancialActionClaim": true
+          },
+          "verification": "contract",
+          "reads": [
+            {
+              "operation": "orders.list",
+              "status": "success",
+              "durationMs": 2.3288749999992433
+            }
+          ],
+          "selectorMs": 0.009540999999444466,
+          "fallback": false,
+          "failure": null
+        },
+        "equivalence": "match"
+      }
+    ]
+  }
+}

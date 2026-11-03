@@ -65,3 +65,59 @@ prerequisite, falls back without reading. Subset requests never run compiled sha
 `known` partial contracts still select `normal`, and `execute` without `resources` is unchanged.
 See [selective context](selective-context.md) for the design, tests and fixture validation; live
 gains are unmeasured.
+
+## Optional measured-cost veto
+
+`selectExecution(contract, input, context, { prefetchCostComparison })` can conservatively
+decline an otherwise eligible prefetch. The application supplies `pairedRequests` (a positive
+integer), `baselineMeanCostUsd` and `prefetchMeanCostUsd` (finite, nonnegative means over the same
+paired requests). If prefetch is equal or more expensive, the selection is `normal` with reason
+`measured_prefetch_cost_not_lower` and no prefetch resources. Malformed or incomplete evidence
+selects `normal` with `prefetch_cost_evidence_invalid`; unknown cost is never converted to zero.
+Omitting the comparison preserves existing selection behavior, including experimental subsets.
+
+Use complete-task measured costs including cached-token pricing, failed attempts, fallback and
+request-time optimization overhead. The application must select a comparable, representative
+development profile for the same task contract, resource set, model, authorization and runtime
+configuration. Do not pool incompatible profiles or tune against held-out outcomes. Separate
+one-time compilation/validation costs from these steady-state means. A positive mean saving is
+not a confidence interval or a production profitability guarantee; no minimum statistical
+confidence is inferred from `pairedRequests`.
+
+This is an opt-in veto, not learned routing or an automatic profile collector. It cannot enable
+prefetch for an ineligible task. Authorization is checked first and denial stays terminal.
+Agent-decided tool placement is unchanged because a prefetch comparison does not establish the
+cost of a tool-based execution. The application still branches on `selection.mode`: `normal`
+uses original authorized tools, `denied` stops, and eligible compiled paths retain all existing
+runtime guards. Passing a selection to `FoundryClient.execute` only records telemetry; it does
+not enforce the selected orchestration mode. The benchmark UI and frozen studies do not opt into
+this veto automatically. No new live inference measurements accompany this addition.
+
+## Capability-aware readiness and application routing
+
+The optional `candidate` selector option accepts an application-owned local `IRArtifact`:
+
+- Omitted: availability is unknown; preserve existing placement and defer guards to execution.
+- `null`: the application knows no capability is available (including quarantine); select
+  `normal` with reason `no_available_capability` without attempting compiled work.
+- Artifact: run the existing `checkGuards` before recommending prefetch or offering the tool.
+  Non-security misses select `normal` with a `capability_guard_miss:<guard>` reason. Tenant,
+  principal, scope or policy failure selects terminal `denied`, even if a cost veto would otherwise
+  select normal execution.
+
+The subset check covers approved prerequisites and does not demand unrelated resource scopes.
+These checks perform no reads, model calls or network access. They add the cost of guard evaluation
+(including digest computation), which is recorded in selector duration. A candidate is advisory
+local metadata, not proof of a valid signature, rollout assignment or current registry health.
+Remote consumers must continue obtaining authenticated signed offers through the SDK. Always
+recheck at execution: approval, freshness or authorization can change after selection.
+
+The benchmark runner now supplies its actual isolated artifact, branches on the selected mode,
+and accepts an optional server-owned synchronous `prefetchCostComparison(request)` resolver.
+The resolver must return a matching measured development profile, not fabricate values or infer
+cost from fixture usage. Its duration is included in selector and complete-request time. It is
+not configurable by prompt/request JSON, and no profile is enabled by default. The normal arm
+does not run Foundry's selector or profile lookup. Fixture tests demonstrate that a losing profile
+routes through original authorized tools without a failed compiled attempt; they establish no
+live token, cost or latency improvement. Runtime read failures still use the existing safe direct
+fallback and request-local cache; preflight cannot predict those failures.

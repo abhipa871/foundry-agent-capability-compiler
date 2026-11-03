@@ -10,6 +10,7 @@ import { sampleToolTraces } from './exploration/sample-traces.js';
 import { Foundry } from './service.js';
 import { Store } from './registry/store.js';
 import { ApiKeyAuthenticator, withIdentity, requirePermission } from './security/identity.js';
+import { BenchmarkWorkspace, retainedEvidence } from './benchmarks/workspace.js';
 export type AppOptions = {
   auth?: ApiKeyAuthenticator;
   signer?: ArtifactSigner;
@@ -94,6 +95,13 @@ export function createApp(store: Store, seed = true, options: AppOptions = {}) {
     res.json({ status: 'ok', mode: options.auth ? 'authenticated-read-api' : 'local-demo' }),
   );
   app.get('/api/state', (_req, res) => res.json(service.state()));
+  // Local experiment surface only. Hosted-mode middleware above excludes these routes.
+  const benchmarks = new BenchmarkWorkspace();
+  app.get('/api/benchmarks/config', (_req, res) => res.json(benchmarks.config()));
+  app.get('/api/benchmarks/evidence', async (_req, res) => res.json(await retainedEvidence()));
+  app.post('/api/benchmarks/runs', async (req, res) => {
+    res.status(201).json(await benchmarks.run(req.body));
+  });
   app.get('/api/agent/options', (_req, res) =>
     res.json({ providers: service.state().agentProviders }),
   );

@@ -4,8 +4,10 @@ The supported optimization is `customer_context` / `load_customer_context(custom
 three read contracts over `fixtures-v1`. This implementation is ready for local integration and
 review. A [live-provider experiment](real-agent-experiment.md) is available; production connector
 measurements with metered billing are still required.
-The existing local UI keeps its sample compile/verify/approve flow. New pattern, routing, shadow,
-health and maintenance operations are available through the v2 API; there is no new hosted UI.
+The local [benchmark workspace](benchmark-workspace.md) adds paired prompt experiments and an
+SDK integration guide while preserving the sample compile/verify/approve console. Pattern,
+routing, shadow, health and maintenance operations remain available through the v2 API; there is
+no new hosted UI.
 
 Build the Node.js 24 SDK with `npm run build:sdk`. The private package in `dist-sdk` exports
 `FoundryClient`, `TrajectoryObserver` and public integration types. It contains the constrained
