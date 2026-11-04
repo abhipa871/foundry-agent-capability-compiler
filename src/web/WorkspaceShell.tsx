@@ -17,6 +17,7 @@ export type BenchmarkView = 'playground' | 'results' | 'history' | 'integrate';
 export type DeveloperPage =
   | 'Agent chat'
   | 'Registry'
+  | 'Task registry'
   | 'JIT compiler'
   | 'Trajectories'
   | 'Executions'
@@ -32,6 +33,7 @@ const titles: Record<WorkspacePage, string> = {
   integrate: 'API & SDK',
   'Agent chat': 'Coding-agent chat',
   Registry: 'Capabilities',
+  'Task registry': 'Capabilities',
   'JIT compiler': 'Developer console',
   Trajectories: 'Shipping trajectories',
   Executions: 'Activity',

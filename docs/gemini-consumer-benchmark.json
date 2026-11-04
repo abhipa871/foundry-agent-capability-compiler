@@ -1,0 +1,395 @@
+{
+  "capturedAt": "2026-11-04T04:23:26.166Z",
+  "complete": false,
+  "failure": "Gemini model-call budget exceeded.",
+  "model": "gemini-3.8-flash",
+  "provider": "google-gemini-api",
+  "methodology": {
+    "task": "Personal consumer order review: inspect eligibility, orders, and refund history, then recommend the appropriate next step.",
+    "compiledRegion": "The existing verified load_customer_context read capability. Gemini always performs the final assessment and response.",
+    "arms": {
+      "regular_api": "Gemini chooses among three ordinary typed read tools.",
+      "compiled_tool": "Gemini chooses one verified compiled context tool.",
+      "compiled_prefetch": "The Foundry SDK executes the verified capability before Gemini.",
+      "regular_prefetch": "Application code performs the same three reads before Gemini."
+    },
+    "trialsPerArm": 3,
+    "temperature": 0,
+    "rotatedArmOrder": true,
+    "providerReportedUsage": true,
+    "tokenDefinition": "Gemini usageMetadata.totalTokenCount summed across every generateContent response in a task; includes input, candidate, and thought tokens."
+  },
+  "candidate": {
+    "id": "88dc78e9-15f5-4df9-a185-5d965a1a6109",
+    "name": "load_customer_context",
+    "taskKind": "customer_context",
+    "version": 1,
+    "createdAt": "2026-11-04T04:20:23.479Z",
+    "status": "draft",
+    "ir": {
+      "name": "load_customer_context",
+      "taskKind": "customer_context",
+      "compilerVersion": "read-ir-v1",
+      "inputsSchemaId": "customer_input.v1",
+      "outputsSchemaId": "context.v1",
+      "nodes": [
+        {
+          "id": "crm_get_customer",
+          "opcode": "adapter.read",
+          "operation": "crm.getCustomer",
+          "args": { "customerId": { "kind": "input", "key": "customerId" } },
+          "deps": [],
+          "effect": "read",
+          "requiredScopes": ["crm:read"],
+          "outputSchemaId": "customer.v1"
+        },
+        {
+          "id": "orders_list",
+          "opcode": "adapter.read",
+          "operation": "orders.list",
+          "args": { "customerId": { "kind": "input", "key": "customerId" } },
+          "deps": [],
+          "effect": "read",
+          "requiredScopes": ["orders:read"],
+          "outputSchemaId": "orders.v1"
+        },
+        {
+          "id": "payments_refund_history",
+          "opcode": "adapter.read",
+          "operation": "payments.refundHistory",
+          "args": { "customerId": { "kind": "input", "key": "customerId" } },
+          "deps": [],
+          "effect": "read",
+          "requiredScopes": ["payments:read"],
+          "outputSchemaId": "refunds.v1"
+        },
+        {
+          "id": "context",
+          "opcode": "join",
+          "args": {
+            "crm_get_customer": { "kind": "ref", "node": "crm_get_customer", "path": "" },
+            "orders_list": { "kind": "ref", "node": "orders_list", "path": "" },
+            "payments_refund_history": {
+              "kind": "ref",
+              "node": "payments_refund_history",
+              "path": ""
+            },
+            "customer_id": { "kind": "ref", "node": "crm_get_customer", "path": "customerId" }
+          },
+          "deps": ["crm_get_customer", "orders_list", "payments_refund_history"],
+          "effect": "pure",
+          "requiredScopes": [],
+          "outputSchemaId": "context.v1"
+        }
+      ],
+      "outputNode": "context",
+      "adapterVersions": {
+        "crm.getCustomer": "1",
+        "orders.list": "1",
+        "payments.refundHistory": "1"
+      },
+      "policyVersion": "read-policy-v1",
+      "guards": {
+        "tenantId": "local-demo",
+        "principalId": "local-operator",
+        "snapshot": "fixtures-v1",
+        "maxAgeMs": 30000
+      },
+      "requiredScopes": ["crm:read", "orders:read", "payments:read"],
+      "concurrency": 3,
+      "timeoutMs": 2000,
+      "invariants": ["customer_id_matches", "tenant_matches", "snapshot_matches"],
+      "provenance": {
+        "traceIds": [
+          "f5804129-2062-4e9e-bc3d-5dead5b258a3",
+          "ef875879-42c5-47d8-b359-9b551968472d"
+        ],
+        "eventIds": [
+          "2c1275a9-7585-4869-8c3e-41faefa6d0e8",
+          "e17bde91-5dd9-4793-90d6-48f20cee4037",
+          "4fa5892c-0edc-4c82-bb6a-ae468d3ef53a",
+          "db304460-dc91-4a7f-8810-4989bc4c814d",
+          "4b8efd5e-fdc4-4f8e-b4b4-af1defa46ad6",
+          "3530e3c6-67d2-48df-8883-3044c3f417db"
+        ],
+        "exceptionEventIds": []
+      },
+      "optimizations": [
+        "extracted 3 caller parameter(s) from 2 traces",
+        "parallelized 3 independent reads at depth 0 (concurrency limit 3)"
+      ]
+    },
+    "digest": "c02c10fe72ad9e153fb15a5f3a809c4de208a2090497604eaa0e57647a63b112",
+    "report": {
+      "taskKind": "customer_context",
+      "signature": "[{\"deps\":[],\"key\":\"crm.getCustomer(customerId=input:customerId)\"},{\"deps\":[],\"key\":\"orders.list(customerId=input:customerId)\"},{\"deps\":[],\"key\":\"payments.refundHistory(customerId=input:customerId)\"}]",
+      "supportingTraceIds": [
+        "f5804129-2062-4e9e-bc3d-5dead5b258a3",
+        "ef875879-42c5-47d8-b359-9b551968472d"
+      ],
+      "parameters": [
+        {
+          "arg": "crm_get_customer.customerId",
+          "binding": "input",
+          "evidence": "tracked the task input across 2 traces (C-101, C-202)"
+        },
+        {
+          "arg": "orders_list.customerId",
+          "binding": "input",
+          "evidence": "tracked the task input across 2 traces (C-101, C-202)"
+        },
+        {
+          "arg": "payments_refund_history.customerId",
+          "binding": "input",
+          "evidence": "tracked the task input across 2 traces (C-101, C-202)"
+        }
+      ],
+      "optimizations": [
+        "extracted 3 caller parameter(s) from 2 traces",
+        "parallelized 3 independent reads at depth 0 (concurrency limit 3)"
+      ],
+      "prunedEvents": [],
+      "rejectedNodes": []
+    },
+    "checks": [],
+    "patternId": "e0aef5e9ce728885cffa3478c9e2ea66864462a553b61d407072c9134c61aaad",
+    "measurementOrigin": "observed"
+  },
+  "measured": {
+    "summary": {
+      "regular_api": {
+        "requests": 1,
+        "totalInputTokens": 3372,
+        "totalCandidateTokens": 208,
+        "totalThoughtTokens": 1813,
+        "totalCachedInputTokens": 0,
+        "totalTokens": 5393,
+        "meanTokens": 5393,
+        "providerRequests": 3,
+        "physicalReads": 4,
+        "modelVisibleToolCalls": 4,
+        "controlApiCalls": 0,
+        "successRate": 1
+      },
+      "compiled_tool": {
+        "requests": 1,
+        "totalInputTokens": 828,
+        "totalCandidateTokens": 159,
+        "totalThoughtTokens": 1410,
+        "totalCachedInputTokens": 0,
+        "totalTokens": 2397,
+        "meanTokens": 2397,
+        "providerRequests": 2,
+        "physicalReads": 3,
+        "modelVisibleToolCalls": 1,
+        "controlApiCalls": 2,
+        "successRate": 1
+      },
+      "compiled_prefetch": {
+        "requests": 1,
+        "totalInputTokens": 389,
+        "totalCandidateTokens": 137,
+        "totalThoughtTokens": 887,
+        "totalCachedInputTokens": 0,
+        "totalTokens": 1413,
+        "meanTokens": 1413,
+        "providerRequests": 1,
+        "physicalReads": 3,
+        "modelVisibleToolCalls": 0,
+        "controlApiCalls": 2,
+        "successRate": 1
+      },
+      "regular_prefetch": {
+        "requests": 1,
+        "totalInputTokens": 389,
+        "totalCandidateTokens": 141,
+        "totalThoughtTokens": 963,
+        "totalCachedInputTokens": 0,
+        "totalTokens": 1493,
+        "meanTokens": 1493,
+        "providerRequests": 1,
+        "physicalReads": 3,
+        "modelVisibleToolCalls": 0,
+        "controlApiCalls": 0,
+        "successRate": 1
+      }
+    },
+    "trials": [
+      {
+        "caseId": "C-101-complaint-1",
+        "order": ["regular_api", "compiled_tool", "compiled_prefetch", "regular_prefetch"],
+        "runs": {
+          "regular_api": {
+            "arm": "regular_api",
+            "caseId": "C-101-complaint-1",
+            "measurement": {
+              "origin": "observed",
+              "inputTokens": 3372,
+              "outputTokens": 2021,
+              "cachedInputTokens": 0,
+              "totalTokens": 5393,
+              "modelCalls": 3,
+              "toolCalls": 4,
+              "apiCalls": 3,
+              "durationMs": 29278.46119999999,
+              "costUsd": null,
+              "outcome": "success"
+            },
+            "providerUsage": {
+              "inputTokens": 3372,
+              "candidateTokens": 208,
+              "thoughtTokens": 1813,
+              "cachedInputTokens": 0,
+              "totalTokens": 5393
+            },
+            "providerRequests": 3,
+            "physicalReads": 4,
+            "controlApiCalls": 0,
+            "modelVisibleToolCalls": 4,
+            "passed": true,
+            "response": {
+              "customerId": "C-101",
+              "eligible": true,
+              "orders": [{ "id": "O-101", "daysLate": 8 }],
+              "refunds": [],
+              "selectedOrderId": "O-101",
+              "action": "refund_review",
+              "reply": "Thank you for reaching out to us. We have checked your account details and located order O-101, which is currently recorded as 8 days late. Based on our policy, your account is eligible and meets the criteria for a refund review since there are no previous refunds on record. The appropriate next step is a refund review by our support team. A representative will assess the order and follow up with you regarding the final decision. We truly appreciate your patience and understanding as we work through this process."
+            }
+          },
+          "compiled_tool": {
+            "arm": "compiled_tool",
+            "caseId": "C-101-complaint-1",
+            "measurement": {
+              "origin": "observed",
+              "inputTokens": 828,
+              "outputTokens": 1569,
+              "cachedInputTokens": 0,
+              "totalTokens": 2397,
+              "modelCalls": 2,
+              "toolCalls": 3,
+              "apiCalls": 4,
+              "durationMs": 13834.703999999998,
+              "costUsd": null,
+              "outcome": "success"
+            },
+            "providerUsage": {
+              "inputTokens": 828,
+              "candidateTokens": 159,
+              "thoughtTokens": 1410,
+              "cachedInputTokens": 0,
+              "totalTokens": 2397
+            },
+            "providerRequests": 2,
+            "physicalReads": 3,
+            "controlApiCalls": 2,
+            "modelVisibleToolCalls": 1,
+            "passed": true,
+            "response": {
+              "customerId": "C-101",
+              "eligible": true,
+              "orders": [{ "id": "O-101", "daysLate": 8 }],
+              "refunds": [],
+              "selectedOrderId": "O-101",
+              "action": "refund_review",
+              "reply": "Thank you for reaching out regarding your account. I have reviewed your account details and located order O-101, which is currently 8 days late. Because this order has been delayed for at least 7 days and there are no prior refunds recorded on your profile, the appropriate next step is a refund review. A support specialist will assess order O-101 in accordance with our policy to determine eligibility for reimbursement. We appreciate your patience while this review is completed."
+            }
+          },
+          "compiled_prefetch": {
+            "arm": "compiled_prefetch",
+            "caseId": "C-101-complaint-1",
+            "measurement": {
+              "origin": "observed",
+              "inputTokens": 389,
+              "outputTokens": 1024,
+              "cachedInputTokens": 0,
+              "totalTokens": 1413,
+              "modelCalls": 1,
+              "toolCalls": 3,
+              "apiCalls": 3,
+              "durationMs": 8154.494299999991,
+              "costUsd": null,
+              "outcome": "success"
+            },
+            "providerUsage": {
+              "inputTokens": 389,
+              "candidateTokens": 137,
+              "thoughtTokens": 887,
+              "cachedInputTokens": 0,
+              "totalTokens": 1413
+            },
+            "providerRequests": 1,
+            "physicalReads": 3,
+            "controlApiCalls": 2,
+            "modelVisibleToolCalls": 0,
+            "passed": true,
+            "response": {
+              "customerId": "C-101",
+              "eligible": true,
+              "orders": [{ "id": "O-101", "daysLate": 8 }],
+              "refunds": [],
+              "selectedOrderId": "O-101",
+              "action": "refund_review",
+              "reply": "Hello! Thank you for contacting customer support. We have reviewed your account records regarding order O-101, which is currently recorded as 8 days late. Because your account is eligible and there are no previous refund records on file, your order meets our criteria for a formal refund review. Our support team can now proceed with evaluating this request under our standard review procedures. We appreciate your patience while this matter is carefully assessed."
+            }
+          },
+          "regular_prefetch": {
+            "arm": "regular_prefetch",
+            "caseId": "C-101-complaint-1",
+            "measurement": {
+              "origin": "observed",
+              "inputTokens": 389,
+              "outputTokens": 1104,
+              "cachedInputTokens": 0,
+              "totalTokens": 1493,
+              "modelCalls": 1,
+              "toolCalls": 3,
+              "apiCalls": 1,
+              "durationMs": 7993.807000000001,
+              "costUsd": null,
+              "outcome": "success"
+            },
+            "providerUsage": {
+              "inputTokens": 389,
+              "candidateTokens": 141,
+              "thoughtTokens": 963,
+              "cachedInputTokens": 0,
+              "totalTokens": 1493
+            },
+            "providerRequests": 1,
+            "physicalReads": 3,
+            "controlApiCalls": 0,
+            "modelVisibleToolCalls": 0,
+            "passed": true,
+            "response": {
+              "customerId": "C-101",
+              "eligible": true,
+              "orders": [{ "id": "O-101", "daysLate": 8 }],
+              "refunds": [],
+              "selectedOrderId": "O-101",
+              "action": "refund_review",
+              "reply": "Hello! Thank you for reaching out regarding your account. We have reviewed your details and see order O-101, which is currently delayed by 8 days. Because your account is eligible and there are no prior refunds recorded, your request meets the criteria for a refund review under our policy. An operator will review order O-101 to determine the appropriate next steps for your compensation. We appreciate your patience while this evaluation is completed."
+            }
+          }
+        }
+      }
+    ]
+  },
+  "excludedFromMeasuredArmTotals": {
+    "setupGeminiTokens": 6203,
+    "warmupGeminiTokensByArm": {
+      "regular_api": 4131,
+      "compiled_tool": 2017,
+      "compiled_prefetch": 1042,
+      "regular_prefetch": 885
+    },
+    "smokeTestGeminiTokens": 94
+  },
+  "experimentTotals": {
+    "measuredGeminiTokens": 10696,
+    "setupGeminiTokens": 6203,
+    "warmupGeminiTokens": 8075,
+    "smokeTestGeminiTokens": 94,
+    "elapsedMs": 197958.0481
+  }
+}

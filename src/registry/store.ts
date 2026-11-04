@@ -11,6 +11,9 @@ import type { OptimizationPattern } from '../compiler/analyze.js';
 import type { IRArtifact } from '../compiler/ir.js';
 import type { StoredToolTrace } from '../exploration/tool-events.js';
 import type { ExecutionCheckpoint } from '../runtime/checkpoint.js';
+import type { TaskTrace } from '../compiler/task-ir.js';
+import type { TaskArtifact } from '../runtime/task-runtime.js';
+import type { TaskShadow } from './tasks.js';
 import type { DispatchOutcome } from '../runtime/dispatcher.js';
 import type {
   Audit,
@@ -25,6 +28,9 @@ import type {
 
 export type StoredDispatchRun = DispatchOutcome & { id: string; expiresAt?: string };
 type Records = {
+  taskTrace: TaskTrace;
+  taskArtifact: TaskArtifact;
+  taskShadow: TaskShadow;
   health: CapabilityHealth;
   telemetry: StoredTelemetry;
   shadowRun: ShadowRun;

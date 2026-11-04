@@ -3,15 +3,44 @@
 Foundry is a local prototype for turning repeated, structured AI-agent tool workflows into
 validated capabilities that can run without asking a model to plan the same reads again.
 
-The first optimization is **`load_customer_context(customerId)`**: retrieve a customer record,
-all orders, and refund history through three authorized, typed read tools. A support agent can
-then use that context to make a recommendation and write a reply. Foundry optimizes the
-retrieval region; the remaining reasoning and response generation still use the model.
+The primary SDK now accepts application-registered task and tool contracts across domains.
+The general compiler turns two compatible, provenance-bearing trajectories into a guarded DAG
+of typed reads and trusted pure computations. It does not require CRM fields or a fixed model.
+The personal departure example combines calendar, profile, travel, weather and departure-time
+calculation. Project inventory is covered by a separate cross-domain regression.
 
-**Branch: `nikil-dev`.** This branch includes the v2 compiler, optimization overlay, private
-Node SDK, contract-based execution selection, optional direct agent fallback, and live-agent
-evaluation harnesses. It is a local integration prototype, not a production SaaS service.
+**Branch: `abhi-dev`, based on `nikil-dev`.** This branch adds the general compiler/SDK, signed
+task offers, task/tool authorization, and OpenAI, Moonshot, Claude, Gemini, Grok/xAI and OpenRouter
+transports with open-ended model IDs. The original CRM UI, compiler and SDK remain compatibility
+examples. It is an integration prototype; generality does not remove permission or effect limits.
 Completed routing and selective-context held-out evaluations are retained under `docs/`.
+
+Start with [the general SDK guide](docs/general-sdk.md) and
+[the architecture decision](docs/adr/0003-general-task-contracts.md). Supported compiled effects
+are read and pure; arbitrary writes, generated code, inferred branches and checkpoint resumption
+are not implemented. Deterministic execution refers to the approved plan and pinned contracts;
+reproducible read values require a stable snapshot. Model exploration/final responses can vary.
+
+```sh
+npm run build:sdk
+npm run benchmark:departure -- --live  # Requires GEMINI_API_KEY; consumes live inference
+```
+
+The four-arm personal-task experiment compares ordinary tools, compiled tool, compiled prefetch
+and ordinary prefetch using the built SDK. It reports total tokens including reasoning, with
+setup, warmups, failures and measured tasks retained. Provider adapters other than Gemini are
+covered by protocol tests; this is not a live validation of every provider/model.
+
+The [completed departure experiment](docs/departure-experiment.md) reports all four token totals,
+setup/warmup consumption, SDK stress results and retained source fingerprints.
+
+The SDK also exposes the complete compilation lifecycle (`observe`, `compile`, `verify`, `shadow`,
+`approve`, `deploy`, `revoke`). Run `npm run benchmark:travel-day -- --live` after `npm run build:sdk`
+to compare a 13-operation, six-stage travel workflow through the built SDK. This uses live Gemini
+inference with synthetic trip data. See [the SDK lifecycle example](docs/general-sdk.md#compile-and-manage-capabilities-through-the-sdk).
+
+[The travel-day results](docs/travel-day-experiment.md) include all four measured token totals,
+full consumption accounting and the SDK lifecycle/concurrency checks.
 
 ## Quick start
 
@@ -22,13 +51,13 @@ Completed routing and selective-context held-out evaluations are retained under 
   The compiler fixture demo and normal tests do not require live model inference.
 
 ```sh
-git clone --branch nikil-dev https://github.com/abhipa871/foundry-agent-capability-compiler.git
+git clone --branch abhi-dev https://github.com/abhipa871/foundry-agent-capability-compiler.git
 cd foundry-agent-capability-compiler
 npm ci
 npm run dev
 ```
 
-If you already have the repository, switch to `nikil-dev` before installing and starting it.
+If you already have the repository, switch to `abhi-dev` before installing and starting it.
 
 - **UI:** <http://127.0.0.1:5173>
 - **API:** <http://127.0.0.1:3001>
@@ -43,8 +72,11 @@ measurements are fixtures. Live-provider benchmarks refuse dry-run mode.
 The UI opens to a prompt playground with paired normal-agent/Foundry execution, token and cache
 breakdowns, latency, actual reads, correctness checks, traces, JSON exports and session history.
 The **API & SDK** section explains integration with your existing agent and includes an
-architecture diagram and copyable example. **Developer console** provides a guided
-**Build → Validate → Run** workflow. The sidebar has five main destinations; advanced and legacy
+architecture diagram and a generic SDK lifecycle example. **Developer console** provides a guided
+**Evidence → Review → Run → Registry** workflow for registered tasks. Import SDK trajectories,
+compile, verify, compare native shadows, approve, deploy and revoke individual versions. Task
+inputs come from their schemas. Local travel/departure fixtures require no model calls. See the
+[console guide](docs/task-console.md). The sidebar has five main destinations; advanced and legacy
 tools are grouped in a contextual menu. All views share one design, and switching views preserves
 prompt drafts, benchmark history and compiler inputs.
 
@@ -132,7 +164,7 @@ are in [selective context](docs/selective-context.md).
 
 ## Try the compiler demo
 
-Open **JIT compiler** in the UI:
+Open **Developer console → Legacy CRM compiler** in the UI for the compatibility demo:
 
 1. **Load sample traces** for two customers, with different call ordering, exploration and a
    duplicated read.

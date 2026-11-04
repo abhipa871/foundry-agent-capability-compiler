@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from 'react';
 import {
   Activity,
   ArrowDownToLine,
@@ -35,7 +44,6 @@ import {
 } from 'lucide-react';
 import type { Capability, CodingCapability, CodingAgentSession, Run, State } from '../domain';
 import { CodingRegistryPanel } from './CodingRegistryPanel';
-import { JitPanel } from './JitPanel';
 import { BenchmarkWorkspace } from './BenchmarkWorkspace';
 import { DeveloperNavigation } from './DeveloperNavigation';
 import {
@@ -47,6 +55,10 @@ import {
 } from './WorkspaceShell';
 
 type Page = 'Benchmarks' | DeveloperPage;
+const GeneralTaskPanel = lazy(() =>
+  import('./GeneralTaskPanel').then((module) => ({ default: module.GeneralTaskPanel })),
+);
+const JitPanel = lazy(() => import('./JitPanel').then((module) => ({ default: module.JitPanel })));
 type Modal = 'capture' | 'approve' | 'reject' | 'run' | null;
 const captureTabs = ['Demo workflow', 'Normalized JSON', 'Raw event log'] as const;
 type CaptureTab = (typeof captureTabs)[number];
@@ -124,8 +136,12 @@ export function App() {
   const [page, setPage] = useState<Page>('Benchmarks');
   const [benchmarkView, setBenchmarkView] = useState<BenchmarkView>('playground');
   const [benchmarkRunCount, setBenchmarkRunCount] = useState(0);
+  const [taskConsoleVisited, setTaskConsoleVisited] = useState(false);
+  const [legacyOpened, setLegacyOpened] = useState(false);
   const notify = useCallback((text: string, error = false) => setNotice({ text, error }), []);
   function navigate(destination: WorkspacePage) {
+    if (destination === 'JIT compiler' || destination === 'Task registry')
+      setTaskConsoleVisited(true);
     if (isBenchmarkView(destination)) {
       setBenchmarkView(destination);
       setPage('Benchmarks');
@@ -364,7 +380,8 @@ export function App() {
                   'Agent chat':
                     'Ask a coding agent to complete a task, record its trajectory, and compare deployment token usage.',
                   'JIT compiler':
-                    'Build a reusable capability, validate its behavior, then test it safely.',
+                    'Compile registered task contracts, verify the exact artifact, then approve and deploy it.',
+                  'Task registry': 'Review generic capability versions and their deployment state.',
                   Trajectories:
                     'Inspect recorded shipping-demo trajectories and their source evidence.',
                   Executions:
@@ -382,7 +399,7 @@ export function App() {
               Open playground
               <ArrowRight size={14} />
             </button>
-            {page !== 'JIT compiler' && (
+            {page !== 'JIT compiler' && page !== 'Task registry' && (
               <button
                 className="bw-button bw-button-primary"
                 onClick={() => void openCapture()}
@@ -411,7 +428,7 @@ export function App() {
             <section
               className="metrics"
               aria-label="Workspace metrics"
-              hidden={page === 'JIT compiler'}
+              hidden={page === 'JIT compiler' || page === 'Task registry'}
             >
               <Metric
                 title="Registered versions"
@@ -1366,8 +1383,38 @@ export function App() {
                 </div>
               </section>
             )}
-            <div hidden={page !== 'JIT compiler'}>
-              <JitPanel notify={notify} />
+            <div hidden={page !== 'JIT compiler' && page !== 'Task registry'}>
+              <Suspense fallback={<div className="loading">Loading task console…</div>}>
+                {taskConsoleVisited && (
+                  <GeneralTaskPanel
+                    notify={notify}
+                    mode={
+                      page === 'Task registry'
+                        ? 'registry'
+                        : page === 'JIT compiler'
+                          ? 'workflow'
+                          : undefined
+                    }
+                  />
+                )}
+              </Suspense>
+              <div hidden={page !== 'JIT compiler'}>
+                <details
+                  className="task-legacy"
+                  onToggle={(event) => {
+                    if (event.currentTarget.open) setLegacyOpened(true);
+                  }}
+                >
+                  <summary>Legacy CRM compiler</summary>
+                  <p className="task-legacy-note">
+                    Compatibility demo for customer_context. The general task compiler above uses
+                    registered contracts and a separate approval and deployment flow.
+                  </p>
+                  <Suspense fallback={<div className="loading">Loading legacy demo…</div>}>
+                    {legacyOpened && <JitPanel notify={notify} />}
+                  </Suspense>
+                </details>
+              </div>
             </div>
             {page === 'Audit log' && (
               <section className="panel">

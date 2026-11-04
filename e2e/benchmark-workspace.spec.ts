@@ -14,10 +14,10 @@ test('one persistent sidebar connects benchmarks and developer tools', async ({ 
       .getByRole('button', { name: 'Audit log' }),
   ).toHaveCount(0);
   await page.getByRole('button', { name: 'Developer console', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Capability workflow' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Compile and deploy a tool' })).toBeVisible();
   await expect(
-    page.getByRole('navigation', { name: 'Capability steps' }).getByRole('button'),
-  ).toHaveCount(3);
+    page.getByRole('navigation', { name: 'General task stages' }).getByRole('button'),
+  ).toHaveCount(4);
   await page.screenshot({
     animations: 'disabled',
     path: 'test-results/developer-console-overview.png',
@@ -27,19 +27,24 @@ test('one persistent sidebar connects benchmarks and developer tools', async ({ 
     page.getByRole('button', { name: 'Developer console', exact: true }),
   ).toHaveAttribute('aria-current', 'page');
   expect(await sidebar!.evaluate((node) => node.isConnected)).toBe(true);
-  await page.getByRole('button', { name: 'Run', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Dispatch task', exact: true })).toBeDisabled();
-  await page.getByLabel('Customer id').fill('C-202');
+  await page.getByLabel('Registered task').selectOption('travel_day');
+  await page
+    .getByRole('navigation', { name: 'General task stages' })
+    .getByRole('button', { name: /Run/ })
+    .click();
+  await expect(page.getByRole('button', { name: 'Run deployed tool', exact: true })).toBeDisabled();
+  await page.getByLabel('tripId').fill('trip-c');
   await page.getByRole('button', { name: 'Agent playground', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Make every token count.' })).toBeVisible();
   await page.getByRole('button', { name: 'API & SDK', exact: true }).click();
-  await page.getByRole('button', { name: 'Open developer console', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Capability workflow' })).toBeVisible();
-  await expect(page.getByLabel('Customer id')).toHaveValue('C-202');
-  await expect(page.getByRole('button', { name: 'Run', exact: true })).toHaveAttribute(
-    'aria-current',
-    'step',
-  );
+  await page.getByRole('button', { name: 'Open compiler console', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Compile and deploy a tool' })).toBeVisible();
+  await expect(page.getByLabel('tripId')).toHaveValue('trip-c');
+  await expect(
+    page
+      .getByRole('navigation', { name: 'General task stages' })
+      .getByRole('button', { name: /Run/ }),
+  ).toHaveAttribute('aria-current', 'step');
   expect(await sidebar!.evaluate((node) => node.isConnected)).toBe(true);
   await page.screenshot({
     animations: 'disabled',
@@ -69,11 +74,11 @@ test('advanced tools remain discoverable without occupying sidebar entries', asy
   await page.getByRole('button', { name: 'Activity', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Execution history' })).toBeVisible();
   await page.getByRole('button', { name: 'Workflow', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Capability workflow' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Compile and deploy a tool' })).toBeVisible();
 });
 
 test('a rejected compilation stays in Build and does not expose approval', async ({ page }) => {
-  await page.route('**/api/v2/compile', (route) =>
+  await page.route('**/api/v2/tasks/compile', (route) =>
     route.fulfill({
       status: 409,
       contentType: 'application/json',
@@ -82,14 +87,18 @@ test('a rejected compilation stays in Build and does not expose approval', async
   );
   await page.goto('/');
   await page.getByRole('button', { name: 'Developer console', exact: true }).click();
+  await page.getByLabel('Registered task').selectOption('travel_day');
+  await page.getByRole('button', { name: 'Load fixture evidence' }).click();
+  await expect(page.getByText('2 trajectories selected', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Compile candidate', exact: true }).click();
   await expect(
     page.getByText('Compilation rejected for this regression check.', { exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Build', exact: true })).toHaveAttribute(
-    'aria-current',
-    'step',
-  );
+  await expect(
+    page
+      .getByRole('navigation', { name: 'General task stages' })
+      .getByRole('button', { name: /Evidence/ }),
+  ).toHaveAttribute('aria-current', 'step');
   await expect(page.getByRole('button', { name: 'Approve version', exact: true })).toHaveCount(0);
 });
 
@@ -126,7 +135,7 @@ test('compare a task, inspect its trace, export and discover the SDK', async ({ 
     fullPage: true,
   });
   await page.getByRole('button', { name: 'Developer console', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Capability workflow' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Compile and deploy a tool' })).toBeVisible();
   await page.getByRole('button', { name: 'Agent playground', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Execution comparison' })).toBeVisible();
   await expect(page.getByLabel('Your prompt')).toHaveValue(
@@ -137,10 +146,10 @@ test('compare a task, inspect its trace, export and discover the SDK', async ({ 
   await expect(page.getByRole('heading', { name: 'Execution comparison' })).toBeVisible();
   await page.getByRole('button', { name: 'API & SDK' }).click();
   await expect(
-    page.getByRole('heading', { name: 'Your agent. Powered by Foundry.' }),
+    page.getByRole('heading', { name: 'An execution layer. Your agent stays in control.' }),
   ).toBeVisible();
   await expect(page.getByLabel('SDK architecture')).toBeVisible();
-  await expect(page.locator('pre')).toContainText('FoundryClient');
+  await expect(page.locator('pre:visible')).toContainText('FoundryClient');
   await page.screenshot({
     animations: 'disabled',
     path: 'test-results/benchmark-integration.png',
@@ -169,7 +178,7 @@ test('mobile workspace remains usable without horizontal page overflow', async (
     true,
   );
   await page.getByRole('button', { name: 'Developer console', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Capability workflow' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Compile and deploy a tool' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );

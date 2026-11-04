@@ -1,0 +1,1893 @@
+{
+  "complete": true,
+  "capturedAt": "2026-11-04T04:49:57.941Z",
+  "branch": "abhi-dev",
+  "provider": "gemini",
+  "model": "gemini-3.8-flash",
+  "methodology": {
+    "task": "Personal next-appointment departure and umbrella plan.",
+    "inputs": [
+      {
+        "userId": "alice",
+        "now": "2026-11-03T10:00:00-05:00"
+      },
+      {
+        "userId": "bob",
+        "now": "2026-11-03T10:00:00-05:00"
+      },
+      {
+        "userId": "carol",
+        "now": "2026-11-03T10:00:00-05:00"
+      }
+    ],
+    "arms": ["regular_api", "compiled_tool", "compiled_prefetch", "regular_prefetch"],
+    "repeatsPerInput": 2,
+    "armOrder": "rotated",
+    "compiledRegion": "Five registered read/pure tools, explicit value provenance, verified and approved exact IR digest.",
+    "finalAnswer": "Gemini generates the same four evidence fields in every arm.",
+    "data": "Synthetic personal fixtures; live Gemini inference. No real calendar, maps or weather accounts.",
+    "tokenDefinition": "Provider usage totals summed across every response including reasoning, retries requested by the model and failures with reported usage. Missing provider usage remains null.",
+    "sdk": "Built dist-sdk package loaded dynamically; signed capability offers over loopback HTTP.",
+    "limitations": [
+      "Small controlled sample, not a production load or cross-model benchmark.",
+      "All contexts have a fixed snapshot. External live-data outputs depend on their providers.",
+      "Only Gemini was exercised live. Other provider adapters have mocked protocol tests."
+    ]
+  },
+  "artifactId": "58fbbc61-cbe9-4c94-9352-67fb89928f2d",
+  "summary": {
+    "regular_api": {
+      "tasks": 6,
+      "passed": 6,
+      "inputTokens": 13922,
+      "outputTokens": 3502,
+      "cachedInputTokens": 0,
+      "totalTokens": 17424,
+      "reasoningTokens": 2914,
+      "meanTokens": 2904,
+      "modelCalls": 24,
+      "physicalToolCalls": 30,
+      "sdkCalls": 0
+    },
+    "compiled_tool": {
+      "tasks": 6,
+      "passed": 6,
+      "inputTokens": 4572,
+      "outputTokens": 2111,
+      "cachedInputTokens": 0,
+      "totalTokens": 6683,
+      "reasoningTokens": 1740,
+      "meanTokens": 1113.8333333333333,
+      "modelCalls": 12,
+      "physicalToolCalls": 30,
+      "sdkCalls": 6
+    },
+    "compiled_prefetch": {
+      "tasks": 6,
+      "passed": 6,
+      "inputTokens": 2302,
+      "outputTokens": 1942,
+      "cachedInputTokens": 0,
+      "totalTokens": 4244,
+      "reasoningTokens": 1654,
+      "meanTokens": 707.3333333333334,
+      "modelCalls": 6,
+      "physicalToolCalls": 30,
+      "sdkCalls": 6
+    },
+    "regular_prefetch": {
+      "tasks": 6,
+      "passed": 6,
+      "inputTokens": 2302,
+      "outputTokens": 2310,
+      "cachedInputTokens": 0,
+      "totalTokens": 4612,
+      "reasoningTokens": 2024,
+      "meanTokens": 768.6666666666666,
+      "modelCalls": 6,
+      "physicalToolCalls": 30,
+      "sdkCalls": 0
+    }
+  },
+  "phaseUsage": {
+    "setup": {
+      "inputTokens": 4708,
+      "outputTokens": 1430,
+      "cachedInputTokens": 0,
+      "totalTokens": 6138,
+      "reasoningTokens": 1234
+    },
+    "warmup": {
+      "inputTokens": 3576,
+      "outputTokens": 1788,
+      "cachedInputTokens": 0,
+      "totalTokens": 5364,
+      "reasoningTokens": 1532
+    },
+    "measurement": {
+      "inputTokens": 23098,
+      "outputTokens": 9865,
+      "cachedInputTokens": 0,
+      "totalTokens": 32963,
+      "reasoningTokens": 8332
+    }
+  },
+  "experimentTotal": {
+    "inputTokens": 31382,
+    "outputTokens": 13083,
+    "cachedInputTokens": 0,
+    "totalTokens": 44465,
+    "reasoningTokens": 11098
+  },
+  "elapsedMs": 244497.5558,
+  "stress": [
+    {
+      "name": "packaged_sdk_24_concurrent",
+      "requests": 24,
+      "modelCalls": 0,
+      "passed": true
+    },
+    {
+      "name": "revocation_handoff",
+      "requests": 1,
+      "modelCalls": 0,
+      "passed": true
+    }
+  ],
+  "runs": [
+    {
+      "phase": "warmup",
+      "arm": "regular_api",
+      "caseId": "alice",
+      "passed": true,
+      "usage": {
+        "inputTokens": 2070,
+        "outputTokens": 342,
+        "cachedInputTokens": 0,
+        "totalTokens": 2412,
+        "reasoningTokens": 244
+      },
+      "modelCalls": 4,
+      "modelToolCalls": 5,
+      "physicalToolCalls": 5,
+      "sdkCalls": 0,
+      "latencyMs": 15027.448199999999,
+      "answer": {
+        "eventId": "dentist-1",
+        "departureTime": "2026-11-03T19:47:00.000Z",
+        "travelMinutes": 28,
+        "bringUmbrella": true
+      }
+    },
+    {
+      "phase": "warmup",
+      "arm": "compiled_tool",
+      "caseId": "alice",
+      "passed": true,
+      "usage": {
+        "inputTokens": 740,
+        "outputTokens": 510,
+        "cachedInputTokens": 0,
+        "totalTokens": 1250,
+        "reasoningTokens": 448
+      },
+      "modelCalls": 2,
+      "modelToolCalls": 1,
+      "physicalToolCalls": 5,
+      "sdkCalls": 1,
+      "latencyMs": 5930.2549,
+      "answer": {
+        "eventId": "dentist-1",
+        "departureTime": "2026-11-03T19:47:00.000Z",
+        "travelMinutes": 28,
+        "bringUmbrella": true
+      }
+    },
+    {
+      "phase": "warmup",
+      "arm": "compiled_prefetch",
+      "caseId": "alice",
+      "passed": true,
+      "usage": {
+        "inputTokens": 383,
+        "outputTokens": 546,
+        "cachedInputTokens": 0,
+        "totalTokens": 929,
+        "reasoningTokens": 498
+      },
+      "modelCalls": 1,
+      "modelToolCalls": 0,
+      "physicalToolCalls": 5,
+      "sdkCalls": 1,
+      "latencyMs": 5333.419399999999,
+      "answer": {
+        "eventId": "dentist-1",
+        "departureTime": "2026-11-03T19:47:00.000Z",
+        "travelMinutes": 28,
+        "bringUmbrella": true
+      }
+    },
+    {
+      "phase": "warmup",
+      "arm": "regular_prefetch",
+      "caseId": "alice",
+      "passed": true,
+      "usage": {
+        "inputTokens": 383,
+        "outputTokens": 390,
+        "cachedInputTokens": 0,
+        "totalTokens": 773,
+        "reasoningTokens": 342
+      },
+      "modelCalls": 1,
+      "modelToolCalls": 0,
+      "physicalToolCalls": 5,
+      "sdkCalls": 0,
+      "latencyMs": 5571.3505000000005,
+      "answer": {
+        "eventId": "dentist-1",
+        "departureTime": "2026-11-03T19:47:00.000Z",
+        "travelMinutes": 28,
+        "bringUmbrella": true
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_api",
+      "caseId": "alice",
+      "passed": true,
+      "usage": {
+        "inputTokens": 2124,
+        "outputTokens": 485,
+        "cachedInputTokens": 0,
+        "totalTokens": 2609,
+        "reasoningTokens": 387
+      },
+      "modelCalls": 4,
+      "modelToolCalls": 5,
+      "physicalToolCalls": 5,
+      "sdkCalls": 0,
+      "latencyMs": 11006.020300000004,
+      "answer": {
+        "eventId": "dentist-1",
+        "departureTime": "2026-11-03T19:47:00.000Z",
+        "travelMinutes": 28,
+        "bringUmbrella": true
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "alice",
+      "passed": true,
+      "usage": {
+        "inputTokens": 766,
+        "outputTokens": 365,
+        "cachedInputTokens": 0,
+        "totalTokens": 1131,
+        "reasoningTokens": 303
+      },
+      "modelCalls": 2,
+      "modelToolCalls": 1,
+      "physicalToolCalls": 5,
+      "sdkCalls": 1,
+      "latencyMs": 5417.9035,
+      "answer": {
+        "eventId": "dentist-1",
+        "departureTime": "2026-11-03T19:47:00.000Z",
+        "travelMinutes": 28,
+        "bringUmbrella": true
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_prefetch",
+      "caseId": "alice",
+      "passed": true,
+      "usage": {
+        "inputTokens": 383,
+        "outputTokens": 401,
+        "cachedInputTokens": 0,
+        "totalTokens": 784,
+        "reasoningTokens": 353
+      },
+      "modelCalls": 1,
+      "modelToolCalls": 0,
+      "physicalToolCalls": 5,
+      "sdkCalls": 1,
+      "latencyMs": 4160.882800000007,
+      "answer": {
+        "eventId": "dentist-1",
+        "departureTime": "2026-11-03T19:47:00.000Z",
+        "travelMinutes": 28,
+        "bringUmbrella": true
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_prefetch",
+      "caseId": "alice",
+      "passed": true,
+      "usage": {
+        "inputTokens": 383,
+        "outputTokens": 378,
+        "cachedInputTokens": 0,
+        "totalTokens": 761,
+        "reasoningTokens": 330
+      },
+      "modelCalls": 1,
+      "modelToolCalls": 0,
+      "physicalToolCalls": 5,
+      "sdkCalls": 0,
+      "latencyMs": 4702.915500000003,
+      "answer": {
+        "eventId": "dentist-1",
+        "departureTime": "2026-11-03T19:47:00.000Z",
+        "travelMinutes": 28,
+        "bringUmbrella": true
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "bob",
+      "passed": true,
+      "usage": {
+        "inputTokens": 750,
+        "outputTokens": 391,
+        "cachedInputTokens": 0,
+        "totalTokens": 1141,
+        "reasoningTokens": 329
+      },
+      "modelCalls": 2,
+      "modelToolCalls": 1,
+      "physicalToolCalls": 5,
+      "sdkCalls": 1,
+      "latencyMs": 5452.2399000000005,
+      "answer": {
+        "eventId": "library-2",
+        "departureTime": "2026-11-03T20:33:00.000Z",
+        "travelMinutes": 12,
+        "bringUmbrella": false
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_prefetch",
+      "caseId": "bob",
+      "passed": true,
+      "usage": {
+        "inputTokens": 381,
+        "outputTokens": 296,
+        "cachedInputTokens": 0,
+        "totalTokens": 677,
+        "reasoningTokens": 248
+      },
+      "modelCalls": 1,
+      "modelToolCalls": 0,
+      "physicalToolCalls": 5,
+      "sdkCalls": 1,
+      "latencyMs": 3568.0448999999935,
+      "answer": {
+        "eventId": "library-2",
+        "departureTime": "2026-11-03T20:33:00.000Z",
+        "travelMinutes": 12,
+        "bringUmbrella": false
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_prefetch",
+      "caseId": "bob",
+      "passed": true,
+      "usage": {
+        "inputTokens": 381,
+        "outputTokens": 299,
+        "cachedInputTokens": 0,
+        "totalTokens": 680,
+        "reasoningTokens": 251
+      },
+      "modelCalls": 1,
+      "modelToolCalls": 0,
+      "physicalToolCalls": 5,
+      "sdkCalls": 0,
+      "latencyMs": 3497.970300000001,
+      "answer": {
+        "eventId": "library-2",
+        "departureTime": "2026-11-03T20:33:00.000Z",
+        "travelMinutes": 12,
+        "bringUmbrella": false
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_api",
+      "caseId": "bob",
+      "passed": true,
+      "usage": {
+        "inputTokens": 2404,
+        "outputTokens": 566,
+        "cachedInputTokens": 0,
+        "totalTokens": 2970,
+        "reasoningTokens": 468
+      },
+      "modelCalls": 4,
+      "modelToolCalls": 5,
+      "physicalToolCalls": 5,
+      "sdkCalls": 0,
+      "latencyMs": 39658.88579999999,
+      "answer": {
+        "eventId": "library-2",
+        "departureTime": "2026-11-03T20:33:00.000Z",
+        "travelMinutes": 12,
+        "bringUmbrella": false
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_prefetch",
+      "caseId": "carol",
+      "passed": true,
+      "usage": {
+        "inputTokens": 387,
+        "outputTokens": 315,
+        "cachedInputTokens": 0,
+        "totalTokens": 702,
+        "reasoningTokens": 267
+      },
+      "modelCalls": 1,
+      "modelToolCalls": 0,
+      "physicalToolCalls": 5,
+      "sdkCalls": 1,
+      "latencyMs": 3948.827400000009,
+      "answer": {
+        "eventId": "class-3",
+        "departureTime": "2026-11-03T22:19:00.000Z",
+        "travelMinutes": 41,
+        "bringUmbrella": true
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_prefetch",
+      "caseId": "carol",
+      "passed": true,
+      "usage": {
+        "inputTokens": 387,
+        "outputTokens": 379,
+        "cachedInputTokens": 0,
+        "totalTokens": 766,
+        "reasoningTokens": 332
+      },
+      "modelCalls": 1,
+      "modelToolCalls": 0,
+      "physicalToolCalls": 5,
+      "sdkCalls": 0,
+      "latencyMs": 3871.0880999999936,
+      "answer": {
+        "eventId": "class-3",
+        "departureTime": "2026-11-03T22:19:00.000Z",
+        "travelMinutes": 41,
+        "bringUmbrella": true
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_api",
+      "caseId": "carol",
+      "passed": true,
+      "usage": {
+        "inputTokens": 2211,
+        "outputTokens": 809,
+        "cachedInputTokens": 0,
+        "totalTokens": 3020,
+        "reasoningTokens": 711
+      },
+      "modelCalls": 4,
+      "modelToolCalls": 5,
+      "physicalToolCalls": 5,
+      "sdkCalls": 0,
+      "latencyMs": 13609.582800000004,
+      "answer": {
+        "eventId": "class-3",
+        "departureTime": "2026-11-03T22:19:00.000Z",
+        "travelMinutes": 41,
+        "bringUmbrella": true
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "carol",
+      "passed": true,
+      "usage": {
+        "inputTokens": 765,
+        "outputTokens": 451,
+        "cachedInputTokens": 0,
+        "totalTokens": 1216,
+        "reasoningTokens": 389
+      },
+      "modelCalls": 2,
+      "modelToolCalls": 1,
+      "physicalToolCalls": 5,
+      "sdkCalls": 1,
+      "latencyMs": 9599.756500000018,
+      "answer": {
+        "eventId": "class-3",
+        "departureTime": "2026-11-03T22:19:00.000Z",
+        "travelMinutes": 41,
+        "bringUmbrella": true
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_prefetch",
+      "caseId": "alice",
+      "passed": true,
+      "usage": {
+        "inputTokens": 383,
+        "outputTokens": 503,
+        "cachedInputTokens": 0,
+        "totalTokens": 886,
+        "reasoningTokens": 455
+      },
+      "modelCalls": 1,
+      "modelToolCalls": 0,
+      "physicalToolCalls": 5,
+      "sdkCalls": 0,
+      "latencyMs": 5281.722799999989,
+      "answer": {
+        "eventId": "dentist-1",
+        "departureTime": "2026-11-03T19:47:00.000Z",
+        "travelMinutes": 28,
+        "bringUmbrella": true
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_api",
+      "caseId": "alice",
+      "passed": true,
+      "usage": {
+        "inputTokens": 2366,
+        "outputTokens": 437,
+        "cachedInputTokens": 0,
+        "totalTokens": 2803,
+        "reasoningTokens": 339
+      },
+      "modelCalls": 4,
+      "modelToolCalls": 5,
+      "physicalToolCalls": 5,
+      "sdkCalls": 0,
+      "latencyMs": 8729.5245,
+      "answer": {
+        "eventId": "dentist-1",
+        "departureTime": "2026-11-03T19:47:00.000Z",
+        "travelMinutes": 28,
+        "bringUmbrella": true
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "alice",
+      "passed": true,
+      "usage": {
+        "inputTokens": 766,
+        "outputTokens": 312,
+        "cachedInputTokens": 0,
+        "totalTokens": 1078,
+        "reasoningTokens": 250
+      },
+      "modelCalls": 2,
+      "modelToolCalls": 1,
+      "physicalToolCalls": 5,
+      "sdkCalls": 1,
+      "latencyMs": 4587.13440000001,
+      "answer": {
+        "eventId": "dentist-1",
+        "departureTime": "2026-11-03T19:47:00.000Z",
+        "travelMinutes": 28,
+        "bringUmbrella": true
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_prefetch",
+      "caseId": "alice",
+      "passed": true,
+      "usage": {
+        "inputTokens": 383,
+        "outputTokens": 313,
+        "cachedInputTokens": 0,
+        "totalTokens": 696,
+        "reasoningTokens": 265
+      },
+      "modelCalls": 1,
+      "modelToolCalls": 0,
+      "physicalToolCalls": 5,
+      "sdkCalls": 1,
+      "latencyMs": 3890.782200000016,
+      "answer": {
+        "eventId": "dentist-1",
+        "departureTime": "2026-11-03T19:47:00.000Z",
+        "travelMinutes": 28,
+        "bringUmbrella": true
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_api",
+      "caseId": "bob",
+      "passed": true,
+      "usage": {
+        "inputTokens": 2407,
+        "outputTokens": 611,
+        "cachedInputTokens": 0,
+        "totalTokens": 3018,
+        "reasoningTokens": 513
+      },
+      "modelCalls": 4,
+      "modelToolCalls": 5,
+      "physicalToolCalls": 5,
+      "sdkCalls": 0,
+      "latencyMs": 9711.330300000001,
+      "answer": {
+        "eventId": "library-2",
+        "departureTime": "2026-11-03T20:33:00.000Z",
+        "travelMinutes": 12,
+        "bringUmbrella": false
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "bob",
+      "passed": true,
+      "usage": {
+        "inputTokens": 767,
+        "outputTokens": 296,
+        "cachedInputTokens": 0,
+        "totalTokens": 1063,
+        "reasoningTokens": 235
+      },
+      "modelCalls": 2,
+      "modelToolCalls": 1,
+      "physicalToolCalls": 5,
+      "sdkCalls": 1,
+      "latencyMs": 5860.554699999979,
+      "answer": {
+        "eventId": "library-2",
+        "departureTime": "2026-11-03T20:33:00.000Z",
+        "travelMinutes": 12,
+        "bringUmbrella": false
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_prefetch",
+      "caseId": "bob",
+      "passed": true,
+      "usage": {
+        "inputTokens": 381,
+        "outputTokens": 312,
+        "cachedInputTokens": 0,
+        "totalTokens": 693,
+        "reasoningTokens": 264
+      },
+      "modelCalls": 1,
+      "modelToolCalls": 0,
+      "physicalToolCalls": 5,
+      "sdkCalls": 1,
+      "latencyMs": 4466.380600000004,
+      "answer": {
+        "eventId": "library-2",
+        "departureTime": "2026-11-03T20:33:00.000Z",
+        "travelMinutes": 12,
+        "bringUmbrella": false
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_prefetch",
+      "caseId": "bob",
+      "passed": true,
+      "usage": {
+        "inputTokens": 381,
+        "outputTokens": 366,
+        "cachedInputTokens": 0,
+        "totalTokens": 747,
+        "reasoningTokens": 318
+      },
+      "modelCalls": 1,
+      "modelToolCalls": 0,
+      "physicalToolCalls": 5,
+      "sdkCalls": 0,
+      "latencyMs": 3140.6108999999997,
+      "answer": {
+        "eventId": "library-2",
+        "departureTime": "2026-11-03T20:33:00.000Z",
+        "travelMinutes": 12,
+        "bringUmbrella": false
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "carol",
+      "passed": true,
+      "usage": {
+        "inputTokens": 758,
+        "outputTokens": 296,
+        "cachedInputTokens": 0,
+        "totalTokens": 1054,
+        "reasoningTokens": 234
+      },
+      "modelCalls": 2,
+      "modelToolCalls": 1,
+      "physicalToolCalls": 5,
+      "sdkCalls": 1,
+      "latencyMs": 4195.697500000009,
+      "answer": {
+        "eventId": "class-3",
+        "departureTime": "2026-11-03T22:19:00.000Z",
+        "travelMinutes": 41,
+        "bringUmbrella": true
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_prefetch",
+      "caseId": "carol",
+      "passed": true,
+      "usage": {
+        "inputTokens": 387,
+        "outputTokens": 305,
+        "cachedInputTokens": 0,
+        "totalTokens": 692,
+        "reasoningTokens": 257
+      },
+      "modelCalls": 1,
+      "modelToolCalls": 0,
+      "physicalToolCalls": 5,
+      "sdkCalls": 1,
+      "latencyMs": 10110.929700000008,
+      "answer": {
+        "eventId": "class-3",
+        "departureTime": "2026-11-03T22:19:00.000Z",
+        "travelMinutes": 41,
+        "bringUmbrella": true
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_prefetch",
+      "caseId": "carol",
+      "passed": true,
+      "usage": {
+        "inputTokens": 387,
+        "outputTokens": 385,
+        "cachedInputTokens": 0,
+        "totalTokens": 772,
+        "reasoningTokens": 338
+      },
+      "modelCalls": 1,
+      "modelToolCalls": 0,
+      "physicalToolCalls": 5,
+      "sdkCalls": 0,
+      "latencyMs": 3397.635799999989,
+      "answer": {
+        "eventId": "class-3",
+        "departureTime": "2026-11-03T22:19:00.000Z",
+        "travelMinutes": 41,
+        "bringUmbrella": true
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_api",
+      "caseId": "carol",
+      "passed": true,
+      "usage": {
+        "inputTokens": 2410,
+        "outputTokens": 594,
+        "cachedInputTokens": 0,
+        "totalTokens": 3004,
+        "reasoningTokens": 496
+      },
+      "modelCalls": 4,
+      "modelToolCalls": 5,
+      "physicalToolCalls": 5,
+      "sdkCalls": 0,
+      "latencyMs": 13284.573499999999,
+      "answer": {
+        "eventId": "class-3",
+        "departureTime": "2026-11-03T22:19:00.000Z",
+        "travelMinutes": 41,
+        "bringUmbrella": true
+      }
+    }
+  ],
+  "ledger": [
+    {
+      "phase": "setup",
+      "caseId": "alice",
+      "event": {
+        "usage": {
+          "inputTokens": 379,
+          "outputTokens": 166,
+          "cachedInputTokens": 0,
+          "totalTokens": 545,
+          "reasoningTokens": 146
+        },
+        "latencyMs": 2631.2853,
+        "status": "success",
+        "toolNames": ["calendar_next", "profile_origin"]
+      }
+    },
+    {
+      "phase": "setup",
+      "caseId": "alice",
+      "event": {
+        "usage": {
+          "inputTokens": 603,
+          "outputTokens": 70,
+          "cachedInputTokens": 0,
+          "totalTokens": 673,
+          "reasoningTokens": 50
+        },
+        "latencyMs": 2434.6015,
+        "status": "success",
+        "toolNames": ["route_eta", "weather_forecast"]
+      }
+    },
+    {
+      "phase": "setup",
+      "caseId": "alice",
+      "event": {
+        "usage": {
+          "inputTokens": 685,
+          "outputTokens": 35,
+          "cachedInputTokens": 0,
+          "totalTokens": 720,
+          "reasoningTokens": 25
+        },
+        "latencyMs": 4251.8989,
+        "status": "success",
+        "toolNames": ["departure_calculate"]
+      }
+    },
+    {
+      "phase": "setup",
+      "caseId": "alice",
+      "event": {
+        "usage": {
+          "inputTokens": 714,
+          "outputTokens": 553,
+          "cachedInputTokens": 0,
+          "totalTokens": 1267,
+          "reasoningTokens": 505
+        },
+        "latencyMs": 5312.6582,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "setup",
+      "caseId": "bob",
+      "event": {
+        "usage": {
+          "inputTokens": 379,
+          "outputTokens": 161,
+          "cachedInputTokens": 0,
+          "totalTokens": 540,
+          "reasoningTokens": 141
+        },
+        "latencyMs": 2741.0822000000007,
+        "status": "success",
+        "toolNames": ["calendar_next", "profile_origin"]
+      }
+    },
+    {
+      "phase": "setup",
+      "caseId": "bob",
+      "event": {
+        "usage": {
+          "inputTokens": 596,
+          "outputTokens": 58,
+          "cachedInputTokens": 0,
+          "totalTokens": 654,
+          "reasoningTokens": 38
+        },
+        "latencyMs": 4092.9244,
+        "status": "success",
+        "toolNames": ["route_eta", "weather_forecast"]
+      }
+    },
+    {
+      "phase": "setup",
+      "caseId": "bob",
+      "event": {
+        "usage": {
+          "inputTokens": 666,
+          "outputTokens": 26,
+          "cachedInputTokens": 0,
+          "totalTokens": 692,
+          "reasoningTokens": 16
+        },
+        "latencyMs": 2336.4447,
+        "status": "success",
+        "toolNames": ["departure_calculate"]
+      }
+    },
+    {
+      "phase": "setup",
+      "caseId": "bob",
+      "event": {
+        "usage": {
+          "inputTokens": 686,
+          "outputTokens": 361,
+          "cachedInputTokens": 0,
+          "totalTokens": 1047,
+          "reasoningTokens": 313
+        },
+        "latencyMs": 3528.3895999999986,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "warmup",
+      "arm": "regular_api",
+      "caseId": "alice",
+      "event": {
+        "usage": {
+          "inputTokens": 384,
+          "outputTokens": 67,
+          "cachedInputTokens": 0,
+          "totalTokens": 451,
+          "reasoningTokens": 47
+        },
+        "latencyMs": 1928.9909999999982,
+        "status": "success",
+        "toolNames": ["calendar_next", "profile_origin"]
+      }
+    },
+    {
+      "phase": "warmup",
+      "arm": "regular_api",
+      "caseId": "alice",
+      "event": {
+        "usage": {
+          "inputTokens": 509,
+          "outputTokens": 62,
+          "cachedInputTokens": 0,
+          "totalTokens": 571,
+          "reasoningTokens": 42
+        },
+        "latencyMs": 7157.878000000001,
+        "status": "success",
+        "toolNames": ["route_eta", "weather_forecast"]
+      }
+    },
+    {
+      "phase": "warmup",
+      "arm": "regular_api",
+      "caseId": "alice",
+      "event": {
+        "usage": {
+          "inputTokens": 583,
+          "outputTokens": 17,
+          "cachedInputTokens": 0,
+          "totalTokens": 600,
+          "reasoningTokens": 7
+        },
+        "latencyMs": 1466.6797000000006,
+        "status": "success",
+        "toolNames": ["departure_calculate"]
+      }
+    },
+    {
+      "phase": "warmup",
+      "arm": "regular_api",
+      "caseId": "alice",
+      "event": {
+        "usage": {
+          "inputTokens": 594,
+          "outputTokens": 196,
+          "cachedInputTokens": 0,
+          "totalTokens": 790,
+          "reasoningTokens": 148
+        },
+        "latencyMs": 4471.060400000002,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "warmup",
+      "arm": "compiled_tool",
+      "caseId": "alice",
+      "event": {
+        "usage": {
+          "inputTokens": 245,
+          "outputTokens": 69,
+          "cachedInputTokens": 0,
+          "totalTokens": 314,
+          "reasoningTokens": 55
+        },
+        "latencyMs": 1592.379200000003,
+        "status": "success",
+        "toolNames": ["load_next_departure_context"]
+      }
+    },
+    {
+      "phase": "warmup",
+      "arm": "compiled_tool",
+      "caseId": "alice",
+      "event": {
+        "usage": {
+          "inputTokens": 495,
+          "outputTokens": 441,
+          "cachedInputTokens": 0,
+          "totalTokens": 936,
+          "reasoningTokens": 393
+        },
+        "latencyMs": 4334.184999999998,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "warmup",
+      "arm": "compiled_prefetch",
+      "caseId": "alice",
+      "event": {
+        "usage": {
+          "inputTokens": 383,
+          "outputTokens": 546,
+          "cachedInputTokens": 0,
+          "totalTokens": 929,
+          "reasoningTokens": 498
+        },
+        "latencyMs": 5329.3269,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "warmup",
+      "arm": "regular_prefetch",
+      "caseId": "alice",
+      "event": {
+        "usage": {
+          "inputTokens": 383,
+          "outputTokens": 390,
+          "cachedInputTokens": 0,
+          "totalTokens": 773,
+          "reasoningTokens": 342
+        },
+        "latencyMs": 5569.539500000006,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_api",
+      "caseId": "alice",
+      "event": {
+        "usage": {
+          "inputTokens": 384,
+          "outputTokens": 73,
+          "cachedInputTokens": 0,
+          "totalTokens": 457,
+          "reasoningTokens": 53
+        },
+        "latencyMs": 2193.1965000000055,
+        "status": "success",
+        "toolNames": ["calendar_next", "profile_origin"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_api",
+      "caseId": "alice",
+      "event": {
+        "usage": {
+          "inputTokens": 515,
+          "outputTokens": 72,
+          "cachedInputTokens": 0,
+          "totalTokens": 587,
+          "reasoningTokens": 52
+        },
+        "latencyMs": 2111.424300000006,
+        "status": "success",
+        "toolNames": ["route_eta", "weather_forecast"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_api",
+      "caseId": "alice",
+      "event": {
+        "usage": {
+          "inputTokens": 599,
+          "outputTokens": 33,
+          "cachedInputTokens": 0,
+          "totalTokens": 632,
+          "reasoningTokens": 23
+        },
+        "latencyMs": 1235.3915000000052,
+        "status": "success",
+        "toolNames": ["departure_calculate"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_api",
+      "caseId": "alice",
+      "event": {
+        "usage": {
+          "inputTokens": 626,
+          "outputTokens": 307,
+          "cachedInputTokens": 0,
+          "totalTokens": 933,
+          "reasoningTokens": 259
+        },
+        "latencyMs": 5463.89669999999,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "alice",
+      "event": {
+        "usage": {
+          "inputTokens": 245,
+          "outputTokens": 95,
+          "cachedInputTokens": 0,
+          "totalTokens": 340,
+          "reasoningTokens": 81
+        },
+        "latencyMs": 2104.8796,
+        "status": "success",
+        "toolNames": ["load_next_departure_context"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "alice",
+      "event": {
+        "usage": {
+          "inputTokens": 521,
+          "outputTokens": 270,
+          "cachedInputTokens": 0,
+          "totalTokens": 791,
+          "reasoningTokens": 222
+        },
+        "latencyMs": 3308.163499999995,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_prefetch",
+      "caseId": "alice",
+      "event": {
+        "usage": {
+          "inputTokens": 383,
+          "outputTokens": 401,
+          "cachedInputTokens": 0,
+          "totalTokens": 784,
+          "reasoningTokens": 353
+        },
+        "latencyMs": 4157.208700000003,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_prefetch",
+      "caseId": "alice",
+      "event": {
+        "usage": {
+          "inputTokens": 383,
+          "outputTokens": 378,
+          "cachedInputTokens": 0,
+          "totalTokens": 761,
+          "reasoningTokens": 330
+        },
+        "latencyMs": 4701.455799999996,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "bob",
+      "event": {
+        "usage": {
+          "inputTokens": 245,
+          "outputTokens": 81,
+          "cachedInputTokens": 0,
+          "totalTokens": 326,
+          "reasoningTokens": 67
+        },
+        "latencyMs": 1806.8785000000062,
+        "status": "success",
+        "toolNames": ["load_next_departure_context"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "bob",
+      "event": {
+        "usage": {
+          "inputTokens": 505,
+          "outputTokens": 310,
+          "cachedInputTokens": 0,
+          "totalTokens": 815,
+          "reasoningTokens": 262
+        },
+        "latencyMs": 3641.900299999994,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_prefetch",
+      "caseId": "bob",
+      "event": {
+        "usage": {
+          "inputTokens": 381,
+          "outputTokens": 296,
+          "cachedInputTokens": 0,
+          "totalTokens": 677,
+          "reasoningTokens": 248
+        },
+        "latencyMs": 3564.8061000000016,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_prefetch",
+      "caseId": "bob",
+      "event": {
+        "usage": {
+          "inputTokens": 381,
+          "outputTokens": 299,
+          "cachedInputTokens": 0,
+          "totalTokens": 680,
+          "reasoningTokens": 251
+        },
+        "latencyMs": 3496.3071000000054,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_api",
+      "caseId": "bob",
+      "event": {
+        "usage": {
+          "inputTokens": 384,
+          "outputTokens": 159,
+          "cachedInputTokens": 0,
+          "totalTokens": 543,
+          "reasoningTokens": 139
+        },
+        "latencyMs": 3176.1536999999953,
+        "status": "success",
+        "toolNames": ["calendar_next", "profile_origin"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_api",
+      "caseId": "bob",
+      "event": {
+        "usage": {
+          "inputTokens": 599,
+          "outputTokens": 94,
+          "cachedInputTokens": 0,
+          "totalTokens": 693,
+          "reasoningTokens": 74
+        },
+        "latencyMs": 2060.8457000000053,
+        "status": "success",
+        "toolNames": ["route_eta", "weather_forecast"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_api",
+      "caseId": "bob",
+      "event": {
+        "usage": {
+          "inputTokens": 705,
+          "outputTokens": 17,
+          "cachedInputTokens": 0,
+          "totalTokens": 722,
+          "reasoningTokens": 7
+        },
+        "latencyMs": 1871.589399999997,
+        "status": "success",
+        "toolNames": ["departure_calculate"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_api",
+      "caseId": "bob",
+      "event": {
+        "usage": {
+          "inputTokens": 716,
+          "outputTokens": 296,
+          "cachedInputTokens": 0,
+          "totalTokens": 1012,
+          "reasoningTokens": 248
+        },
+        "latencyMs": 32547.574999999997,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_prefetch",
+      "caseId": "carol",
+      "event": {
+        "usage": {
+          "inputTokens": 387,
+          "outputTokens": 315,
+          "cachedInputTokens": 0,
+          "totalTokens": 702,
+          "reasoningTokens": 267
+        },
+        "latencyMs": 3945.3647000000055,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_prefetch",
+      "caseId": "carol",
+      "event": {
+        "usage": {
+          "inputTokens": 387,
+          "outputTokens": 379,
+          "cachedInputTokens": 0,
+          "totalTokens": 766,
+          "reasoningTokens": 332
+        },
+        "latencyMs": 3868.8810999999987,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_api",
+      "caseId": "carol",
+      "event": {
+        "usage": {
+          "inputTokens": 385,
+          "outputTokens": 106,
+          "cachedInputTokens": 0,
+          "totalTokens": 491,
+          "reasoningTokens": 86
+        },
+        "latencyMs": 2177.7567999999737,
+        "status": "success",
+        "toolNames": ["calendar_next", "profile_origin"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_api",
+      "caseId": "carol",
+      "event": {
+        "usage": {
+          "inputTokens": 550,
+          "outputTokens": 62,
+          "cachedInputTokens": 0,
+          "totalTokens": 612,
+          "reasoningTokens": 42
+        },
+        "latencyMs": 3637.918399999995,
+        "status": "success",
+        "toolNames": ["route_eta", "weather_forecast"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_api",
+      "caseId": "carol",
+      "event": {
+        "usage": {
+          "inputTokens": 626,
+          "outputTokens": 30,
+          "cachedInputTokens": 0,
+          "totalTokens": 656,
+          "reasoningTokens": 20
+        },
+        "latencyMs": 2709.7490000000107,
+        "status": "success",
+        "toolNames": ["departure_calculate"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_api",
+      "caseId": "carol",
+      "event": {
+        "usage": {
+          "inputTokens": 650,
+          "outputTokens": 611,
+          "cachedInputTokens": 0,
+          "totalTokens": 1261,
+          "reasoningTokens": 563
+        },
+        "latencyMs": 5082.301600000006,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "carol",
+      "event": {
+        "usage": {
+          "inputTokens": 246,
+          "outputTokens": 89,
+          "cachedInputTokens": 0,
+          "totalTokens": 335,
+          "reasoningTokens": 75
+        },
+        "latencyMs": 5157.618599999987,
+        "status": "success",
+        "toolNames": ["load_next_departure_context"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "carol",
+      "event": {
+        "usage": {
+          "inputTokens": 519,
+          "outputTokens": 362,
+          "cachedInputTokens": 0,
+          "totalTokens": 881,
+          "reasoningTokens": 314
+        },
+        "latencyMs": 4438.364500000025,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_prefetch",
+      "caseId": "alice",
+      "event": {
+        "usage": {
+          "inputTokens": 383,
+          "outputTokens": 503,
+          "cachedInputTokens": 0,
+          "totalTokens": 886,
+          "reasoningTokens": 455
+        },
+        "latencyMs": 5280.760600000009,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_api",
+      "caseId": "alice",
+      "event": {
+        "usage": {
+          "inputTokens": 384,
+          "outputTokens": 163,
+          "cachedInputTokens": 0,
+          "totalTokens": 547,
+          "reasoningTokens": 143
+        },
+        "latencyMs": 2539.9357999999775,
+        "status": "success",
+        "toolNames": ["calendar_next", "profile_origin"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_api",
+      "caseId": "alice",
+      "event": {
+        "usage": {
+          "inputTokens": 605,
+          "outputTokens": 62,
+          "cachedInputTokens": 0,
+          "totalTokens": 667,
+          "reasoningTokens": 42
+        },
+        "latencyMs": 1500.9721000000136,
+        "status": "success",
+        "toolNames": ["route_eta", "weather_forecast"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_api",
+      "caseId": "alice",
+      "event": {
+        "usage": {
+          "inputTokens": 679,
+          "outputTokens": 25,
+          "cachedInputTokens": 0,
+          "totalTokens": 704,
+          "reasoningTokens": 15
+        },
+        "latencyMs": 2010.8851999999897,
+        "status": "success",
+        "toolNames": ["departure_calculate"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_api",
+      "caseId": "alice",
+      "event": {
+        "usage": {
+          "inputTokens": 698,
+          "outputTokens": 187,
+          "cachedInputTokens": 0,
+          "totalTokens": 885,
+          "reasoningTokens": 139
+        },
+        "latencyMs": 2675.5524999999907,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "alice",
+      "event": {
+        "usage": {
+          "inputTokens": 245,
+          "outputTokens": 95,
+          "cachedInputTokens": 0,
+          "totalTokens": 340,
+          "reasoningTokens": 81
+        },
+        "latencyMs": 1734.1665999999968,
+        "status": "success",
+        "toolNames": ["load_next_departure_context"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "alice",
+      "event": {
+        "usage": {
+          "inputTokens": 521,
+          "outputTokens": 217,
+          "cachedInputTokens": 0,
+          "totalTokens": 738,
+          "reasoningTokens": 169
+        },
+        "latencyMs": 2848.7883999999904,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_prefetch",
+      "caseId": "alice",
+      "event": {
+        "usage": {
+          "inputTokens": 383,
+          "outputTokens": 313,
+          "cachedInputTokens": 0,
+          "totalTokens": 696,
+          "reasoningTokens": 265
+        },
+        "latencyMs": 3887.885899999994,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_api",
+      "caseId": "bob",
+      "event": {
+        "usage": {
+          "inputTokens": 384,
+          "outputTokens": 162,
+          "cachedInputTokens": 0,
+          "totalTokens": 546,
+          "reasoningTokens": 142
+        },
+        "latencyMs": 2170.1428000000014,
+        "status": "success",
+        "toolNames": ["calendar_next", "profile_origin"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_api",
+      "caseId": "bob",
+      "event": {
+        "usage": {
+          "inputTokens": 602,
+          "outputTokens": 87,
+          "cachedInputTokens": 0,
+          "totalTokens": 689,
+          "reasoningTokens": 67
+        },
+        "latencyMs": 2193.560700000002,
+        "status": "success",
+        "toolNames": ["route_eta", "weather_forecast"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_api",
+      "caseId": "bob",
+      "event": {
+        "usage": {
+          "inputTokens": 701,
+          "outputTokens": 25,
+          "cachedInputTokens": 0,
+          "totalTokens": 726,
+          "reasoningTokens": 15
+        },
+        "latencyMs": 1803.9152999999933,
+        "status": "success",
+        "toolNames": ["departure_calculate"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_api",
+      "caseId": "bob",
+      "event": {
+        "usage": {
+          "inputTokens": 720,
+          "outputTokens": 337,
+          "cachedInputTokens": 0,
+          "totalTokens": 1057,
+          "reasoningTokens": 289
+        },
+        "latencyMs": 3541.482099999994,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "bob",
+      "event": {
+        "usage": {
+          "inputTokens": 245,
+          "outputTokens": 98,
+          "cachedInputTokens": 0,
+          "totalTokens": 343,
+          "reasoningTokens": 84
+        },
+        "latencyMs": 2478.319300000003,
+        "status": "success",
+        "toolNames": ["load_next_departure_context"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "bob",
+      "event": {
+        "usage": {
+          "inputTokens": 522,
+          "outputTokens": 198,
+          "cachedInputTokens": 0,
+          "totalTokens": 720,
+          "reasoningTokens": 151
+        },
+        "latencyMs": 3378.227600000013,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_prefetch",
+      "caseId": "bob",
+      "event": {
+        "usage": {
+          "inputTokens": 381,
+          "outputTokens": 312,
+          "cachedInputTokens": 0,
+          "totalTokens": 693,
+          "reasoningTokens": 264
+        },
+        "latencyMs": 4463.326300000015,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_prefetch",
+      "caseId": "bob",
+      "event": {
+        "usage": {
+          "inputTokens": 381,
+          "outputTokens": 366,
+          "cachedInputTokens": 0,
+          "totalTokens": 747,
+          "reasoningTokens": 318
+        },
+        "latencyMs": 3139.1101999999955,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "carol",
+      "event": {
+        "usage": {
+          "inputTokens": 246,
+          "outputTokens": 82,
+          "cachedInputTokens": 0,
+          "totalTokens": 328,
+          "reasoningTokens": 68
+        },
+        "latencyMs": 1726.2052999999723,
+        "status": "success",
+        "toolNames": ["load_next_departure_context"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "carol",
+      "event": {
+        "usage": {
+          "inputTokens": 512,
+          "outputTokens": 214,
+          "cachedInputTokens": 0,
+          "totalTokens": 726,
+          "reasoningTokens": 166
+        },
+        "latencyMs": 2465.401599999983,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_prefetch",
+      "caseId": "carol",
+      "event": {
+        "usage": {
+          "inputTokens": 387,
+          "outputTokens": 305,
+          "cachedInputTokens": 0,
+          "totalTokens": 692,
+          "reasoningTokens": 257
+        },
+        "latencyMs": 10108.016499999998,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_prefetch",
+      "caseId": "carol",
+      "event": {
+        "usage": {
+          "inputTokens": 387,
+          "outputTokens": 385,
+          "cachedInputTokens": 0,
+          "totalTokens": 772,
+          "reasoningTokens": 338
+        },
+        "latencyMs": 3396.2075999999943,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_api",
+      "caseId": "carol",
+      "event": {
+        "usage": {
+          "inputTokens": 385,
+          "outputTokens": 166,
+          "cachedInputTokens": 0,
+          "totalTokens": 551,
+          "reasoningTokens": 146
+        },
+        "latencyMs": 3248.0388000000094,
+        "status": "success",
+        "toolNames": ["calendar_next", "profile_origin"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_api",
+      "caseId": "carol",
+      "event": {
+        "usage": {
+          "inputTokens": 610,
+          "outputTokens": 78,
+          "cachedInputTokens": 0,
+          "totalTokens": 688,
+          "reasoningTokens": 58
+        },
+        "latencyMs": 3073.4473,
+        "status": "success",
+        "toolNames": ["route_eta", "weather_forecast"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_api",
+      "caseId": "carol",
+      "event": {
+        "usage": {
+          "inputTokens": 702,
+          "outputTokens": 17,
+          "cachedInputTokens": 0,
+          "totalTokens": 719,
+          "reasoningTokens": 7
+        },
+        "latencyMs": 1774.404200000019,
+        "status": "success",
+        "toolNames": ["departure_calculate"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_api",
+      "caseId": "carol",
+      "event": {
+        "usage": {
+          "inputTokens": 713,
+          "outputTokens": 333,
+          "cachedInputTokens": 0,
+          "totalTokens": 1046,
+          "reasoningTokens": 285
+        },
+        "latencyMs": 5186.729499999987,
+        "status": "success",
+        "toolNames": []
+      }
+    }
+  ]
+}

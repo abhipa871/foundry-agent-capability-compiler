@@ -9,7 +9,13 @@ export function DeveloperNavigation({
   page: DeveloperPage;
   navigate: (page: DeveloperPage) => void;
 }) {
-  const advanced = ['Agent chat', 'Trajectories', 'Capability graph', 'Audit log'].includes(page);
+  const advanced = [
+    'Agent chat',
+    'Registry',
+    'Trajectories',
+    'Capability graph',
+    'Audit log',
+  ].includes(page);
   return (
     <div className="console-section-bar">
       <nav aria-label="Developer sections">
@@ -21,10 +27,10 @@ export function DeveloperNavigation({
             active: page === 'JIT compiler',
           },
           {
-            page: 'Registry' as const,
+            page: 'Task registry' as const,
             label: 'Capabilities',
             icon: LayoutGrid,
-            active: page === 'Registry',
+            active: page === 'Task registry',
           },
           {
             page: 'Executions' as const,
@@ -61,6 +67,7 @@ export function DeveloperNavigation({
             <option value="Capability graph">Dependency graph</option>
           </optgroup>
           <optgroup label="Legacy workflows">
+            <option value="Registry">Legacy capability registry</option>
             <option value="Trajectories">Shipping trajectories</option>
             <option value="Agent chat">Coding-agent chat</option>
           </optgroup>

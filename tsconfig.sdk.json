@@ -9,6 +9,6 @@
     "outDir": "dist-sdk",
     "types": ["node"]
   },
-  "include": ["src/integration/client.ts"],
+  "include": ["src/integration/index.ts", "src/integration/client.ts", "src/agent/providers.ts"],
   "exclude": ["tests", "src/web"]
 }

@@ -1,5 +1,6 @@
 import { createPrivateKey, sign, type KeyObject } from 'node:crypto';
 import { ticketSchema, type RuntimeTicket, type SignedTicket } from '../integration/protocol.js';
+import { taskTicketSchema, type TaskTicket } from '../integration/task-client.js';
 
 export class ArtifactSigner {
   private readonly key: KeyObject;
@@ -9,6 +10,10 @@ export class ArtifactSigner {
   }
   sign(ticket: RuntimeTicket): SignedTicket {
     const payload = JSON.stringify(ticketSchema.parse(ticket));
+    return { payload, signature: sign(null, Buffer.from(payload), this.key).toString('base64') };
+  }
+  signTask(ticket: TaskTicket): SignedTicket {
+    const payload = JSON.stringify(taskTicketSchema.parse(ticket));
     return { payload, signature: sign(null, Buffer.from(payload), this.key).toString('base64') };
   }
 }

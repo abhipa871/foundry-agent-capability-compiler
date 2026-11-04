@@ -20,8 +20,11 @@ export const identitySchema = z
     principalId: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}$/),
     agentId: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}$/),
     permissions: z.array(z.enum(permissions)).max(8),
-    toolScopes: z.array(z.enum(['crm:read', 'orders:read', 'payments:read'])).max(3),
-    customerIds: z.array(z.string().regex(/^C-\d{3}$/)).max(100),
+    toolScopes: z.array(z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,99}$/)).max(256),
+    customerIds: z
+      .array(z.string().regex(/^C-\d{3}$/))
+      .max(100)
+      .default([]),
   })
   .strict();
 export type Identity = z.infer<typeof identitySchema>;
@@ -47,7 +50,7 @@ export function requirePermission(permission: (typeof permissions)[number]) {
 // this configuration; hosted identity integration can implement the same authenticate contract.
 export class ApiKeyAuthenticator {
   private readonly keys = new Map<string, Identity>();
-  constructor(entries: { sha256: string; identity: Identity }[]) {
+  constructor(entries: { sha256: string; identity: z.input<typeof identitySchema> }[]) {
     for (const entry of entries) {
       const digest = z
         .string()

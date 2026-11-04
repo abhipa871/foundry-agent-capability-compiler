@@ -9,12 +9,25 @@ import { sampleRawAgentTrajectory, sampleTrajectory } from './exploration/captur
 import { sampleToolTraces } from './exploration/sample-traces.js';
 import { Foundry } from './service.js';
 import { Store } from './registry/store.js';
-import { ApiKeyAuthenticator, withIdentity, requirePermission } from './security/identity.js';
+import {
+  ApiKeyAuthenticator,
+  withIdentity,
+  requirePermission,
+  type Identity,
+} from './security/identity.js';
 import { BenchmarkWorkspace, retainedEvidence } from './benchmarks/workspace.js';
+import { TaskRegistry, type GenericTaskOptions } from './registry/tasks.js';
+import { contractId } from './compiler/contracts.js';
+import { currentIdentity } from './security/identity.js';
+import type { TaskTrace } from './compiler/task-ir.js';
 export type AppOptions = {
   auth?: ApiKeyAuthenticator;
   signer?: ArtifactSigner;
   runtime?: ConstructorParameters<typeof Foundry>[1];
+  tasks?: GenericTaskOptions;
+  localTaskIdentity?: Identity;
+  taskExamples?: { kind: string; label: string; input: unknown }[];
+  taskSamples?: (kind: string) => Promise<TaskTrace[]>;
 };
 
 const id = z.string().uuid();
@@ -29,6 +42,7 @@ const agentTask = z
 export function createApp(store: Store, seed = true, options: AppOptions = {}) {
   const app = express();
   const service = new Foundry(store, options.runtime);
+  const tasks = options.tasks ? new TaskRegistry(store, options.tasks) : undefined;
   if (seed && !options.auth) service.seed();
   app.disable('x-powered-by');
   app.use(express.json({ limit: '128kb' }));
@@ -57,7 +71,7 @@ export function createApp(store: Store, seed = true, options: AppOptions = {}) {
                       ? 'deploy'
                       : action === 'dispatch' || action === 'shadow'
                         ? 'invoke'
-                        : ['/v2/traces', '/v2/telemetry'].includes(req.path)
+                        : ['/v2/traces', '/v2/telemetry', '/v2/tasks/traces'].includes(req.path)
                           ? 'observe'
                           : 'admin';
           try {
@@ -89,11 +103,96 @@ export function createApp(store: Store, seed = true, options: AppOptions = {}) {
       return res
         .status(403)
         .json({ error: 'X-Foundry-Client: local-ui is required for local mutations.' });
+    if (req.path.startsWith('/v2/tasks') && options.localTaskIdentity)
+      return withIdentity(options.localTaskIdentity, () => next());
     next();
   });
   app.get('/api/health', (_req, res) =>
     res.json({ status: 'ok', mode: options.auth ? 'authenticated-read-api' : 'local-demo' }),
   );
+  const taskService = () => {
+    if (!tasks || !options.tasks) throw new DomainError('Task contracts are not configured.', 503);
+    return tasks;
+  };
+  app.get('/api/v2/tasks/catalog', (_req, res) => {
+    taskService();
+    res.json(options.tasks!.registry.catalog());
+  });
+  app.get('/api/v2/tasks/workspace', (_req, res) =>
+    res.json({
+      ...taskService().workspace(),
+      examples: options.auth ? [] : (options.taskExamples ?? []),
+      fixtureKinds:
+        !options.auth && options.taskSamples
+          ? [...new Set(options.taskExamples?.map((example) => example.kind))]
+          : [],
+      localDemo: !options.auth,
+    }),
+  );
+  app.post('/api/v2/tasks/samples', async (req, res) => {
+    if (options.auth || !options.taskSamples)
+      throw new DomainError('Local fixture evidence is unavailable.', 404);
+    requirePermission('observe');
+    const { kind } = z.object({ kind: contractId }).strict().parse(req.body);
+    const traces = await options.taskSamples(kind);
+    const ids = traces.map((trace) => taskService().ingest(trace).id);
+    store.setSetting(
+      'task-ui-fixture-ids',
+      [...store.setting<string[]>('task-ui-fixture-ids', []), ...ids].slice(-1000),
+    );
+    res.status(201).json({ ids, origin: 'fixture', modelCalls: 0 });
+  });
+  app.post('/api/v2/tasks/traces', (req, res) =>
+    res.status(201).json(taskService().ingest(req.body)),
+  );
+  app.post('/api/v2/tasks/compile', (req, res) => {
+    const body = z
+      .object({ name: contractId, traceIds: z.array(id).min(2).max(32) })
+      .strict()
+      .parse(req.body);
+    res.status(201).json(taskService().compile(body.name, body.traceIds));
+  });
+  app.get('/api/v2/tasks/capabilities', (_req, res) => res.json(taskService().artifacts()));
+  app.post('/api/v2/tasks/capabilities/:id/verify', async (req, res) => {
+    emptyRequest.parse(req.body ?? {});
+    res.json(await taskService().verify(id.parse(req.params.id)));
+  });
+  app.post('/api/v2/tasks/capabilities/:id/shadow', async (req, res) => {
+    const body = z.object({ input: z.unknown() }).strict().parse(req.body);
+    res.json(await taskService().shadow(id.parse(req.params.id), body.input));
+  });
+  for (const action of ['approve', 'deploy', 'revoke'] as const) {
+    app.post(`/api/v2/tasks/capabilities/:id/${action}`, (req, res) => {
+      emptyRequest.parse(req.body ?? {});
+      res.json(taskService()[action](id.parse(req.params.id)));
+    });
+  }
+  app.get('/api/v2/tasks/runtime/:name', (req, res) => {
+    requirePermission('invoke');
+    const artifact = taskService().active(contractId.parse(req.params.name));
+    if (!artifact) throw new DomainError('Active task capability not found.', 404);
+    if (!options.signer) throw new DomainError('Signing is not configured.', 503);
+    const identity = currentIdentity();
+    const issuedAt = Date.now();
+    res.json(
+      options.signer.signTask({
+        format: 'foundry-task-ticket-v1',
+        tenantId: identity.tenantId,
+        principalId: identity.principalId,
+        issuedAt,
+        expiresAt: issuedAt + 30000,
+        artifact,
+      }),
+    );
+  });
+  app.post('/api/v2/tasks/dispatch', async (req, res, next) => {
+    if (!Object.hasOwn(req.body ?? {}, 'name')) return next();
+    const body = z
+      .object({ name: contractId, kind: contractId, input: z.unknown() })
+      .strict()
+      .parse(req.body);
+    res.json(await taskService().execute(body.name, body.kind, body.input));
+  });
   app.get('/api/state', (_req, res) => res.json(service.state()));
   // Local experiment surface only. Hosted-mode middleware above excludes these routes.
   const benchmarks = new BenchmarkWorkspace();

@@ -1,0 +1,2990 @@
+{
+  "complete": true,
+  "allCorrect": true,
+  "capturedAt": "2026-11-04T05:54:58.900Z",
+  "provider": "gemini",
+  "model": "gemini-3.8-flash",
+  "branch": "abhi-dev",
+  "methodology": {
+    "task": "Full travel-day plan: flight, hotel, calendar, weather, ground travel, timeline and readiness.",
+    "data": "Synthetic personal fixtures and live Gemini inference; no real travel accounts.",
+    "nodes": 13,
+    "readNodes": 9,
+    "pureNodes": 4,
+    "dependencyStages": 6,
+    "inputs": [
+      {
+        "userId": "alice",
+        "tripId": "trip-a",
+        "now": "2026-11-04T12:00:00.000Z"
+      },
+      {
+        "userId": "bob",
+        "tripId": "trip-b",
+        "now": "2026-11-04T12:00:00.000Z"
+      },
+      {
+        "userId": "carol",
+        "tripId": "trip-c",
+        "now": "2026-11-04T12:00:00.000Z"
+      }
+    ],
+    "repeatsPerInput": 2,
+    "arms": ["regular_agent", "compiled_tool", "compiled_prefetch", "regular_prefetch"],
+    "armOrder": "rotated",
+    "modelToolArguments": "Full registered schemas; every model argument is checked against application-owned input/result provenance.",
+    "oncePerToolPolicy": true,
+    "sdk": "Built package supplies observer, provider client, every lifecycle operation and signed execution over HTTP. No direct registry lifecycle calls.",
+    "usage": "Reported tokens across every response, including reasoning; failed calls remain included and unknown usage remains null.",
+    "limitations": [
+      "Small sample of a bounded single-flight/single-hotel workflow.",
+      "Generated model responses remain nondeterministic.",
+      "All four modes still perform the same underlying reads/calculations."
+    ]
+  },
+  "artifactId": "f13cb79f-b489-445c-82f6-006cbb3a5027",
+  "digest": "e5982503ac5cf39c4eb0bfedd2ca080a554d6ab2b861562dce8eba44d460ba84",
+  "sourceHashes": {
+    "src/integration/task-client.ts": "a8ef654a68dc2f1928d7f522a4e41f9d59a7223a8845f6b06c8a725fceac1b39",
+    "src/compiler/contracts.ts": "9da89f81e3a681e2608894da9adc169c48b938d20f46fcb85a0dc509155dc43b",
+    "src/compiler/task-ir.ts": "e00b3986612a964640e53bc382b3bff34ee37e59071ab8eea1be56e34a469919",
+    "src/runtime/task-runtime.ts": "2f5fbc75c932887de3e8fd89312342bc263762b7d60efd82ca7dc45db71a3c7d",
+    "src/registry/tasks.ts": "e898a45638866aaf8816a7f0623a5a979782fa16f8222cbcb29a7eff297fbec1",
+    "src/agent/providers.ts": "ac3aa73a7a58a24659e4b50e9c79ed5171546ee1ee28eb2ae9facb28015ffb68",
+    "src/examples/travel-day.ts": "ac81be6b2337b83e121abdb7577ae4c165e9015852ac78575bd236bf29e310c8",
+    "scripts/benchmark-travel-day.ts": "7067336aca4380c3054d2525d6eb2c5b1db9004c648f694bd3830a3575e5a211",
+    "dist-sdk/integration/task-client.js": "a8fbda59b98f2af48624749e327650d4ee32304f78f91158740dc87e6a487530",
+    "dist-sdk/agent/providers.js": "16295ef74f1c1354421d8ffd791f07995bbbbde2efcdb44e578d8dac3a61ab60"
+  },
+  "lifecycle": [
+    {
+      "action": "compile_via_sdk",
+      "passed": true,
+      "digest": "e5982503ac5cf39c4eb0bfedd2ca080a554d6ab2b861562dce8eba44d460ba84"
+    },
+    {
+      "action": "verify_via_sdk",
+      "passed": true,
+      "digest": "e5982503ac5cf39c4eb0bfedd2ca080a554d6ab2b861562dce8eba44d460ba84",
+      "checks": 22
+    },
+    {
+      "action": "approve_via_sdk",
+      "passed": true,
+      "digest": "e5982503ac5cf39c4eb0bfedd2ca080a554d6ab2b861562dce8eba44d460ba84"
+    },
+    {
+      "action": "shadow_via_sdk",
+      "passed": true,
+      "digest": "e5982503ac5cf39c4eb0bfedd2ca080a554d6ab2b861562dce8eba44d460ba84"
+    },
+    {
+      "action": "deploy_via_sdk",
+      "passed": true,
+      "digest": "e5982503ac5cf39c4eb0bfedd2ca080a554d6ab2b861562dce8eba44d460ba84"
+    },
+    {
+      "action": "revoke_via_sdk",
+      "passed": true,
+      "digest": "e5982503ac5cf39c4eb0bfedd2ca080a554d6ab2b861562dce8eba44d460ba84"
+    }
+  ],
+  "stress": [
+    {
+      "name": "48_concurrent_packaged_sdk_requests",
+      "requests": 48,
+      "passed": true
+    },
+    {
+      "name": "revocation_blocks_future_compiled_execution",
+      "requests": 1,
+      "passed": true
+    }
+  ],
+  "summary": {
+    "regular_agent": {
+      "tasks": 6,
+      "passed": 6,
+      "inputTokens": 156702,
+      "outputTokens": 14522,
+      "cachedInputTokens": 46343,
+      "totalTokens": 171224,
+      "reasoningTokens": 8654,
+      "meanTokens": 28537.333333333332,
+      "modelCalls": 42,
+      "toolCalls": 78,
+      "includingWarmup": {
+        "inputTokens": 183440,
+        "outputTokens": 17241,
+        "cachedInputTokens": 56552,
+        "totalTokens": 200681,
+        "reasoningTokens": 10371
+      }
+    },
+    "compiled_tool": {
+      "tasks": 6,
+      "passed": 6,
+      "inputTokens": 13336,
+      "outputTokens": 4295,
+      "cachedInputTokens": 0,
+      "totalTokens": 17631,
+      "reasoningTokens": 3197,
+      "meanTokens": 2938.5,
+      "modelCalls": 12,
+      "toolCalls": 78,
+      "includingWarmup": {
+        "inputTokens": 15520,
+        "outputTokens": 4912,
+        "cachedInputTokens": 0,
+        "totalTokens": 20432,
+        "reasoningTokens": 3628
+      }
+    },
+    "compiled_prefetch": {
+      "tasks": 6,
+      "passed": 6,
+      "inputTokens": 7468,
+      "outputTokens": 3875,
+      "cachedInputTokens": 0,
+      "totalTokens": 11343,
+      "reasoningTokens": 3127,
+      "meanTokens": 1890.5,
+      "modelCalls": 6,
+      "toolCalls": 78,
+      "includingWarmup": {
+        "inputTokens": 8733,
+        "outputTokens": 4426,
+        "cachedInputTokens": 0,
+        "totalTokens": 13159,
+        "reasoningTokens": 3550
+      }
+    },
+    "regular_prefetch": {
+      "tasks": 6,
+      "passed": 6,
+      "inputTokens": 7468,
+      "outputTokens": 3210,
+      "cachedInputTokens": 0,
+      "totalTokens": 10678,
+      "reasoningTokens": 2462,
+      "meanTokens": 1779.6666666666667,
+      "modelCalls": 6,
+      "toolCalls": 78,
+      "includingWarmup": {
+        "inputTokens": 8733,
+        "outputTokens": 3825,
+        "cachedInputTokens": 0,
+        "totalTokens": 12558,
+        "reasoningTokens": 2949
+      }
+    }
+  },
+  "phaseUsage": {
+    "exploration": {
+      "inputTokens": 51868,
+      "outputTokens": 4851,
+      "cachedInputTokens": 0,
+      "totalTokens": 56719,
+      "reasoningTokens": 2936
+    },
+    "warmup": {
+      "inputTokens": 31452,
+      "outputTokens": 4502,
+      "cachedInputTokens": 10209,
+      "totalTokens": 35954,
+      "reasoningTokens": 3058
+    },
+    "measurement": {
+      "inputTokens": 184974,
+      "outputTokens": 25902,
+      "cachedInputTokens": 46343,
+      "totalTokens": 210876,
+      "reasoningTokens": 17440
+    }
+  },
+  "experimentTotal": {
+    "inputTokens": 268294,
+    "outputTokens": 35255,
+    "cachedInputTokens": 56552,
+    "totalTokens": 303549,
+    "reasoningTokens": 23434
+  },
+  "elapsedMs": 527886.5543000001,
+  "runs": [
+    {
+      "phase": "warmup",
+      "arm": "regular_agent",
+      "caseId": "trip-a",
+      "passed": true,
+      "usage": {
+        "inputTokens": 26738,
+        "outputTokens": 2719,
+        "cachedInputTokens": 10209,
+        "totalTokens": 29457,
+        "reasoningTokens": 1717
+      },
+      "modelCalls": 7,
+      "toolCalls": 13,
+      "sdkCalls": 0,
+      "latencyMs": 48484.19639999999,
+      "answer": {
+        "tripId": "trip-a",
+        "flightId": "F100",
+        "terminal": "4",
+        "leaveHomeAt": "2026-11-05T11:45:00.000Z",
+        "estimatedHotelArrival": "2026-11-05T18:25:00.000Z",
+        "checkInWaitMinutes": 155,
+        "flightDelayMinutes": 40,
+        "conflictingEventIds": ["work-call-a"],
+        "missingItems": ["hotel_confirmation"],
+        "bringUmbrella": true,
+        "bringWarmLayer": true,
+        "ready": false
+      }
+    },
+    {
+      "phase": "warmup",
+      "arm": "compiled_tool",
+      "caseId": "trip-a",
+      "passed": true,
+      "usage": {
+        "inputTokens": 2184,
+        "outputTokens": 617,
+        "cachedInputTokens": 0,
+        "totalTokens": 2801,
+        "reasoningTokens": 431
+      },
+      "modelCalls": 2,
+      "toolCalls": 13,
+      "sdkCalls": 1,
+      "latencyMs": 9957.506499999989,
+      "answer": {
+        "tripId": "trip-a",
+        "flightId": "F100",
+        "terminal": "4",
+        "leaveHomeAt": "2026-11-05T11:45:00.000Z",
+        "estimatedHotelArrival": "2026-11-05T18:25:00.000Z",
+        "checkInWaitMinutes": 155,
+        "flightDelayMinutes": 40,
+        "conflictingEventIds": ["work-call-a"],
+        "missingItems": ["hotel_confirmation"],
+        "bringUmbrella": true,
+        "bringWarmLayer": true,
+        "ready": false
+      }
+    },
+    {
+      "phase": "warmup",
+      "arm": "compiled_prefetch",
+      "caseId": "trip-a",
+      "passed": true,
+      "usage": {
+        "inputTokens": 1265,
+        "outputTokens": 551,
+        "cachedInputTokens": 0,
+        "totalTokens": 1816,
+        "reasoningTokens": 423
+      },
+      "modelCalls": 1,
+      "toolCalls": 13,
+      "sdkCalls": 1,
+      "latencyMs": 4684.317500000005,
+      "answer": {
+        "tripId": "trip-a",
+        "flightId": "F100",
+        "terminal": "4",
+        "leaveHomeAt": "2026-11-05T11:45:00.000Z",
+        "estimatedHotelArrival": "2026-11-05T18:25:00.000Z",
+        "checkInWaitMinutes": 155,
+        "flightDelayMinutes": 40,
+        "conflictingEventIds": ["work-call-a"],
+        "missingItems": ["hotel_confirmation"],
+        "bringUmbrella": true,
+        "bringWarmLayer": true,
+        "ready": false
+      }
+    },
+    {
+      "phase": "warmup",
+      "arm": "regular_prefetch",
+      "caseId": "trip-a",
+      "passed": true,
+      "usage": {
+        "inputTokens": 1265,
+        "outputTokens": 615,
+        "cachedInputTokens": 0,
+        "totalTokens": 1880,
+        "reasoningTokens": 487
+      },
+      "modelCalls": 1,
+      "toolCalls": 13,
+      "sdkCalls": 0,
+      "latencyMs": 6722.9087,
+      "answer": {
+        "tripId": "trip-a",
+        "flightId": "F100",
+        "terminal": "4",
+        "leaveHomeAt": "2026-11-05T11:45:00.000Z",
+        "estimatedHotelArrival": "2026-11-05T18:25:00.000Z",
+        "checkInWaitMinutes": 155,
+        "flightDelayMinutes": 40,
+        "conflictingEventIds": ["work-call-a"],
+        "missingItems": ["hotel_confirmation"],
+        "bringUmbrella": true,
+        "bringWarmLayer": true,
+        "ready": false
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-a",
+      "passed": true,
+      "usage": {
+        "inputTokens": 26317,
+        "outputTokens": 2637,
+        "cachedInputTokens": 7681,
+        "totalTokens": 28954,
+        "reasoningTokens": 1635
+      },
+      "modelCalls": 7,
+      "toolCalls": 13,
+      "sdkCalls": 0,
+      "latencyMs": 59544.759999999995,
+      "answer": {
+        "tripId": "trip-a",
+        "flightId": "F100",
+        "terminal": "4",
+        "leaveHomeAt": "2026-11-05T11:45:00.000Z",
+        "estimatedHotelArrival": "2026-11-05T18:25:00.000Z",
+        "checkInWaitMinutes": 155,
+        "flightDelayMinutes": 40,
+        "conflictingEventIds": ["work-call-a"],
+        "missingItems": ["hotel_confirmation"],
+        "bringUmbrella": true,
+        "bringWarmLayer": true,
+        "ready": false
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "trip-a",
+      "passed": true,
+      "usage": {
+        "inputTokens": 2220,
+        "outputTokens": 597,
+        "cachedInputTokens": 0,
+        "totalTokens": 2817,
+        "reasoningTokens": 411
+      },
+      "modelCalls": 2,
+      "toolCalls": 13,
+      "sdkCalls": 1,
+      "latencyMs": 10067.623400000011,
+      "answer": {
+        "tripId": "trip-a",
+        "flightId": "F100",
+        "terminal": "4",
+        "leaveHomeAt": "2026-11-05T11:45:00.000Z",
+        "estimatedHotelArrival": "2026-11-05T18:25:00.000Z",
+        "checkInWaitMinutes": 155,
+        "flightDelayMinutes": 40,
+        "conflictingEventIds": ["work-call-a"],
+        "missingItems": ["hotel_confirmation"],
+        "bringUmbrella": true,
+        "bringWarmLayer": true,
+        "ready": false
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_prefetch",
+      "caseId": "trip-a",
+      "passed": true,
+      "usage": {
+        "inputTokens": 1265,
+        "outputTokens": 707,
+        "cachedInputTokens": 0,
+        "totalTokens": 1972,
+        "reasoningTokens": 579
+      },
+      "modelCalls": 1,
+      "toolCalls": 13,
+      "sdkCalls": 1,
+      "latencyMs": 6860.824699999997,
+      "answer": {
+        "tripId": "trip-a",
+        "flightId": "F100",
+        "terminal": "4",
+        "leaveHomeAt": "2026-11-05T11:45:00.000Z",
+        "estimatedHotelArrival": "2026-11-05T18:25:00.000Z",
+        "checkInWaitMinutes": 155,
+        "flightDelayMinutes": 40,
+        "conflictingEventIds": ["work-call-a"],
+        "missingItems": ["hotel_confirmation"],
+        "bringUmbrella": true,
+        "bringWarmLayer": true,
+        "ready": false
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_prefetch",
+      "caseId": "trip-a",
+      "passed": true,
+      "usage": {
+        "inputTokens": 1265,
+        "outputTokens": 728,
+        "cachedInputTokens": 0,
+        "totalTokens": 1993,
+        "reasoningTokens": 600
+      },
+      "modelCalls": 1,
+      "toolCalls": 13,
+      "sdkCalls": 0,
+      "latencyMs": 6344.1161999999895,
+      "answer": {
+        "tripId": "trip-a",
+        "flightId": "F100",
+        "terminal": "4",
+        "leaveHomeAt": "2026-11-05T11:45:00.000Z",
+        "estimatedHotelArrival": "2026-11-05T18:25:00.000Z",
+        "checkInWaitMinutes": 155,
+        "flightDelayMinutes": 40,
+        "conflictingEventIds": ["work-call-a"],
+        "missingItems": ["hotel_confirmation"],
+        "bringUmbrella": true,
+        "bringWarmLayer": true,
+        "ready": false
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "trip-b",
+      "passed": true,
+      "usage": {
+        "inputTokens": 2180,
+        "outputTokens": 770,
+        "cachedInputTokens": 0,
+        "totalTokens": 2950,
+        "reasoningTokens": 595
+      },
+      "modelCalls": 2,
+      "toolCalls": 13,
+      "sdkCalls": 1,
+      "latencyMs": 7275.198000000004,
+      "answer": {
+        "tripId": "trip-b",
+        "flightId": "F200",
+        "terminal": "B",
+        "leaveHomeAt": "2026-11-05T13:55:00.000Z",
+        "estimatedHotelArrival": "2026-11-05T18:50:00.000Z",
+        "checkInWaitMinutes": 0,
+        "flightDelayMinutes": 0,
+        "conflictingEventIds": [],
+        "missingItems": [],
+        "bringUmbrella": false,
+        "bringWarmLayer": true,
+        "ready": true
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_prefetch",
+      "caseId": "trip-b",
+      "passed": true,
+      "usage": {
+        "inputTokens": 1189,
+        "outputTokens": 594,
+        "cachedInputTokens": 0,
+        "totalTokens": 1783,
+        "reasoningTokens": 477
+      },
+      "modelCalls": 1,
+      "toolCalls": 13,
+      "sdkCalls": 1,
+      "latencyMs": 5246.433499999985,
+      "answer": {
+        "tripId": "trip-b",
+        "flightId": "F200",
+        "terminal": "B",
+        "leaveHomeAt": "2026-11-05T13:55:00.000Z",
+        "estimatedHotelArrival": "2026-11-05T18:50:00.000Z",
+        "checkInWaitMinutes": 0,
+        "flightDelayMinutes": 0,
+        "conflictingEventIds": [],
+        "missingItems": [],
+        "bringUmbrella": false,
+        "bringWarmLayer": true,
+        "ready": true
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_prefetch",
+      "caseId": "trip-b",
+      "passed": true,
+      "usage": {
+        "inputTokens": 1189,
+        "outputTokens": 584,
+        "cachedInputTokens": 0,
+        "totalTokens": 1773,
+        "reasoningTokens": 467
+      },
+      "modelCalls": 1,
+      "toolCalls": 13,
+      "sdkCalls": 0,
+      "latencyMs": 7015.098100000003,
+      "answer": {
+        "tripId": "trip-b",
+        "flightId": "F200",
+        "terminal": "B",
+        "leaveHomeAt": "2026-11-05T13:55:00.000Z",
+        "estimatedHotelArrival": "2026-11-05T18:50:00.000Z",
+        "checkInWaitMinutes": 0,
+        "flightDelayMinutes": 0,
+        "conflictingEventIds": [],
+        "missingItems": [],
+        "bringUmbrella": false,
+        "bringWarmLayer": true,
+        "ready": true
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-b",
+      "passed": true,
+      "usage": {
+        "inputTokens": 26276,
+        "outputTokens": 2544,
+        "cachedInputTokens": 10180,
+        "totalTokens": 28820,
+        "reasoningTokens": 1631
+      },
+      "modelCalls": 7,
+      "toolCalls": 13,
+      "sdkCalls": 0,
+      "latencyMs": 76007.62079999998,
+      "answer": {
+        "tripId": "trip-b",
+        "flightId": "F200",
+        "terminal": "B",
+        "leaveHomeAt": "2026-11-05T13:55:00.000Z",
+        "estimatedHotelArrival": "2026-11-05T18:50:00.000Z",
+        "checkInWaitMinutes": 0,
+        "flightDelayMinutes": 0,
+        "conflictingEventIds": [],
+        "missingItems": [],
+        "bringUmbrella": false,
+        "bringWarmLayer": true,
+        "ready": true
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_prefetch",
+      "caseId": "trip-c",
+      "passed": true,
+      "usage": {
+        "inputTokens": 1280,
+        "outputTokens": 703,
+        "cachedInputTokens": 0,
+        "totalTokens": 1983,
+        "reasoningTokens": 574
+      },
+      "modelCalls": 1,
+      "toolCalls": 13,
+      "sdkCalls": 1,
+      "latencyMs": 5736.973100000003,
+      "answer": {
+        "tripId": "trip-c",
+        "flightId": "F300",
+        "terminal": "C",
+        "leaveHomeAt": "2026-11-05T14:35:00.000Z",
+        "estimatedHotelArrival": "2026-11-05T22:05:00.000Z",
+        "checkInWaitMinutes": 0,
+        "flightDelayMinutes": -15,
+        "conflictingEventIds": ["class-c", "meeting-c"],
+        "missingItems": ["flight_confirmation"],
+        "bringUmbrella": true,
+        "bringWarmLayer": true,
+        "ready": false
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_prefetch",
+      "caseId": "trip-c",
+      "passed": true,
+      "usage": {
+        "inputTokens": 1280,
+        "outputTokens": 418,
+        "cachedInputTokens": 0,
+        "totalTokens": 1698,
+        "reasoningTokens": 289
+      },
+      "modelCalls": 1,
+      "toolCalls": 13,
+      "sdkCalls": 0,
+      "latencyMs": 6094.014599999995,
+      "answer": {
+        "tripId": "trip-c",
+        "flightId": "F300",
+        "terminal": "C",
+        "leaveHomeAt": "2026-11-05T14:35:00.000Z",
+        "estimatedHotelArrival": "2026-11-05T22:05:00.000Z",
+        "checkInWaitMinutes": 0,
+        "flightDelayMinutes": -15,
+        "conflictingEventIds": ["class-c", "meeting-c"],
+        "missingItems": ["flight_confirmation"],
+        "bringUmbrella": true,
+        "bringWarmLayer": true,
+        "ready": false
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-c",
+      "passed": true,
+      "usage": {
+        "inputTokens": 25779,
+        "outputTokens": 2198,
+        "cachedInputTokens": 0,
+        "totalTokens": 27977,
+        "reasoningTokens": 1179
+      },
+      "modelCalls": 7,
+      "toolCalls": 13,
+      "sdkCalls": 0,
+      "latencyMs": 24786.13949999999,
+      "answer": {
+        "tripId": "trip-c",
+        "flightId": "F300",
+        "terminal": "C",
+        "leaveHomeAt": "2026-11-05T14:35:00.000Z",
+        "estimatedHotelArrival": "2026-11-05T22:05:00.000Z",
+        "checkInWaitMinutes": 0,
+        "flightDelayMinutes": -15,
+        "conflictingEventIds": ["class-c", "meeting-c"],
+        "missingItems": ["flight_confirmation"],
+        "bringUmbrella": true,
+        "bringWarmLayer": true,
+        "ready": false
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "trip-c",
+      "passed": true,
+      "usage": {
+        "inputTokens": 2239,
+        "outputTokens": 637,
+        "cachedInputTokens": 0,
+        "totalTokens": 2876,
+        "reasoningTokens": 449
+      },
+      "modelCalls": 2,
+      "toolCalls": 13,
+      "sdkCalls": 1,
+      "latencyMs": 7879.408800000034,
+      "answer": {
+        "tripId": "trip-c",
+        "flightId": "F300",
+        "terminal": "C",
+        "leaveHomeAt": "2026-11-05T14:35:00.000Z",
+        "estimatedHotelArrival": "2026-11-05T22:05:00.000Z",
+        "checkInWaitMinutes": 0,
+        "flightDelayMinutes": -15,
+        "conflictingEventIds": ["class-c", "meeting-c"],
+        "missingItems": ["flight_confirmation"],
+        "bringUmbrella": true,
+        "bringWarmLayer": true,
+        "ready": false
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_prefetch",
+      "caseId": "trip-a",
+      "passed": true,
+      "usage": {
+        "inputTokens": 1265,
+        "outputTokens": 540,
+        "cachedInputTokens": 0,
+        "totalTokens": 1805,
+        "reasoningTokens": 412
+      },
+      "modelCalls": 1,
+      "toolCalls": 13,
+      "sdkCalls": 0,
+      "latencyMs": 5523.250500000024,
+      "answer": {
+        "tripId": "trip-a",
+        "flightId": "F100",
+        "terminal": "4",
+        "leaveHomeAt": "2026-11-05T11:45:00.000Z",
+        "estimatedHotelArrival": "2026-11-05T18:25:00.000Z",
+        "checkInWaitMinutes": 155,
+        "flightDelayMinutes": 40,
+        "conflictingEventIds": ["work-call-a"],
+        "missingItems": ["hotel_confirmation"],
+        "bringUmbrella": true,
+        "bringWarmLayer": true,
+        "ready": false
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-a",
+      "passed": true,
+      "usage": {
+        "inputTokens": 25593,
+        "outputTokens": 2360,
+        "cachedInputTokens": 8626,
+        "totalTokens": 27953,
+        "reasoningTokens": 1358
+      },
+      "modelCalls": 7,
+      "toolCalls": 13,
+      "sdkCalls": 0,
+      "latencyMs": 43619.0785,
+      "answer": {
+        "tripId": "trip-a",
+        "flightId": "F100",
+        "terminal": "4",
+        "leaveHomeAt": "2026-11-05T11:45:00.000Z",
+        "estimatedHotelArrival": "2026-11-05T18:25:00.000Z",
+        "checkInWaitMinutes": 155,
+        "flightDelayMinutes": 40,
+        "conflictingEventIds": ["work-call-a"],
+        "missingItems": ["hotel_confirmation"],
+        "bringUmbrella": true,
+        "bringWarmLayer": true,
+        "ready": false
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "trip-a",
+      "passed": true,
+      "usage": {
+        "inputTokens": 2233,
+        "outputTokens": 693,
+        "cachedInputTokens": 0,
+        "totalTokens": 2926,
+        "reasoningTokens": 507
+      },
+      "modelCalls": 2,
+      "toolCalls": 13,
+      "sdkCalls": 1,
+      "latencyMs": 9573.576899999985,
+      "answer": {
+        "tripId": "trip-a",
+        "flightId": "F100",
+        "terminal": "4",
+        "leaveHomeAt": "2026-11-05T11:45:00.000Z",
+        "estimatedHotelArrival": "2026-11-05T18:25:00.000Z",
+        "checkInWaitMinutes": 155,
+        "flightDelayMinutes": 40,
+        "conflictingEventIds": ["work-call-a"],
+        "missingItems": ["hotel_confirmation"],
+        "bringUmbrella": true,
+        "bringWarmLayer": true,
+        "ready": false
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_prefetch",
+      "caseId": "trip-a",
+      "passed": true,
+      "usage": {
+        "inputTokens": 1265,
+        "outputTokens": 725,
+        "cachedInputTokens": 0,
+        "totalTokens": 1990,
+        "reasoningTokens": 597
+      },
+      "modelCalls": 1,
+      "toolCalls": 13,
+      "sdkCalls": 1,
+      "latencyMs": 6098.425600000017,
+      "answer": {
+        "tripId": "trip-a",
+        "flightId": "F100",
+        "terminal": "4",
+        "leaveHomeAt": "2026-11-05T11:45:00.000Z",
+        "estimatedHotelArrival": "2026-11-05T18:25:00.000Z",
+        "checkInWaitMinutes": 155,
+        "flightDelayMinutes": 40,
+        "conflictingEventIds": ["work-call-a"],
+        "missingItems": ["hotel_confirmation"],
+        "bringUmbrella": true,
+        "bringWarmLayer": true,
+        "ready": false
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-b",
+      "passed": true,
+      "usage": {
+        "inputTokens": 26145,
+        "outputTokens": 2345,
+        "cachedInputTokens": 9660,
+        "totalTokens": 28490,
+        "reasoningTokens": 1432
+      },
+      "modelCalls": 7,
+      "toolCalls": 13,
+      "sdkCalls": 0,
+      "latencyMs": 48710.29490000004,
+      "answer": {
+        "tripId": "trip-b",
+        "flightId": "F200",
+        "terminal": "B",
+        "leaveHomeAt": "2026-11-05T13:55:00.000Z",
+        "estimatedHotelArrival": "2026-11-05T18:50:00.000Z",
+        "checkInWaitMinutes": 0,
+        "flightDelayMinutes": 0,
+        "conflictingEventIds": [],
+        "missingItems": [],
+        "bringUmbrella": false,
+        "bringWarmLayer": true,
+        "ready": true
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "trip-b",
+      "passed": true,
+      "usage": {
+        "inputTokens": 2212,
+        "outputTokens": 710,
+        "cachedInputTokens": 0,
+        "totalTokens": 2922,
+        "reasoningTokens": 535
+      },
+      "modelCalls": 2,
+      "toolCalls": 13,
+      "sdkCalls": 1,
+      "latencyMs": 7567.907200000016,
+      "answer": {
+        "tripId": "trip-b",
+        "flightId": "F200",
+        "terminal": "B",
+        "leaveHomeAt": "2026-11-05T13:55:00.000Z",
+        "estimatedHotelArrival": "2026-11-05T18:50:00.000Z",
+        "checkInWaitMinutes": 0,
+        "flightDelayMinutes": 0,
+        "conflictingEventIds": [],
+        "missingItems": [],
+        "bringUmbrella": false,
+        "bringWarmLayer": true,
+        "ready": true
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_prefetch",
+      "caseId": "trip-b",
+      "passed": true,
+      "usage": {
+        "inputTokens": 1189,
+        "outputTokens": 587,
+        "cachedInputTokens": 0,
+        "totalTokens": 1776,
+        "reasoningTokens": 470
+      },
+      "modelCalls": 1,
+      "toolCalls": 13,
+      "sdkCalls": 1,
+      "latencyMs": 6246.540399999998,
+      "answer": {
+        "tripId": "trip-b",
+        "flightId": "F200",
+        "terminal": "B",
+        "leaveHomeAt": "2026-11-05T13:55:00.000Z",
+        "estimatedHotelArrival": "2026-11-05T18:50:00.000Z",
+        "checkInWaitMinutes": 0,
+        "flightDelayMinutes": 0,
+        "conflictingEventIds": [],
+        "missingItems": [],
+        "bringUmbrella": false,
+        "bringWarmLayer": true,
+        "ready": true
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_prefetch",
+      "caseId": "trip-b",
+      "passed": true,
+      "usage": {
+        "inputTokens": 1189,
+        "outputTokens": 428,
+        "cachedInputTokens": 0,
+        "totalTokens": 1617,
+        "reasoningTokens": 311
+      },
+      "modelCalls": 1,
+      "toolCalls": 13,
+      "sdkCalls": 0,
+      "latencyMs": 4223.54369999998,
+      "answer": {
+        "tripId": "trip-b",
+        "flightId": "F200",
+        "terminal": "B",
+        "leaveHomeAt": "2026-11-05T13:55:00.000Z",
+        "estimatedHotelArrival": "2026-11-05T18:50:00.000Z",
+        "checkInWaitMinutes": 0,
+        "flightDelayMinutes": 0,
+        "conflictingEventIds": [],
+        "missingItems": [],
+        "bringUmbrella": false,
+        "bringWarmLayer": true,
+        "ready": true
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "trip-c",
+      "passed": true,
+      "usage": {
+        "inputTokens": 2252,
+        "outputTokens": 888,
+        "cachedInputTokens": 0,
+        "totalTokens": 3140,
+        "reasoningTokens": 700
+      },
+      "modelCalls": 2,
+      "toolCalls": 13,
+      "sdkCalls": 1,
+      "latencyMs": 7542.193700000003,
+      "answer": {
+        "tripId": "trip-c",
+        "flightId": "F300",
+        "terminal": "C",
+        "leaveHomeAt": "2026-11-05T14:35:00.000Z",
+        "estimatedHotelArrival": "2026-11-05T22:05:00.000Z",
+        "checkInWaitMinutes": 0,
+        "flightDelayMinutes": -15,
+        "conflictingEventIds": ["class-c", "meeting-c"],
+        "missingItems": ["flight_confirmation"],
+        "bringUmbrella": true,
+        "bringWarmLayer": true,
+        "ready": false
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_prefetch",
+      "caseId": "trip-c",
+      "passed": true,
+      "usage": {
+        "inputTokens": 1280,
+        "outputTokens": 559,
+        "cachedInputTokens": 0,
+        "totalTokens": 1839,
+        "reasoningTokens": 430
+      },
+      "modelCalls": 1,
+      "toolCalls": 13,
+      "sdkCalls": 1,
+      "latencyMs": 5025.213999999978,
+      "answer": {
+        "tripId": "trip-c",
+        "flightId": "F300",
+        "terminal": "C",
+        "leaveHomeAt": "2026-11-05T14:35:00.000Z",
+        "estimatedHotelArrival": "2026-11-05T22:05:00.000Z",
+        "checkInWaitMinutes": 0,
+        "flightDelayMinutes": -15,
+        "conflictingEventIds": ["class-c", "meeting-c"],
+        "missingItems": ["flight_confirmation"],
+        "bringUmbrella": true,
+        "bringWarmLayer": true,
+        "ready": false
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_prefetch",
+      "caseId": "trip-c",
+      "passed": true,
+      "usage": {
+        "inputTokens": 1280,
+        "outputTokens": 512,
+        "cachedInputTokens": 0,
+        "totalTokens": 1792,
+        "reasoningTokens": 383
+      },
+      "modelCalls": 1,
+      "toolCalls": 13,
+      "sdkCalls": 0,
+      "latencyMs": 4137.635999999999,
+      "answer": {
+        "tripId": "trip-c",
+        "flightId": "F300",
+        "terminal": "C",
+        "leaveHomeAt": "2026-11-05T14:35:00.000Z",
+        "estimatedHotelArrival": "2026-11-05T22:05:00.000Z",
+        "checkInWaitMinutes": 0,
+        "flightDelayMinutes": -15,
+        "conflictingEventIds": ["class-c", "meeting-c"],
+        "missingItems": ["flight_confirmation"],
+        "bringUmbrella": true,
+        "bringWarmLayer": true,
+        "ready": false
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-c",
+      "passed": true,
+      "usage": {
+        "inputTokens": 26592,
+        "outputTokens": 2438,
+        "cachedInputTokens": 10196,
+        "totalTokens": 29030,
+        "reasoningTokens": 1419
+      },
+      "modelCalls": 7,
+      "toolCalls": 13,
+      "sdkCalls": 0,
+      "latencyMs": 32153.22019999998,
+      "answer": {
+        "tripId": "trip-c",
+        "flightId": "F300",
+        "terminal": "C",
+        "leaveHomeAt": "2026-11-05T14:35:00.000Z",
+        "estimatedHotelArrival": "2026-11-05T22:05:00.000Z",
+        "checkInWaitMinutes": 0,
+        "flightDelayMinutes": -15,
+        "conflictingEventIds": ["class-c", "meeting-c"],
+        "missingItems": ["flight_confirmation"],
+        "bringUmbrella": true,
+        "bringWarmLayer": true,
+        "ready": false
+      }
+    }
+  ],
+  "ledger": [
+    {
+      "phase": "exploration",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 3560,
+          "outputTokens": 165,
+          "cachedInputTokens": 0,
+          "totalTokens": 3725,
+          "reasoningTokens": 86
+        },
+        "latencyMs": 2717.7174999999997,
+        "status": "success",
+        "toolNames": ["load_trip", "load_profile"]
+      }
+    },
+    {
+      "phase": "exploration",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 3557,
+          "outputTokens": 319,
+          "cachedInputTokens": 0,
+          "totalTokens": 3876,
+          "reasoningTokens": 160
+        },
+        "latencyMs": 3473.6367000000005,
+        "status": "success",
+        "toolNames": ["check_flight", "load_hotel", "load_calendar", "weather_at_origin"]
+      }
+    },
+    {
+      "phase": "exploration",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 4064,
+          "outputTokens": 341,
+          "cachedInputTokens": 0,
+          "totalTokens": 4405,
+          "reasoningTokens": 187
+        },
+        "latencyMs": 3726.6521999999995,
+        "status": "success",
+        "toolNames": ["weather_at_destination", "route_to_airport", "route_to_hotel"]
+      }
+    },
+    {
+      "phase": "exploration",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 4309,
+          "outputTokens": 454,
+          "cachedInputTokens": 0,
+          "totalTokens": 4763,
+          "reasoningTokens": 266
+        },
+        "latencyMs": 3949.4195999999993,
+        "status": "success",
+        "toolNames": ["calculate_departure", "calculate_arrival"]
+      }
+    },
+    {
+      "phase": "exploration",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 3857,
+          "outputTokens": 336,
+          "cachedInputTokens": 0,
+          "totalTokens": 4193,
+          "reasoningTokens": 111
+        },
+        "latencyMs": 4872.1042,
+        "status": "success",
+        "toolNames": ["find_conflicts"]
+      }
+    },
+    {
+      "phase": "exploration",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 3275,
+          "outputTokens": 211,
+          "cachedInputTokens": 0,
+          "totalTokens": 3486,
+          "reasoningTokens": 142
+        },
+        "latencyMs": 2848.489999999998,
+        "status": "success",
+        "toolNames": ["check_readiness"]
+      }
+    },
+    {
+      "phase": "exploration",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 3339,
+          "outputTokens": 648,
+          "cachedInputTokens": 0,
+          "totalTokens": 3987,
+          "reasoningTokens": 520
+        },
+        "latencyMs": 5514.252700000001,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "exploration",
+      "caseId": "trip-b",
+      "event": {
+        "usage": {
+          "inputTokens": 3560,
+          "outputTokens": 151,
+          "cachedInputTokens": 0,
+          "totalTokens": 3711,
+          "reasoningTokens": 72
+        },
+        "latencyMs": 2898.2792999999983,
+        "status": "success",
+        "toolNames": ["load_trip", "load_profile"]
+      }
+    },
+    {
+      "phase": "exploration",
+      "caseId": "trip-b",
+      "event": {
+        "usage": {
+          "inputTokens": 3542,
+          "outputTokens": 360,
+          "cachedInputTokens": 0,
+          "totalTokens": 3902,
+          "reasoningTokens": 201
+        },
+        "latencyMs": 3913.7588000000032,
+        "status": "success",
+        "toolNames": ["check_flight", "load_hotel", "load_calendar", "weather_at_origin"]
+      }
+    },
+    {
+      "phase": "exploration",
+      "caseId": "trip-b",
+      "event": {
+        "usage": {
+          "inputTokens": 4020,
+          "outputTokens": 390,
+          "cachedInputTokens": 0,
+          "totalTokens": 4410,
+          "reasoningTokens": 236
+        },
+        "latencyMs": 4568.003199999999,
+        "status": "success",
+        "toolNames": ["weather_at_destination", "route_to_airport", "route_to_hotel"]
+      }
+    },
+    {
+      "phase": "exploration",
+      "caseId": "trip-b",
+      "event": {
+        "usage": {
+          "inputTokens": 4314,
+          "outputTokens": 469,
+          "cachedInputTokens": 0,
+          "totalTokens": 4783,
+          "reasoningTokens": 282
+        },
+        "latencyMs": 3807.884300000005,
+        "status": "success",
+        "toolNames": ["calculate_departure", "calculate_arrival"]
+      }
+    },
+    {
+      "phase": "exploration",
+      "caseId": "trip-b",
+      "event": {
+        "usage": {
+          "inputTokens": 3874,
+          "outputTokens": 335,
+          "cachedInputTokens": 0,
+          "totalTokens": 4209,
+          "reasoningTokens": 180
+        },
+        "latencyMs": 4180.233999999997,
+        "status": "success",
+        "toolNames": ["find_conflicts"]
+      }
+    },
+    {
+      "phase": "exploration",
+      "caseId": "trip-b",
+      "event": {
+        "usage": {
+          "inputTokens": 3284,
+          "outputTokens": 181,
+          "cachedInputTokens": 0,
+          "totalTokens": 3465,
+          "reasoningTokens": 119
+        },
+        "latencyMs": 2820.4198000000033,
+        "status": "success",
+        "toolNames": ["check_readiness"]
+      }
+    },
+    {
+      "phase": "exploration",
+      "caseId": "trip-b",
+      "event": {
+        "usage": {
+          "inputTokens": 3313,
+          "outputTokens": 491,
+          "cachedInputTokens": 0,
+          "totalTokens": 3804,
+          "reasoningTokens": 374
+        },
+        "latencyMs": 5097.1967,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "warmup",
+      "arm": "regular_agent",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 3560,
+          "outputTokens": 250,
+          "cachedInputTokens": 1957,
+          "totalTokens": 3810,
+          "reasoningTokens": 171
+        },
+        "latencyMs": 18126.93039999999,
+        "status": "success",
+        "toolNames": ["load_trip", "load_profile"]
+      }
+    },
+    {
+      "phase": "warmup",
+      "arm": "regular_agent",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 3642,
+          "outputTokens": 325,
+          "cachedInputTokens": 1971,
+          "totalTokens": 3967,
+          "reasoningTokens": 166
+        },
+        "latencyMs": 3756.4442999999883,
+        "status": "success",
+        "toolNames": ["check_flight", "load_hotel", "load_calendar", "weather_at_origin"]
+      }
+    },
+    {
+      "phase": "warmup",
+      "arm": "regular_agent",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 4155,
+          "outputTokens": 348,
+          "cachedInputTokens": 2369,
+          "totalTokens": 4503,
+          "reasoningTokens": 194
+        },
+        "latencyMs": 3340.4977999999974,
+        "status": "success",
+        "toolNames": ["weather_at_destination", "route_to_airport", "route_to_hotel"]
+      }
+    },
+    {
+      "phase": "warmup",
+      "arm": "regular_agent",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 4407,
+          "outputTokens": 437,
+          "cachedInputTokens": 2671,
+          "totalTokens": 4844,
+          "reasoningTokens": 249
+        },
+        "latencyMs": 10606.899300000005,
+        "status": "success",
+        "toolNames": ["calculate_departure", "calculate_arrival"]
+      }
+    },
+    {
+      "phase": "warmup",
+      "arm": "regular_agent",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 3938,
+          "outputTokens": 475,
+          "cachedInputTokens": 1241,
+          "totalTokens": 4413,
+          "reasoningTokens": 250
+        },
+        "latencyMs": 4143.351900000009,
+        "status": "success",
+        "toolNames": ["find_conflicts"]
+      }
+    },
+    {
+      "phase": "warmup",
+      "arm": "regular_agent",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 3495,
+          "outputTokens": 193,
+          "cachedInputTokens": 0,
+          "totalTokens": 3688,
+          "reasoningTokens": 124
+        },
+        "latencyMs": 3394.876999999993,
+        "status": "success",
+        "toolNames": ["check_readiness"]
+      }
+    },
+    {
+      "phase": "warmup",
+      "arm": "regular_agent",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 3541,
+          "outputTokens": 691,
+          "cachedInputTokens": 0,
+          "totalTokens": 4232,
+          "reasoningTokens": 563
+        },
+        "latencyMs": 5109.839600000007,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "warmup",
+      "arm": "compiled_tool",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 639,
+          "outputTokens": 108,
+          "cachedInputTokens": 0,
+          "totalTokens": 747,
+          "reasoningTokens": 50
+        },
+        "latencyMs": 4595.121100000004,
+        "status": "success",
+        "toolNames": ["load_travel_day_context"]
+      }
+    },
+    {
+      "phase": "warmup",
+      "arm": "compiled_tool",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 1545,
+          "outputTokens": 509,
+          "cachedInputTokens": 0,
+          "totalTokens": 2054,
+          "reasoningTokens": 381
+        },
+        "latencyMs": 5356.6147000000055,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "warmup",
+      "arm": "compiled_prefetch",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 1265,
+          "outputTokens": 551,
+          "cachedInputTokens": 0,
+          "totalTokens": 1816,
+          "reasoningTokens": 423
+        },
+        "latencyMs": 4678.382200000007,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "warmup",
+      "arm": "regular_prefetch",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 1265,
+          "outputTokens": 615,
+          "cachedInputTokens": 0,
+          "totalTokens": 1880,
+          "reasoningTokens": 487
+        },
+        "latencyMs": 6718.829199999993,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 3560,
+          "outputTokens": 155,
+          "cachedInputTokens": 1957,
+          "totalTokens": 3715,
+          "reasoningTokens": 76
+        },
+        "latencyMs": 3444.761500000008,
+        "status": "success",
+        "toolNames": ["load_trip", "load_profile"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 3547,
+          "outputTokens": 312,
+          "cachedInputTokens": 0,
+          "totalTokens": 3859,
+          "reasoningTokens": 153
+        },
+        "latencyMs": 3737.452499999985,
+        "status": "success",
+        "toolNames": ["check_flight", "load_hotel", "load_calendar", "weather_at_origin"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 4047,
+          "outputTokens": 350,
+          "cachedInputTokens": 2356,
+          "totalTokens": 4397,
+          "reasoningTokens": 196
+        },
+        "latencyMs": 13799.00959999999,
+        "status": "success",
+        "toolNames": ["weather_at_destination", "route_to_airport", "route_to_hotel"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 4301,
+          "outputTokens": 447,
+          "cachedInputTokens": 2134,
+          "totalTokens": 4748,
+          "reasoningTokens": 259
+        },
+        "latencyMs": 7254.425600000017,
+        "status": "success",
+        "toolNames": ["calculate_departure", "calculate_arrival"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 3842,
+          "outputTokens": 529,
+          "cachedInputTokens": 1234,
+          "totalTokens": 4371,
+          "reasoningTokens": 304
+        },
+        "latencyMs": 4108.6842999999935,
+        "status": "success",
+        "toolNames": ["find_conflicts"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 3453,
+          "outputTokens": 261,
+          "cachedInputTokens": 0,
+          "totalTokens": 3714,
+          "reasoningTokens": 192
+        },
+        "latencyMs": 22430.528099999996,
+        "status": "success",
+        "toolNames": ["check_readiness"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 3567,
+          "outputTokens": 583,
+          "cachedInputTokens": 0,
+          "totalTokens": 4150,
+          "reasoningTokens": 455
+        },
+        "latencyMs": 4762.946000000025,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 639,
+          "outputTokens": 144,
+          "cachedInputTokens": 0,
+          "totalTokens": 783,
+          "reasoningTokens": 86
+        },
+        "latencyMs": 5903.267699999997,
+        "status": "success",
+        "toolNames": ["load_travel_day_context"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 1581,
+          "outputTokens": 453,
+          "cachedInputTokens": 0,
+          "totalTokens": 2034,
+          "reasoningTokens": 325
+        },
+        "latencyMs": 4156.32699999999,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_prefetch",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 1265,
+          "outputTokens": 707,
+          "cachedInputTokens": 0,
+          "totalTokens": 1972,
+          "reasoningTokens": 579
+        },
+        "latencyMs": 6850.474799999996,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_prefetch",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 1265,
+          "outputTokens": 728,
+          "cachedInputTokens": 0,
+          "totalTokens": 1993,
+          "reasoningTokens": 600
+        },
+        "latencyMs": 6337.238099999988,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "trip-b",
+      "event": {
+        "usage": {
+          "inputTokens": 639,
+          "outputTokens": 190,
+          "cachedInputTokens": 0,
+          "totalTokens": 829,
+          "reasoningTokens": 132
+        },
+        "latencyMs": 2705.058400000009,
+        "status": "success",
+        "toolNames": ["load_travel_day_context"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "trip-b",
+      "event": {
+        "usage": {
+          "inputTokens": 1541,
+          "outputTokens": 580,
+          "cachedInputTokens": 0,
+          "totalTokens": 2121,
+          "reasoningTokens": 463
+        },
+        "latencyMs": 4560.211299999995,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_prefetch",
+      "caseId": "trip-b",
+      "event": {
+        "usage": {
+          "inputTokens": 1189,
+          "outputTokens": 594,
+          "cachedInputTokens": 0,
+          "totalTokens": 1783,
+          "reasoningTokens": 477
+        },
+        "latencyMs": 5239.119099999982,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_prefetch",
+      "caseId": "trip-b",
+      "event": {
+        "usage": {
+          "inputTokens": 1189,
+          "outputTokens": 584,
+          "cachedInputTokens": 0,
+          "totalTokens": 1773,
+          "reasoningTokens": 467
+        },
+        "latencyMs": 7009.101699999999,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-b",
+      "event": {
+        "usage": {
+          "inputTokens": 3560,
+          "outputTokens": 161,
+          "cachedInputTokens": 1957,
+          "totalTokens": 3721,
+          "reasoningTokens": 82
+        },
+        "latencyMs": 2900.808400000009,
+        "status": "success",
+        "toolNames": ["load_trip", "load_profile"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-b",
+      "event": {
+        "usage": {
+          "inputTokens": 3552,
+          "outputTokens": 348,
+          "cachedInputTokens": 1949,
+          "totalTokens": 3900,
+          "reasoningTokens": 189
+        },
+        "latencyMs": 5825.196600000025,
+        "status": "success",
+        "toolNames": ["check_flight", "load_hotel", "load_calendar", "weather_at_origin"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-b",
+      "event": {
+        "usage": {
+          "inputTokens": 4018,
+          "outputTokens": 521,
+          "cachedInputTokens": 2353,
+          "totalTokens": 4539,
+          "reasoningTokens": 367
+        },
+        "latencyMs": 6062.659700000018,
+        "status": "success",
+        "toolNames": ["weather_at_destination", "route_to_airport", "route_to_hotel"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-b",
+      "event": {
+        "usage": {
+          "inputTokens": 4443,
+          "outputTokens": 431,
+          "cachedInputTokens": 2679,
+          "totalTokens": 4874,
+          "reasoningTokens": 244
+        },
+        "latencyMs": 4987.439700000017,
+        "status": "success",
+        "toolNames": ["calculate_departure", "calculate_arrival"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-b",
+      "event": {
+        "usage": {
+          "inputTokens": 3965,
+          "outputTokens": 334,
+          "cachedInputTokens": 1242,
+          "totalTokens": 4299,
+          "reasoningTokens": 179
+        },
+        "latencyMs": 8329.934199999989,
+        "status": "success",
+        "toolNames": ["find_conflicts"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-b",
+      "event": {
+        "usage": {
+          "inputTokens": 3374,
+          "outputTokens": 142,
+          "cachedInputTokens": 0,
+          "totalTokens": 3516,
+          "reasoningTokens": 80
+        },
+        "latencyMs": 15985.703600000008,
+        "status": "success",
+        "toolNames": ["check_readiness"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-b",
+      "event": {
+        "usage": {
+          "inputTokens": 3364,
+          "outputTokens": 607,
+          "cachedInputTokens": 0,
+          "totalTokens": 3971,
+          "reasoningTokens": 490
+        },
+        "latencyMs": 31906.32639999996,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_prefetch",
+      "caseId": "trip-c",
+      "event": {
+        "usage": {
+          "inputTokens": 1280,
+          "outputTokens": 703,
+          "cachedInputTokens": 0,
+          "totalTokens": 1983,
+          "reasoningTokens": 574
+        },
+        "latencyMs": 5728.185500000021,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_prefetch",
+      "caseId": "trip-c",
+      "event": {
+        "usage": {
+          "inputTokens": 1280,
+          "outputTokens": 418,
+          "cachedInputTokens": 0,
+          "totalTokens": 1698,
+          "reasoningTokens": 289
+        },
+        "latencyMs": 6090.291800000006,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-c",
+      "event": {
+        "usage": {
+          "inputTokens": 3561,
+          "outputTokens": 149,
+          "cachedInputTokens": 0,
+          "totalTokens": 3710,
+          "reasoningTokens": 68
+        },
+        "latencyMs": 2492.448700000008,
+        "status": "success",
+        "toolNames": ["load_trip", "load_profile"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-c",
+      "event": {
+        "usage": {
+          "inputTokens": 3545,
+          "outputTokens": 321,
+          "cachedInputTokens": 0,
+          "totalTokens": 3866,
+          "reasoningTokens": 158
+        },
+        "latencyMs": 3859.240599999961,
+        "status": "success",
+        "toolNames": ["check_flight", "load_hotel", "load_calendar", "weather_at_origin"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-c",
+      "event": {
+        "usage": {
+          "inputTokens": 4056,
+          "outputTokens": 325,
+          "cachedInputTokens": 0,
+          "totalTokens": 4381,
+          "reasoningTokens": 167
+        },
+        "latencyMs": 4124.983499999973,
+        "status": "success",
+        "toolNames": ["weather_at_destination", "route_to_airport", "route_to_hotel"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-c",
+      "event": {
+        "usage": {
+          "inputTokens": 4289,
+          "outputTokens": 446,
+          "cachedInputTokens": 0,
+          "totalTokens": 4735,
+          "reasoningTokens": 256
+        },
+        "latencyMs": 3794.0567000000156,
+        "status": "success",
+        "toolNames": ["calculate_departure", "calculate_arrival"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-c",
+      "event": {
+        "usage": {
+          "inputTokens": 3829,
+          "outputTokens": 328,
+          "cachedInputTokens": 0,
+          "totalTokens": 4157,
+          "reasoningTokens": 104
+        },
+        "latencyMs": 3657.0917999999947,
+        "status": "success",
+        "toolNames": ["find_conflicts"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-c",
+      "event": {
+        "usage": {
+          "inputTokens": 3244,
+          "outputTokens": 157,
+          "cachedInputTokens": 0,
+          "totalTokens": 3401,
+          "reasoningTokens": 83
+        },
+        "latencyMs": 2936.80620000005,
+        "status": "success",
+        "toolNames": ["check_readiness"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-c",
+      "event": {
+        "usage": {
+          "inputTokens": 3255,
+          "outputTokens": 472,
+          "cachedInputTokens": 0,
+          "totalTokens": 3727,
+          "reasoningTokens": 343
+        },
+        "latencyMs": 3916.232399999979,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "trip-c",
+      "event": {
+        "usage": {
+          "inputTokens": 640,
+          "outputTokens": 146,
+          "cachedInputTokens": 0,
+          "totalTokens": 786,
+          "reasoningTokens": 87
+        },
+        "latencyMs": 2717.896400000027,
+        "status": "success",
+        "toolNames": ["load_travel_day_context"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "trip-c",
+      "event": {
+        "usage": {
+          "inputTokens": 1599,
+          "outputTokens": 491,
+          "cachedInputTokens": 0,
+          "totalTokens": 2090,
+          "reasoningTokens": 362
+        },
+        "latencyMs": 5155.348899999983,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_prefetch",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 1265,
+          "outputTokens": 540,
+          "cachedInputTokens": 0,
+          "totalTokens": 1805,
+          "reasoningTokens": 412
+        },
+        "latencyMs": 5518.6786999999895,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 3560,
+          "outputTokens": 153,
+          "cachedInputTokens": 1957,
+          "totalTokens": 3713,
+          "reasoningTokens": 74
+        },
+        "latencyMs": 4998.012600000016,
+        "status": "success",
+        "toolNames": ["load_trip", "load_profile"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 3545,
+          "outputTokens": 276,
+          "cachedInputTokens": 969,
+          "totalTokens": 3821,
+          "reasoningTokens": 117
+        },
+        "latencyMs": 9020.391799999983,
+        "status": "success",
+        "toolNames": ["check_flight", "load_hotel", "load_calendar", "weather_at_origin"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 4009,
+          "outputTokens": 279,
+          "cachedInputTokens": 2352,
+          "totalTokens": 4288,
+          "reasoningTokens": 125
+        },
+        "latencyMs": 5577.967799999984,
+        "status": "success",
+        "toolNames": ["weather_at_destination", "route_to_airport", "route_to_hotel"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 4192,
+          "outputTokens": 423,
+          "cachedInputTokens": 2123,
+          "totalTokens": 4615,
+          "reasoningTokens": 235
+        },
+        "latencyMs": 6953.4770000000135,
+        "status": "success",
+        "toolNames": ["calculate_departure", "calculate_arrival"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 3709,
+          "outputTokens": 467,
+          "cachedInputTokens": 1225,
+          "totalTokens": 4176,
+          "reasoningTokens": 242
+        },
+        "latencyMs": 7825.2435000000405,
+        "status": "success",
+        "toolNames": ["find_conflicts"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 3258,
+          "outputTokens": 209,
+          "cachedInputTokens": 0,
+          "totalTokens": 3467,
+          "reasoningTokens": 140
+        },
+        "latencyMs": 4140.212600000028,
+        "status": "success",
+        "toolNames": ["check_readiness"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 3320,
+          "outputTokens": 553,
+          "cachedInputTokens": 0,
+          "totalTokens": 3873,
+          "reasoningTokens": 425
+        },
+        "latencyMs": 5094.961400000029,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 639,
+          "outputTokens": 157,
+          "cachedInputTokens": 0,
+          "totalTokens": 796,
+          "reasoningTokens": 99
+        },
+        "latencyMs": 3481.895900000003,
+        "status": "success",
+        "toolNames": ["load_travel_day_context"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 1594,
+          "outputTokens": 536,
+          "cachedInputTokens": 0,
+          "totalTokens": 2130,
+          "reasoningTokens": 408
+        },
+        "latencyMs": 6082.1797999999835,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_prefetch",
+      "caseId": "trip-a",
+      "event": {
+        "usage": {
+          "inputTokens": 1265,
+          "outputTokens": 725,
+          "cachedInputTokens": 0,
+          "totalTokens": 1990,
+          "reasoningTokens": 597
+        },
+        "latencyMs": 6089.271599999978,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-b",
+      "event": {
+        "usage": {
+          "inputTokens": 3560,
+          "outputTokens": 240,
+          "cachedInputTokens": 1957,
+          "totalTokens": 3800,
+          "reasoningTokens": 161
+        },
+        "latencyMs": 5369.336100000015,
+        "status": "success",
+        "toolNames": ["load_trip", "load_profile"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-b",
+      "event": {
+        "usage": {
+          "inputTokens": 3631,
+          "outputTokens": 374,
+          "cachedInputTokens": 1966,
+          "totalTokens": 4005,
+          "reasoningTokens": 215
+        },
+        "latencyMs": 4327.96749999997,
+        "status": "success",
+        "toolNames": ["check_flight", "load_hotel", "load_calendar", "weather_at_origin"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-b",
+      "event": {
+        "usage": {
+          "inputTokens": 4123,
+          "outputTokens": 298,
+          "cachedInputTokens": 2365,
+          "totalTokens": 4421,
+          "reasoningTokens": 144
+        },
+        "latencyMs": 4452.449900000007,
+        "status": "success",
+        "toolNames": ["weather_at_destination", "route_to_airport", "route_to_hotel"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-b",
+      "event": {
+        "usage": {
+          "inputTokens": 4325,
+          "outputTokens": 451,
+          "cachedInputTokens": 2136,
+          "totalTokens": 4776,
+          "reasoningTokens": 264
+        },
+        "latencyMs": 4318.472499999974,
+        "status": "success",
+        "toolNames": ["calculate_departure", "calculate_arrival"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-b",
+      "event": {
+        "usage": {
+          "inputTokens": 3867,
+          "outputTokens": 325,
+          "cachedInputTokens": 1236,
+          "totalTokens": 4192,
+          "reasoningTokens": 170
+        },
+        "latencyMs": 13776.767099999997,
+        "status": "success",
+        "toolNames": ["find_conflicts"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-b",
+      "event": {
+        "usage": {
+          "inputTokens": 3267,
+          "outputTokens": 257,
+          "cachedInputTokens": 0,
+          "totalTokens": 3524,
+          "reasoningTokens": 195
+        },
+        "latencyMs": 10995.50410000002,
+        "status": "success",
+        "toolNames": ["check_readiness"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-b",
+      "event": {
+        "usage": {
+          "inputTokens": 3372,
+          "outputTokens": 400,
+          "cachedInputTokens": 0,
+          "totalTokens": 3772,
+          "reasoningTokens": 283
+        },
+        "latencyMs": 5462.366700000013,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "trip-b",
+      "event": {
+        "usage": {
+          "inputTokens": 639,
+          "outputTokens": 222,
+          "cachedInputTokens": 0,
+          "totalTokens": 861,
+          "reasoningTokens": 164
+        },
+        "latencyMs": 2832.7539000000106,
+        "status": "success",
+        "toolNames": ["load_travel_day_context"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "trip-b",
+      "event": {
+        "usage": {
+          "inputTokens": 1573,
+          "outputTokens": 488,
+          "cachedInputTokens": 0,
+          "totalTokens": 2061,
+          "reasoningTokens": 371
+        },
+        "latencyMs": 4726.907599999977,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_prefetch",
+      "caseId": "trip-b",
+      "event": {
+        "usage": {
+          "inputTokens": 1189,
+          "outputTokens": 587,
+          "cachedInputTokens": 0,
+          "totalTokens": 1776,
+          "reasoningTokens": 470
+        },
+        "latencyMs": 6239.669900000037,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_prefetch",
+      "caseId": "trip-b",
+      "event": {
+        "usage": {
+          "inputTokens": 1189,
+          "outputTokens": 428,
+          "cachedInputTokens": 0,
+          "totalTokens": 1617,
+          "reasoningTokens": 311
+        },
+        "latencyMs": 4217.278200000001,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "trip-c",
+      "event": {
+        "usage": {
+          "inputTokens": 640,
+          "outputTokens": 159,
+          "cachedInputTokens": 0,
+          "totalTokens": 799,
+          "reasoningTokens": 100
+        },
+        "latencyMs": 2204.4935000000405,
+        "status": "success",
+        "toolNames": ["load_travel_day_context"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_tool",
+      "caseId": "trip-c",
+      "event": {
+        "usage": {
+          "inputTokens": 1612,
+          "outputTokens": 729,
+          "cachedInputTokens": 0,
+          "totalTokens": 2341,
+          "reasoningTokens": 600
+        },
+        "latencyMs": 5326.56090000004,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "compiled_prefetch",
+      "caseId": "trip-c",
+      "event": {
+        "usage": {
+          "inputTokens": 1280,
+          "outputTokens": 559,
+          "cachedInputTokens": 0,
+          "totalTokens": 1839,
+          "reasoningTokens": 430
+        },
+        "latencyMs": 5018.090600000054,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_prefetch",
+      "caseId": "trip-c",
+      "event": {
+        "usage": {
+          "inputTokens": 1280,
+          "outputTokens": 512,
+          "cachedInputTokens": 0,
+          "totalTokens": 1792,
+          "reasoningTokens": 383
+        },
+        "latencyMs": 4131.233899999992,
+        "status": "success",
+        "toolNames": []
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-c",
+      "event": {
+        "usage": {
+          "inputTokens": 3561,
+          "outputTokens": 288,
+          "cachedInputTokens": 1957,
+          "totalTokens": 3849,
+          "reasoningTokens": 207
+        },
+        "latencyMs": 7508.425699999963,
+        "status": "success",
+        "toolNames": ["load_trip", "load_profile"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-c",
+      "event": {
+        "usage": {
+          "inputTokens": 3684,
+          "outputTokens": 324,
+          "cachedInputTokens": 1967,
+          "totalTokens": 4008,
+          "reasoningTokens": 161
+        },
+        "latencyMs": 3501.0556000000215,
+        "status": "success",
+        "toolNames": ["check_flight", "load_hotel", "load_calendar", "weather_at_origin"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-c",
+      "event": {
+        "usage": {
+          "inputTokens": 4198,
+          "outputTokens": 320,
+          "cachedInputTokens": 2374,
+          "totalTokens": 4518,
+          "reasoningTokens": 162
+        },
+        "latencyMs": 4219.256799999974,
+        "status": "success",
+        "toolNames": ["weather_at_destination", "route_to_airport", "route_to_hotel"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-c",
+      "event": {
+        "usage": {
+          "inputTokens": 4426,
+          "outputTokens": 423,
+          "cachedInputTokens": 2657,
+          "totalTokens": 4849,
+          "reasoningTokens": 233
+        },
+        "latencyMs": 3689.80349999998,
+        "status": "success",
+        "toolNames": ["calculate_departure", "calculate_arrival"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-c",
+      "event": {
+        "usage": {
+          "inputTokens": 3943,
+          "outputTokens": 333,
+          "cachedInputTokens": 1241,
+          "totalTokens": 4276,
+          "reasoningTokens": 109
+        },
+        "latencyMs": 4214.29879999999,
+        "status": "success",
+        "toolNames": ["find_conflicts"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-c",
+      "event": {
+        "usage": {
+          "inputTokens": 3363,
+          "outputTokens": 200,
+          "cachedInputTokens": 0,
+          "totalTokens": 3563,
+          "reasoningTokens": 126
+        },
+        "latencyMs": 4182.225199999986,
+        "status": "success",
+        "toolNames": ["check_readiness"]
+      }
+    },
+    {
+      "phase": "measurement",
+      "arm": "regular_agent",
+      "caseId": "trip-c",
+      "event": {
+        "usage": {
+          "inputTokens": 3417,
+          "outputTokens": 550,
+          "cachedInputTokens": 0,
+          "totalTokens": 3967,
+          "reasoningTokens": 421
+        },
+        "latencyMs": 4831.526699999988,
+        "status": "success",
+        "toolNames": []
+      }
+    }
+  ],
+  "controlCalls": [
+    {
+      "path": "/api/v2/tasks/traces",
+      "method": "POST",
+      "status": 201
+    },
+    {
+      "path": "/api/v2/tasks/traces",
+      "method": "POST",
+      "status": 201
+    },
+    {
+      "path": "/api/v2/tasks/compile",
+      "method": "POST",
+      "status": 201
+    },
+    {
+      "path": "/api/v2/tasks/capabilities/f13cb79f-b489-445c-82f6-006cbb3a5027/verify",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/capabilities/f13cb79f-b489-445c-82f6-006cbb3a5027/approve",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/capabilities/f13cb79f-b489-445c-82f6-006cbb3a5027/shadow",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/capabilities/f13cb79f-b489-445c-82f6-006cbb3a5027/shadow",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/capabilities/f13cb79f-b489-445c-82f6-006cbb3a5027/shadow",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/capabilities/f13cb79f-b489-445c-82f6-006cbb3a5027/deploy",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/capabilities/f13cb79f-b489-445c-82f6-006cbb3a5027/revoke",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/runtime/load_travel_day_context",
+      "method": "GET",
+      "status": 404
+    }
+  ]
+}

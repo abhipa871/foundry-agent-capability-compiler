@@ -1,5 +1,9 @@
 # Customer SDK integration
 
+This guide documents the original CRM compatibility SDK. The default SDK export on `abhi-dev`
+is now domain-independent; see [General task SDK](general-sdk.md). Existing packaged CRM clients
+should import the `@foundry/read-runtime/legacy` subpath. Direct repository imports remain valid.
+
 The supported optimization is `customer_context` / `load_customer_context(customerId)`, using
 three read contracts over `fixtures-v1`. This implementation is ready for local integration and
 review. A [live-provider experiment](real-agent-experiment.md) is available; production connector

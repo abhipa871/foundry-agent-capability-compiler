@@ -5,11 +5,15 @@ writeFileSync(
   JSON.stringify(
     {
       name: '@foundry/read-runtime',
-      version: '0.1.0',
+      version: '0.2.0',
       type: 'module',
       private: true,
       engines: { node: '>=24' },
-      exports: { '.': { types: './integration/client.d.ts', import: './integration/client.js' } },
+      exports: {
+        '.': { types: './integration/index.d.ts', import: './integration/index.js' },
+        './legacy': { types: './integration/client.d.ts', import: './integration/client.js' },
+        './providers': { types: './agent/providers.d.ts', import: './agent/providers.js' },
+      },
       dependencies: { zod: '4.6.5' },
     },
     null,

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { generalSdkExample } from './sdk-example';
 import {
   Activity,
   ArrowDown,
@@ -303,7 +304,7 @@ export function BenchmarkWorkspace({
     a.click();
     URL.revokeObjectURL(url);
   }
-  const integration = `import { FoundryClient, defineContextContract, selectExecution }\n  from './dist-sdk/integration/client.js';\n\n// Your adapters, identity, and existing agent stay in your app.\nconst foundry = new FoundryClient({\n  tenantId, principalId, agentId,\n  endpoint: process.env.FOUNDRY_ENDPOINT,\n  apiKey: process.env.FOUNDRY_API_KEY,\n  trustedPublicKey: pinnedPublicKey,\n  context: authorizedRuntimeContext,\n  adapters: yourReadAdapters,\n  native: yourExistingContextAgent,\n});\n\n// Only register context requirements your application knows.\nconst contract = defineContextContract({\n  requirement: 'subset',\n  reads: ['orders.list'],\n});\nconst input = { customerId };\nconst selection = selectExecution(contract, input, authorizedRuntimeContext());\nif (selection.mode === 'denied') throw new Error('Access denied');\n\n// The application honors selection.mode; execute does not route for you.\nif (selection.mode === 'compiled_prefetch') {\n  const context = await foundry.execute(\n    { kind: 'customer_context', input },\n    { resources: selection.resources, selection, fallback: 'defer' },\n  );\n  if (context.outcome === 'denied') throw new Error('Access denied');\n  if (context.outcome === 'success') {\n    return yourSupportAgent({ prompt, context: context.result });\n  }\n  return yourOriginalAgent({ prompt, checkpoint: context.checkpoint });\n}\n// For compiled_tool, offer a guarded context tool to your agent.\nreturn yourOriginalAgent({ prompt, selection });`;
+  const integration = generalSdkExample;
   async function copy() {
     try {
       await navigator.clipboard.writeText(integration);
@@ -924,8 +925,8 @@ export function BenchmarkWorkspace({
                 <section>
                   <h3>Connect your existing tools</h3>
                   <p>
-                    Supply typed, authorized read adapters and your original agent callback. Tool
-                    credentials stay in your application.
+                    Register task schemas, authorized read or pure tools, and explicit provenance.
+                    Tool credentials stay in your application.
                   </p>
                 </section>
               </div>
@@ -935,7 +936,7 @@ export function BenchmarkWorkspace({
                   <h3>Validate before routing</h3>
                   <p>
                     Observe, compile, verify and shadow the exact artifact. Approval and deployment
-                    remain explicit. Routing starts in observe mode.
+                    remain explicit. Native comparisons gate activation.
                   </p>
                 </section>
               </div>
@@ -986,9 +987,10 @@ export function BenchmarkWorkspace({
             ))}
           </div>
           <p className="bw-sdk-limit">
-            Current capability: load_customer_context over the existing three read contracts. Custom
-            production connectors require integration and validation. The example is an integration
-            skeleton; supply your own identity, adapters, pinned public key and agent functions.
+            Task contracts define the workflow, schemas, tools and authorization. The local console
+            includes synthetic travel and departure examples. Production connectors require trusted
+            operator registration and validation. Supply your own identity, registry, pinned public
+            key and agent functions for the integration example.
           </p>
         </>
       )}

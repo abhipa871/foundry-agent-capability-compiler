@@ -1,0 +1,307 @@
+{
+  "complete": false,
+  "failure": "Model response budget exceeded.",
+  "capturedAt": "2026-11-04T04:43:45.871Z",
+  "branch": "abhi-dev",
+  "provider": "gemini",
+  "model": "gemini-3.8-flash",
+  "methodology": {
+    "task": "Personal next-appointment departure and umbrella plan.",
+    "inputs": [
+      {
+        "userId": "alice",
+        "now": "2026-11-03T10:00:00-05:00"
+      },
+      {
+        "userId": "bob",
+        "now": "2026-11-03T10:00:00-05:00"
+      },
+      {
+        "userId": "carol",
+        "now": "2026-11-03T10:00:00-05:00"
+      }
+    ],
+    "arms": ["regular_api", "compiled_tool", "compiled_prefetch", "regular_prefetch"],
+    "repeatsPerInput": 2,
+    "armOrder": "rotated",
+    "compiledRegion": "Five registered read/pure tools, explicit value provenance, verified and approved exact IR digest.",
+    "finalAnswer": "Gemini generates the same four evidence fields in every arm.",
+    "data": "Synthetic personal fixtures; live Gemini inference. No real calendar, maps or weather accounts.",
+    "tokenDefinition": "Provider usage totals summed across every response including reasoning, retries requested by the model and failures with reported usage. Missing provider usage remains null.",
+    "sdk": "Built dist-sdk package loaded dynamically; signed capability offers over loopback HTTP.",
+    "limitations": [
+      "Small controlled sample, not a production load or cross-model benchmark.",
+      "All contexts have a fixed snapshot. External live-data outputs depend on their providers.",
+      "Only Gemini was exercised live. Other provider adapters have mocked protocol tests."
+    ]
+  },
+  "summary": {
+    "regular_api": {
+      "tasks": 0,
+      "passed": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "cachedInputTokens": 0,
+      "totalTokens": 0,
+      "reasoningTokens": 0,
+      "meanTokens": null,
+      "modelCalls": 0,
+      "physicalToolCalls": 0,
+      "sdkCalls": 0
+    },
+    "compiled_tool": {
+      "tasks": 0,
+      "passed": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "cachedInputTokens": 0,
+      "totalTokens": 0,
+      "reasoningTokens": 0,
+      "meanTokens": null,
+      "modelCalls": 0,
+      "physicalToolCalls": 0,
+      "sdkCalls": 0
+    },
+    "compiled_prefetch": {
+      "tasks": 0,
+      "passed": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "cachedInputTokens": 0,
+      "totalTokens": 0,
+      "reasoningTokens": 0,
+      "meanTokens": null,
+      "modelCalls": 0,
+      "physicalToolCalls": 0,
+      "sdkCalls": 0
+    },
+    "regular_prefetch": {
+      "tasks": 0,
+      "passed": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "cachedInputTokens": 0,
+      "totalTokens": 0,
+      "reasoningTokens": 0,
+      "meanTokens": null,
+      "modelCalls": 0,
+      "physicalToolCalls": 0,
+      "sdkCalls": 0
+    }
+  },
+  "phaseUsage": {
+    "setup": {
+      "inputTokens": 10047,
+      "outputTokens": 1041,
+      "cachedInputTokens": 0,
+      "totalTokens": 11088,
+      "reasoningTokens": 843
+    },
+    "warmup": {
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "cachedInputTokens": 0,
+      "totalTokens": 0,
+      "reasoningTokens": 0
+    },
+    "measurement": {
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "cachedInputTokens": 0,
+      "totalTokens": 0,
+      "reasoningTokens": 0
+    }
+  },
+  "experimentTotal": {
+    "inputTokens": 10047,
+    "outputTokens": 1041,
+    "cachedInputTokens": 0,
+    "totalTokens": 11088,
+    "reasoningTokens": 843
+  },
+  "elapsedMs": 48787.110499999995,
+  "stress": [],
+  "runs": [],
+  "ledger": [
+    {
+      "phase": "setup",
+      "caseId": "alice",
+      "event": {
+        "usage": {
+          "inputTokens": 379,
+          "outputTokens": 197,
+          "cachedInputTokens": 0,
+          "totalTokens": 576,
+          "reasoningTokens": 177
+        },
+        "latencyMs": 12925.633899999999,
+        "status": "success"
+      }
+    },
+    {
+      "phase": "setup",
+      "caseId": "alice",
+      "event": {
+        "usage": {
+          "inputTokens": 700,
+          "outputTokens": 63,
+          "cachedInputTokens": 0,
+          "totalTokens": 763,
+          "reasoningTokens": 43
+        },
+        "latencyMs": 1838.2901000000002,
+        "status": "success"
+      }
+    },
+    {
+      "phase": "setup",
+      "caseId": "alice",
+      "event": {
+        "usage": {
+          "inputTokens": 848,
+          "outputTokens": 32,
+          "cachedInputTokens": 0,
+          "totalTokens": 880,
+          "reasoningTokens": 22
+        },
+        "latencyMs": 8627.897,
+        "status": "success"
+      }
+    },
+    {
+      "phase": "setup",
+      "caseId": "alice",
+      "event": {
+        "usage": {
+          "inputTokens": 926,
+          "outputTokens": 298,
+          "cachedInputTokens": 0,
+          "totalTokens": 1224,
+          "reasoningTokens": 250
+        },
+        "latencyMs": 3119.8778999999995,
+        "status": "success"
+      }
+    },
+    {
+      "phase": "setup",
+      "caseId": "bob",
+      "event": {
+        "usage": {
+          "inputTokens": 379,
+          "outputTokens": 63,
+          "cachedInputTokens": 0,
+          "totalTokens": 442,
+          "reasoningTokens": 43
+        },
+        "latencyMs": 5195.144700000001,
+        "status": "success"
+      }
+    },
+    {
+      "phase": "setup",
+      "caseId": "bob",
+      "event": {
+        "usage": {
+          "inputTokens": 564,
+          "outputTokens": 120,
+          "cachedInputTokens": 0,
+          "totalTokens": 684,
+          "reasoningTokens": 100
+        },
+        "latencyMs": 2061.722200000004,
+        "status": "success"
+      }
+    },
+    {
+      "phase": "setup",
+      "caseId": "bob",
+      "event": {
+        "usage": {
+          "inputTokens": 769,
+          "outputTokens": 33,
+          "cachedInputTokens": 0,
+          "totalTokens": 802,
+          "reasoningTokens": 23
+        },
+        "latencyMs": 1723.0248999999967,
+        "status": "success"
+      }
+    },
+    {
+      "phase": "setup",
+      "caseId": "bob",
+      "event": {
+        "usage": {
+          "inputTokens": 848,
+          "outputTokens": 169,
+          "cachedInputTokens": 0,
+          "totalTokens": 1017,
+          "reasoningTokens": 159
+        },
+        "latencyMs": 2521.6947999999975,
+        "status": "success"
+      }
+    },
+    {
+      "phase": "setup",
+      "caseId": "bob",
+      "event": {
+        "usage": {
+          "inputTokens": 1063,
+          "outputTokens": 10,
+          "cachedInputTokens": 0,
+          "totalTokens": 1073,
+          "reasoningTokens": 0
+        },
+        "latencyMs": 1336.0346999999965,
+        "status": "success"
+      }
+    },
+    {
+      "phase": "setup",
+      "caseId": "bob",
+      "event": {
+        "usage": {
+          "inputTokens": 1119,
+          "outputTokens": 30,
+          "cachedInputTokens": 0,
+          "totalTokens": 1149,
+          "reasoningTokens": 20
+        },
+        "latencyMs": 3019.8162999999986,
+        "status": "success"
+      }
+    },
+    {
+      "phase": "setup",
+      "caseId": "bob",
+      "event": {
+        "usage": {
+          "inputTokens": 1195,
+          "outputTokens": 16,
+          "cachedInputTokens": 0,
+          "totalTokens": 1211,
+          "reasoningTokens": 6
+        },
+        "latencyMs": 4789.686799999996,
+        "status": "success"
+      }
+    },
+    {
+      "phase": "setup",
+      "caseId": "bob",
+      "event": {
+        "usage": {
+          "inputTokens": 1257,
+          "outputTokens": 10,
+          "cachedInputTokens": 0,
+          "totalTokens": 1267,
+          "reasoningTokens": 0
+        },
+        "latencyMs": 1570.2646999999997,
+        "status": "success"
+      }
+    }
+  ]
+}

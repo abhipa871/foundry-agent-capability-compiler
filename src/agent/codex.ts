@@ -173,7 +173,10 @@ export function codexCommand() {
 
 export function codexLaunch(): { command: string; argsPrefix: string[] } {
   if (process.env.FOUNDRY_CODEX_BIN) {
-    return { command: process.env.FOUNDRY_CODEX_BIN, argsPrefix: [] };
+    const command = process.env.FOUNDRY_CODEX_BIN;
+    return /\.[cm]?js$/i.test(command)
+      ? { command: process.execPath, argsPrefix: [command] }
+      : { command, argsPrefix: [] };
   }
   const npmCodex = process.env.APPDATA
     ? join(process.env.APPDATA, 'npm', 'node_modules', '@openai', 'codex', 'bin', 'codex.js')

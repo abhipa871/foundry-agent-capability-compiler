@@ -57,6 +57,27 @@ Configuration belongs in `config/`, architecture decisions in `docs/adr/`.
 
 ## Implemented today
 
+**General task contracts (`abhi-dev`)**
+
+- The primary SDK entry is `src/integration/index.ts`: general `TaskClient`/`FoundryClient`,
+  registered task/tool schemas, explicit nested JSON provenance bindings and signed offers.
+  The former CRM SDK remains at the package's `./legacy` subpath.
+- New general compilation lives in `src/compiler/contracts.ts` and `task-ir.ts`, execution in
+  `src/runtime/task-runtime.ts`, capture in `src/exploration/task-observer.ts`, lifecycle in
+  `src/registry/tasks.ts`, and API routes under `/api/v2/tasks`.
+- Tool/task names, scopes, schemas, versions and ownership predicates come from trusted
+  application registrations. Read and pure effects are supported; writes remain unsupported.
+  General plans are bounded DAGs, not arbitrary programs or inferred branches/loops.
+- `src/agent/providers.ts` supplies model-independent exploration transports for OpenAI,
+  Moonshot, Claude, Gemini, xAI and OpenRouter. Open model IDs do not guarantee provider/account
+  availability or tool support. The compiled interpreter never calls these transports.
+- `src/web/GeneralTaskPanel.tsx` exposes generic evidence import, compilation, verification,
+  shadow comparisons, separate approval/deployment, execution/revocation and a version registry.
+  Inputs derive from registered schemas. Default local mode registers synthetic travel and
+  departure examples; hosted mode never enables fixture capture or local identity overrides.
+- See `docs/adr/0003-general-task-contracts.md`, `docs/general-sdk.md` and `docs/task-console.md`.
+  The legacy CRM compiler is available in a labeled disclosure inside the local console.
+
 **Compiled read capability — `load_customer_context`**
 
 - Typed tool events carry arguments **with their provenance** (`task_input`, `event_output`,
