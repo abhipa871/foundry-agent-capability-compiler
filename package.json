@@ -16,7 +16,14 @@
     "test:integration": "vitest run tests/integration",
     "eval": "tsx scripts/evaluate.ts",
     "test:all": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "analyze": "tsx scripts/analyze-patterns.ts",
+    "build:sdk": "tsc -p tsconfig.sdk.json && tsx scripts/build-sdk.ts",
+    "benchmark:optimization": "tsx scripts/benchmark-optimization.ts",
+    "benchmark:real-agent": "tsx scripts/benchmark-real-agent.ts",
+    "benchmark:support-agent": "tsx scripts/benchmark-support-agent.ts",
+    "benchmark:routing-agent": "tsx scripts/benchmark-routing-agent.ts",
+    "benchmark:selective-agent": "tsx scripts/benchmark-selective-agent.ts"
   },
   "dependencies": {
     "express": "5.2.1",

@@ -1,10 +1,25 @@
+import { safeText } from '../exploration/privacy.js';
 import { performance } from 'node:perf_hooks';
 import type { Check } from '../domain.js';
-import { irDigest, validateIR, type CapabilityIR, type IRArtifact } from '../compiler/ir.js';
+import {
+  irDigest,
+  operationSchema,
+  validateIR,
+  type CapabilityIR,
+  type IRArtifact,
+} from '../compiler/ir.js';
+import { planSelection, resourceKeys, subsetContextProjection } from '../runtime/selective.js';
+import { validateEvidence } from './evidence.js';
+import { contextProjection, sameContext } from '../runtime/observable.js';
 import { traceScopeIds, type StoredToolTrace } from '../exploration/tool-events.js';
-import { localContext, mockAdapters, type RuntimeContext } from '../runtime/adapters/registry.js';
+import {
+  fixtureResult,
+  localContext,
+  mockAdapters,
+  type RuntimeContext,
+} from '../runtime/adapters/registry.js';
 import { checkGuards } from '../runtime/dispatcher.js';
-import { DeoptimizationError, interpret } from '../runtime/interpret.js';
+import { DeoptimizationError, interpret, interpretSelected } from '../runtime/interpret.js';
 import { differences } from './equivalence.js';
 
 // Verification tests the candidate artifact itself: the IR that will execute, under the adapter
@@ -50,7 +65,16 @@ export async function verifyIR(
     input: unknown,
     ctx?: Partial<RuntimeContext>,
     adapters = build(),
-  ) => interpret(ir, input, { adapters, context: { ...localContext(), ...ctx } });
+  ) =>
+    interpret(ir, input, {
+      adapters,
+      context: {
+        ...localContext(),
+        tenantId: artifact.ir.guards.tenantId,
+        principalId: artifact.ir.guards.principalId ?? localContext().principalId,
+        ...ctx,
+      },
+    });
   const rejects = async (fn: () => Promise<unknown>, expected: string | string[]) => {
     const wanted = [expected].flat();
     try {
@@ -76,6 +100,57 @@ export async function verifyIR(
       `digest ${artifact.digest.slice(0, 12)} matches the validated IR`,
     );
   });
+  await check('Complete supporting evidence is present and coherent', 'schema', async () => {
+    const ids = artifact.ir.provenance.traceIds;
+    const complete =
+      supporting.length === ids.length &&
+      new Set(ids).size === ids.length &&
+      supporting.length >= 2 &&
+      new Set(supporting.map((trace) => trace.taskInput.customerId)).size >= 2;
+    supporting.forEach(validateEvidence);
+    return expect(
+      complete &&
+        supporting.every(
+          (trace) =>
+            trace.status === 'success' &&
+            trace.tenantId === artifact.ir.guards.tenantId &&
+            trace.principalId === artifact.ir.guards.principalId,
+        ),
+      'Supporting evidence is missing, duplicated or identity-incoherent.',
+      'complete distinct source evidence',
+    );
+  });
+  await check(
+    'Held-out full context agrees with independent fixture oracle',
+    'regression',
+    async () => {
+      for (const customerId of ['C-101', 'C-202', 'C-303']) {
+        const result = await run(artifact.ir, { customerId });
+        const reference = Object.fromEntries([
+          ['customer_id', customerId],
+          ...(['crm.getCustomer', 'orders.list', 'payments.refundHistory'] as const).map(
+            (operation) => [
+              operation === 'crm.getCustomer'
+                ? 'crm_get_customer'
+                : operation === 'orders.list'
+                  ? 'orders_list'
+                  : 'payments_refund_history',
+              {
+                ...(fixtureResult(operation, customerId) as object),
+                tenantId: artifact.ir.guards.tenantId,
+              },
+            ],
+          ),
+        ]);
+        expect(
+          sameContext(result.result, reference),
+          'Full context differs from fixture oracle.',
+          '',
+        );
+      }
+      return 'all resource identities and values match, including C-303 held out from demo evidence';
+    },
+  );
   await check('Tampered IR changes the digest', 'schema', async () => {
     const tampered = {
       ...artifact.ir,
@@ -93,6 +168,21 @@ export async function verifyIR(
       'sandbox',
       async () => {
         const result = await run(artifact.ir, trace.taskInput);
+        const reference = {
+          customer_id: trace.taskInput.customerId,
+          crm_get_customer: trace.events.find(
+            (event) => event.status === 'success' && event.operation === 'crm.getCustomer',
+          )?.result?.projection,
+          orders_list: trace.events.find(
+            (event) => event.status === 'success' && event.operation === 'orders.list',
+          )?.result?.projection,
+          payments_refund_history: trace.events.find(
+            (event) => event.status === 'success' && event.operation === 'payments.refundHistory',
+          )?.result?.projection,
+        };
+        contextProjection(reference);
+        if (!sameContext(result.result, reference))
+          throw new Error('Full context differs from recorded resource values.');
         const diff = differences(result.observable, trace.observableResult);
         return expect(
           diff.length === 0,
@@ -138,6 +228,57 @@ export async function verifyIR(
       'Parallel and sequential schedules disagree.',
       `concurrency ${artifact.ir.concurrency} matched a sequential run (peak parallel ${parallel.peakParallel})`,
     );
+  });
+  // Subsets the plan cannot serve are not selectable (they fall back at the guard), not failures.
+  await check('Selected resources match the full plan', 'regression', async () => {
+    const operations = operationSchema.options;
+    const subsets = Array.from({ length: (1 << operations.length) - 1 }, (_, index) =>
+      operations.filter((_, bit) => (index + 1) & (1 << bit)),
+    );
+    const full = await run(artifact.ir, { customerId: 'C-101' });
+    let selectable = 0;
+    for (const resources of subsets) {
+      let plan;
+      try {
+        plan = planSelection(artifact.ir, resources);
+      } catch {
+        continue;
+      }
+      selectable += 1;
+      const selected = await interpretSelected(
+        artifact.ir,
+        { customerId: 'C-101' },
+        {
+          adapters: build(),
+          context: {
+            ...localContext(),
+            tenantId: artifact.ir.guards.tenantId,
+            principalId: artifact.ir.guards.principalId ?? localContext().principalId,
+          },
+          resources,
+        },
+      );
+      const fullContext = full.result as Record<string, unknown>;
+      const reference = Object.fromEntries([
+        ['customer_id', 'C-101'],
+        ...resources.map((operation) => [
+          resourceKeys[operation],
+          fullContext[resourceKeys[operation]],
+        ]),
+      ]);
+      const reads = plan.nodeIds.filter(
+        (id) => artifact.ir.nodes.find((node) => node.id === id)?.opcode === 'adapter.read',
+      );
+      expect(
+        JSON.stringify(subsetContextProjection(selected.result, resources)) ===
+          JSON.stringify(subsetContextProjection(reference, resources)) &&
+          selected.adapterCalls === reads.length &&
+          [...selected.executedNodeIds].sort().join() === [...plan.nodeIds].sort().join(),
+        `Selection ${resources.join('+')} diverged from the full plan or its dependency closure.`,
+        '',
+      );
+    }
+    return `${selectable} of ${subsets.length} resource subsets are selectable and match the full plan`;
   });
   await check('Malformed input rejected', 'schema', () =>
     rejects(() => run(artifact.ir, { customerId: 'nope', extra: 1 }), 'invalid'),
@@ -249,6 +390,6 @@ export async function verifyIR(
 }
 
 function summarize(detail: string): string {
-  const flat = detail.replace(/\s+/g, ' ').trim();
+  const flat = safeText(detail).replace(/\s+/g, ' ').trim();
   return flat.length > 220 ? `${flat.slice(0, 217)}...` : flat;
 }

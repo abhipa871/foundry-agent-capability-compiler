@@ -1,3 +1,4 @@
+import { canonical } from '../ir.js';
 import { DomainError } from '../../domain.js';
 import type { StoredToolTrace } from '../../exploration/tool-events.js';
 import { contracts } from '../../runtime/adapters/registry.js';
@@ -28,13 +29,29 @@ export function dedupeReads(
       if (events.some((event) => event.effect !== 'read'))
         throw new DomainError('Refusing to coalesce a non-read effect.', 409);
       const versions = new Set(events.map((event) => event.adapterVersion));
-      const scopes = new Set(events.map((event) => event.credentialScopeIds.join(',')));
+      const scopes = new Set(events.map((event) => [...event.credentialScopeIds].sort().join(',')));
+      const principals = new Set(
+        events.map((event) => event.principalId ?? trace.principalId ?? 'local-operator'),
+      );
+      const args = new Set(
+        events.map((event) => JSON.stringify(Object.values(event.args).map((arg) => arg.value))),
+      );
+      const outputs = new Set(events.map((event) => canonical(event.result?.projection)));
+      const resources = new Set(events.map((event) => JSON.stringify(event.reads)));
       const span =
         Math.max(...events.map((event) => event.endMs)) -
         Math.min(...events.map((event) => event.startMs));
-      if (versions.size !== 1 || scopes.size !== 1 || span > freshnessMs)
+      if (
+        versions.size !== 1 ||
+        scopes.size !== 1 ||
+        principals.size !== 1 ||
+        args.size !== 1 ||
+        resources.size !== 1 ||
+        outputs.size !== 1 ||
+        span > freshnessMs
+      )
         throw new DomainError(
-          `Duplicate reads of ${node.operation} differ in adapter version, principal, or freshness window and cannot be coalesced.`,
+          `Duplicate reads of ${node.operation} differ in adapter version, principal, freshness window, or observed output and cannot be coalesced.`,
           409,
         );
       eliminated += events.length - 1;

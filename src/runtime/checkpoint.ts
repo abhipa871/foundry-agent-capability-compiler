@@ -21,6 +21,7 @@ export type ExecutionCheckpoint = {
   capabilityVersion: number;
   capabilityDigest: string;
   createdAt: string;
+  expiresAt?: string;
   taskKind: string;
   input: unknown;
   failedNodeId?: string;
@@ -55,8 +56,9 @@ export function buildCheckpoint(input: {
     capabilityVersion: input.artifact.version,
     capabilityDigest: input.artifact.digest,
     createdAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
     taskKind: input.artifact.taskKind,
-    input: input.taskInput,
+    input: redact(input.taskInput),
     failedNodeId: input.failedNodeId,
     completedNodeIds: input.completedNodeIds ?? [],
     nextNodeIds: input.nextNodeIds ?? input.artifact.ir.nodes.map((node) => node.id),

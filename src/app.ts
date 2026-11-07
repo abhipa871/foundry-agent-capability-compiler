@@ -2,11 +2,20 @@ import express from 'express';
 import type { ErrorRequestHandler } from 'express';
 import { resolve } from 'node:path';
 import { z } from 'zod';
+import type { ArtifactSigner } from './security/signing.js';
+import { customerInput } from './compiler/ir.js';
 import { DomainError, defaultPolicy } from './domain.js';
 import { sampleRawAgentTrajectory, sampleTrajectory } from './exploration/capture.js';
 import { sampleToolTraces } from './exploration/sample-traces.js';
 import { Foundry } from './service.js';
 import { Store } from './registry/store.js';
+import { ApiKeyAuthenticator, withIdentity, requirePermission } from './security/identity.js';
+import { BenchmarkWorkspace, retainedEvidence } from './benchmarks/workspace.js';
+export type AppOptions = {
+  auth?: ApiKeyAuthenticator;
+  signer?: ArtifactSigner;
+  runtime?: ConstructorParameters<typeof Foundry>[1];
+};
 
 const id = z.string().uuid();
 const note = z.object({ note: z.string().trim().min(5).max(500) }).strict();
@@ -17,14 +26,53 @@ const agentTask = z
     providerId: z.string().trim().min(1).max(80).optional(),
   })
   .strict();
-export function createApp(store: Store, seed = true) {
+export function createApp(store: Store, seed = true, options: AppOptions = {}) {
   const app = express();
-  const service = new Foundry(store);
-  if (seed) service.seed();
+  const service = new Foundry(store, options.runtime);
+  if (seed && !options.auth) service.seed();
   app.disable('x-powered-by');
   app.use(express.json({ limit: '128kb' }));
   app.use('/api', (req, res, next) => {
     res.setHeader('Cache-Control', 'no-store');
+    if (options.auth) {
+      if (req.path === '/health') return next();
+      if (!req.path.startsWith('/v2/'))
+        return res.status(404).json({ error: 'Hosted mode exposes the read-only v2 API.' });
+      try {
+        const identity = options.auth.authenticate(req.get('authorization'));
+        return withIdentity(identity, () => {
+          const action = req.path.split('/').at(-1);
+          const permission =
+            req.method === 'GET'
+              ? 'read'
+              : action === 'compile' || action === 'analyze'
+                ? 'compile'
+                : action === 'verify' || action === 'revalidate'
+                  ? 'verify'
+                  : action === 'approve'
+                    ? 'approve'
+                    : ['deploy', 'revoke', 'routing', 'quarantine', 'rollback'].includes(
+                          action ?? '',
+                        )
+                      ? 'deploy'
+                      : action === 'dispatch' || action === 'shadow'
+                        ? 'invoke'
+                        : ['/v2/traces', '/v2/telemetry'].includes(req.path)
+                          ? 'observe'
+                          : 'admin';
+          try {
+            requirePermission(permission);
+            store.consumeQuota(permission, permission === 'compile' ? 10 : 120);
+            next();
+          } catch (error) {
+            service.audit('authorization.denied', 'api', 'Request permission or quota denied.');
+            next(error);
+          }
+        });
+      } catch (error) {
+        return next(error);
+      }
+    }
     const host = req.hostname;
     if (!['localhost', '127.0.0.1', '[::1]'].includes(host))
       return res.status(403).json({ error: 'Local demo accepts loopback hosts only.' });
@@ -43,8 +91,17 @@ export function createApp(store: Store, seed = true) {
         .json({ error: 'X-Foundry-Client: local-ui is required for local mutations.' });
     next();
   });
-  app.get('/api/health', (_req, res) => res.json({ status: 'ok', mode: 'local-demo' }));
+  app.get('/api/health', (_req, res) =>
+    res.json({ status: 'ok', mode: options.auth ? 'authenticated-read-api' : 'local-demo' }),
+  );
   app.get('/api/state', (_req, res) => res.json(service.state()));
+  // Local experiment surface only. Hosted-mode middleware above excludes these routes.
+  const benchmarks = new BenchmarkWorkspace();
+  app.get('/api/benchmarks/config', (_req, res) => res.json(benchmarks.config()));
+  app.get('/api/benchmarks/evidence', async (_req, res) => res.json(await retainedEvidence()));
+  app.post('/api/benchmarks/runs', async (req, res) => {
+    res.status(201).json(await benchmarks.run(req.body));
+  });
   app.get('/api/agent/options', (_req, res) =>
     res.json({ providers: service.state().agentProviders }),
   );
@@ -196,6 +253,34 @@ export function createApp(store: Store, seed = true) {
           .map((trace) => service.jit.ingest(trace, 'demo')),
       );
   });
+  app.get('/api/v2/runtime/capability', (_req, res) => {
+    requirePermission('invoke');
+    if (!options.signer) throw new DomainError('Capability signing is not configured.', 503);
+    res.json(options.signer.sign(service.jit.runtimeTicket()));
+  });
+  app.get('/api/v2/runtime/routing', (_req, res) => res.json(service.jit.routing()));
+  app.post('/api/v2/runtime/routing', (req, res) =>
+    res.json(service.jit.configureRouting(req.body)),
+  );
+  app.post('/api/v2/telemetry', (req, res) =>
+    res.status(201).json(service.jit.ingestTelemetry(req.body)),
+  );
+  app.get('/api/v2/patterns', (_req, res) => res.json(service.jit.patterns()));
+  app.post('/api/v2/patterns/analyze', (req, res) => {
+    emptyRequest.parse(req.body ?? {});
+    res.json(service.jit.analyze());
+  });
+  app.post('/api/v2/patterns/:patternId/compile', (req, res) => {
+    emptyRequest.parse(req.body ?? {});
+    res.status(201).json(
+      service.jit.compilePattern(
+        z
+          .string()
+          .regex(/^[a-f0-9]{64}$/)
+          .parse(req.params.patternId),
+      ),
+    );
+  });
   app.post('/api/v2/compile', (req, res) => {
     const body = z
       .object({
@@ -259,9 +344,45 @@ export function createApp(store: Store, seed = true) {
       .parse(req.body);
     res.json(service.jit.recover(id.parse(req.params.id), body));
   });
+  app.get('/api/v2/capabilities/:id/health', (req, res) =>
+    res.json(service.jit.health(id.parse(req.params.id))),
+  );
+  app.post('/api/v2/capabilities/:id/quarantine', (req, res) => {
+    emptyRequest.parse(req.body ?? {});
+    res.json(service.jit.quarantine(id.parse(req.params.id)));
+  });
+  app.post('/api/v2/capabilities/:id/rollback', (req, res) => {
+    emptyRequest.parse(req.body ?? {});
+    res.json(service.jit.rollback(id.parse(req.params.id)));
+  });
+  app.post('/api/v2/capabilities/:id/revalidate', async (req, res) => {
+    emptyRequest.parse(req.body ?? {});
+    res.json(await service.jit.verify(id.parse(req.params.id)));
+  });
+  app.post('/api/v2/maintenance', (req, res) => {
+    emptyRequest.parse(req.body ?? {});
+    res.json(service.jit.maintenance());
+  });
+  app.get('/api/v2/artifacts/:id/shadow', (req, res) =>
+    res.json(service.jit.shadowStatus(id.parse(req.params.id))),
+  );
+  app.post('/api/v2/artifacts/:id/shadow', async (req, res) => {
+    const body = z.object({ input: customerInput }).strict().parse(req.body);
+    res.json(await service.jit.shadow(id.parse(req.params.id), body.input));
+  });
   app.get('/api/v2/profiles/:name', (req, res) =>
     res.json(service.jit.profile(z.string().min(1).max(64).parse(req.params.name))),
   );
+  app.get('/api/v2/export', (_req, res) => {
+    requirePermission('admin');
+    res.json(store.exportData());
+  });
+  app.delete('/api/v2/data', (_req, res) => {
+    requirePermission('admin');
+    store.deleteData();
+    service.audit('tenant.deleted', store.tenantId, 'Tenant data deleted.');
+    res.json({ deleted: true });
+  });
   app.use('/api', (_req, res) => res.status(404).json({ error: 'API route not found.' }));
   app.use(express.static(resolve('dist')));
   app.get('/{*path}', (_req, res) => res.sendFile(resolve('dist/index.html')));
@@ -280,7 +401,8 @@ export function createApp(store: Store, seed = true) {
       res.status(400).json({ error: 'Invalid JSON request.' });
       return;
     }
-    console.error(error);
+    if (options.auth) console.error('Foundry API error: unexpected server failure.');
+    else console.error(error);
     if (req.path.startsWith('/api/agent')) {
       res.status(500).json({
         error: error instanceof Error ? error.message : 'Coding-agent server error.',

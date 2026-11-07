@@ -136,3 +136,10 @@ describe('trace to IR compilation', () => {
 function deps(ir: { nodes: { id: string; deps: string[] }[] }) {
   return ir.nodes.map((node) => `${node.id}<-${[...node.deps].sort().join(',')}`).sort();
 }
+
+it('refuses to deduplicate observed reads whose values changed within the freshness window', () => {
+  const stored = traces();
+  const duplicate = stored[0].events.filter((event) => event.operation === 'crm.getCustomer')[1];
+  (duplicate.result!.projection as { eligible: boolean }).eligible = false;
+  expect(() => compileIR(stored)).toThrow(/observed output/);
+});

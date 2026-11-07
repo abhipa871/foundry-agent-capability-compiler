@@ -1,0 +1,44 @@
+{
+  "provider": "openai-codex-chatgpt",
+  "model": "gpt-5.5",
+  "origin": "observed",
+  "actualBilledCostUsd": null,
+  "pilots": [
+    {
+      "purpose": "initial provider/tool/usage preflight before skill-catalog reduction",
+      "inputTokens": 12298,
+      "outputTokens": 167,
+      "cachedInputTokens": 5632,
+      "totalTokens": 12465,
+      "modelCalls": 2,
+      "toolCalls": 3,
+      "durationMs": 7186.465958,
+      "apiEquivalentCostUsd": 0.041156
+    },
+    {
+      "purpose": "preflight after removing unrelated skill catalog",
+      "inputTokens": 8346,
+      "outputTokens": 167,
+      "cachedInputTokens": 3584,
+      "totalTokens": 8513,
+      "modelCalls": 2,
+      "toolCalls": 3,
+      "durationMs": 6493.867,
+      "apiEquivalentCostUsd": 0.030612
+    },
+    {
+      "purpose": "post-benchmark warning diagnostic, without transport exporter",
+      "inputTokens": 8346,
+      "outputTokens": 167,
+      "cachedInputTokens": 7168,
+      "totalTokens": 8513,
+      "modelCalls": 2,
+      "toolCalls": 3,
+      "durationMs": 6963.939583,
+      "apiEquivalentCostUsd": 0.014484
+    }
+  ],
+  "totalApiEquivalentCostUsd": 0.086252,
+  "totalIncludingPairedExperimentApiEquivalentCostUsd": 0.7985150000000002,
+  "notes": "Normalized provider measurements recorded from actual preflight outputs. These engineering diagnostics are excluded from optimization setup amortization but included in total experiment inference-equivalent spending."
+}

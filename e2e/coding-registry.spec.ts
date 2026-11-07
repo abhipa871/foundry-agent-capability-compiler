@@ -4,6 +4,8 @@ test('register, secure, verify, approve, deploy and reload a coding task', async
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/');
+  await page.getByRole('button', { name: 'Developer console' }).click();
+  await page.getByLabel('More developer tools').selectOption('Agent chat');
   await page
     .getByLabel('Task for the coding agent')
     .fill('Check the package manifest for this project.');
@@ -23,6 +25,8 @@ test('register, secure, verify, approve, deploy and reload a coding task', async
   ).toBeVisible();
   await page.screenshot({ path: 'test-results/coding-registry.png', fullPage: true });
   await page.reload();
+  await page.getByRole('button', { name: 'Developer console' }).click();
+  await page.getByLabel('More developer tools').selectOption('Agent chat');
   await page.getByRole('button', { name: 'Open in registry' }).click();
   await expect(
     page.getByRole('heading', { name: 'Latest deployment: success (simulated)' }),

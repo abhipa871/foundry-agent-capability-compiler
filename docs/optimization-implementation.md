@@ -1,0 +1,93 @@
+# Optimization overlay implementation checkpoints
+
+Scope: the existing read-only `load_customer_context` workflow. Existing shipping and coding
+replay remain local demonstrations. No generated source, external writes, extra providers, or
+cross-tenant learning enter the optimization runtime.
+
+## Baseline
+
+Before changes: 74 tests across 13 files passed; type checking and formatting passed.
+No performance result was inferred from the recorded sample token counts.
+
+## Phase 1 — Foundations
+
+- Explicit model/tool observation preserves value provenance, real call timing, measurement
+  origin and unknown usage. Failed observations remain distinguishable from success.
+- Structural telemetry omits raw model messages, inputs and results. Replay capture uses the
+  three typed read contracts; unknown payloads are omitted by default. Redaction fails closed
+  at depth/size limits.
+- SQLite migration scopes records, deployments, settings, effects and durable request quotas
+  by tenant. Existing data stays in `local-demo`; asynchronous request identity is isolated.
+- Optional authenticated mode accepts hashed service credentials and trusted role/tool scopes;
+  it exposes only the v2 API. Local loopback protections remain in local mode. Configured keys
+  must be random, rotated, and supplied outside version control.
+- Fallback now records resolved/unresolved/failed/denied outcomes and complete elapsed time.
+  Permission denial does not call the agent. Partial read metrics survive deoptimization.
+- Failed re-verification removes active deployment eligibility. Revision checks prevent stale
+  verification from overriding revocation. Approval/deployment remain separate outside the
+  backwards-compatible local fixture demonstration.
+
+Production authentication, transport termination, record authorization and real adapter behavior
+remain integration responsibilities. The fixture adapters still simulate business systems.
+
+Validation gate: 80 tests across 15 files, lint/type checking and existing evaluation passed.
+
+## Phase 2 — Offline structural analysis
+
+`analyzePatterns` reuses canonical nodes/signatures and `minePattern`. It partitions by tenant,
+principal, adapter/scopes, policy, snapshot and measurement origin, then reports support, task
+success, dependencies, average calls/latency/tokens/cost, and eligibility reasons. Unknown usage
+stays null and fixture evidence remains labeled. Successful unsupported work, writes, incomplete
+workflows and insufficient distinct observations cannot become eligible. `npm run analyze --
+--demo` is an offline fixture report; without `--demo` it reads the configured tenant database.
+No routing or promotion occurs.
+
+Phase 2 gate: 83 tests across 16 files and lint/type checking passed; offline demo exercised.
+
+## Phase 3 — Observed patterns to existing compiler
+
+The tenant-scoped registry persists offline reports and creates draft artifacts through the
+existing compiler. Eligibility is recomputed from current traces, and repeated proposals for
+the same evidence reuse the candidate. Pattern identity and measurement origin remain explicit.
+The new analyze/compile endpoints never verify, approve or route candidates automatically.
+
+Phase 3 gate: all 85 tests in 17 files and lint/type checking passed. Replay serialization selects only the raw trace wire schema; client storage metadata cannot enter ingestion. Existing v1 and coding replay tests remain passing.
+
+## Phase 4 — validation and equivalence
+
+Full context comparison includes CRM eligibility, tenant/customer/snapshot identity, every order ID and lateness, and every refund ID and amount. Only list order is normalized. Source evidence is checked for declared lineage, principal, scopes, versions and contracts; missing or duplicate evidence blocks verification. The candidate runs against an independent fixture oracle including held-out C-303. Unknown successful work cannot be pruned silently. Adapter outputs have size/value bounds and cancellation bounds waiting even for uncooperative adapters. Partial authorization failures retain call counts.
+
+Gate: all 89 tests in 18 files and lint/type checking pass. Four new differential tests exercise aggregate false positives, missing evidence, forged lineage and ignored cancellation. The existing reduced-plan rejection retains its context.v1 error contract. Validation is fixture-specific; real SaaS oracle and snapshot semantics remain prerequisites for production.
+
+## Phase 5 — read-only shadow execution
+
+A verified candidate can shadow an injected native agent callback. Native execution completes first and remains authoritative; unresolved/failed/denied native work cannot count as equivalence. A guarded read-only candidate executes separately against fixtures-v1. Stored shadow records contain comparison status and measurements, not business outputs or raw prompts. Deployment outside local-demo requires three passing complete-context comparisons covering the supported fixture domain, with no mismatch/runtime failure on the current verification stamp. Reverification invalidates prior coverage.
+
+Gate: all 92 tests in 19 files and lint/type checking pass. Tests cover coverage reset, divergence that preserves native output, and unavailable baseline with no shadow reads. The local demo's legacy approval/deployment behavior remains for backwards compatibility; customer SDK routing will independently enforce the stronger gate. Shadow runs add read load and are synchronous in this V1, bounded by the interpreter deadline.
+
+## Phase 6 — customer SDK and controlled routing
+
+`FoundryClient.execute` wraps the application-supplied native callback and trusted local adapters. Structural observation is the default transport; typed replay values require `shareReplayEvidence`. The server retains matching, compilation, policy, validation and promotion. Customer reports are explicitly untrusted and cannot establish shadow readiness. Tenant routing defaults to observe/0%; signed offers permit shadow or live with an explicit rollout percentage. Live offers require approval, deployment, exact current validation and server-recorded shadow coverage. No model chooses routing.
+
+Ed25519 signatures use Node's standard cryptography with an out-of-repository private-key file and a customer-pinned public key. Offers bind tenant/principal and expire within 60 seconds. No cache is used: a control-plane outage, invalid artifact or unsafe guard selects the native callback; tool authorization denial prevents both paths. HTTPS is required except loopback, redirects are rejected, and network waiting/response size are bounded. Adapter/model usage wrappers preserve observed counts and unknown provider usage.
+
+Gate: all 96 tests in 20 files, lint/type checking, SDK build and emitted ESM import pass. Four SDK tests cover integration routing, privacy, customer-report trust, signed tamper/expiry/identity checks, outage/permissions, HTTPS and reported usage. The SDK build contains IR schemas, bounded interpreter, adapter/measurement/observation foundations, and static scheduling; it contains no structural matcher, compiler pipeline, registry, validation suite or signing private key. `dist-sdk` is a private reviewable package, not published.
+
+## Phase 7 — health, rollback and revalidation
+
+Durable health records track failure streaks, equivalence mismatches and a bounded latency window. Mismatch/drift, repeated runtime errors, explicit quarantine, or expired validation remove deployments and prevent signed offers. Unsupported inputs do not count as capability faults. Client failure reports can conservatively disable their own tenant's optimization; they cannot restore trust. A previous approved version is eligible for rollback only with healthy current validation and passing shadow coverage. Revalidation resets health and shadow coverage; hosted revalidation also removes deployment and requires fresh approval. No automatic repair or promotion occurs.
+
+Validation expires after 24 hours for customer offers. Maintenance deletes seven-day trace/structural/shadow evidence only within the current tenant. Missing source evidence prevents future verification. Privacy capture additionally omits unknown argument/resource values. Failed SDK tool calls retain attempted counts while unknown model/API usage remains null. Concurrent observer budgets count attempts before awaiting adapters.
+
+Gate: all 103 tests in 22 files and lint/type checking pass. Seven new tests cover failure quarantine, safe rollback, latency regression, retention/isolation, failed observation accounting, stale verification versus revocation, and concurrent observation limits. Existing v1, v2 and coding replay remain passing. Operational maintenance/revalidation must be scheduled by the deployer; this V1 provides commands/API hooks, not a distributed scheduler.
+
+## Final cross-phase review
+
+The final supported Node 24 gate includes 107 tests in 23 files, evaluation, frontend/SDK builds
+and two existing browser workflows. Regression coverage now includes hosted promotion/rollout,
+changed duplicate outputs, exact fractional/unknown measurement averages, provider-wrapper usage
+and repeated successful shadow runs that must not count as fallback failures. Tenant evidence
+also binds agent identity. SQLite files are owner-only; run/checkpoint expiry joins seven-day
+telemetry retention. The measured replay and its raw pairs are in optimization-benchmark.json;
+production token/model-call/dollar savings remain unknown. See implementation-report.md for all
+changed files, architecture, controls, measured results and production prerequisites.

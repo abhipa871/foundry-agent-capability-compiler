@@ -1,0 +1,98 @@
+{
+  "evidenceKind": "implementation smoke test; not a held-out study",
+  "businessData": "synthetic read-only fixtures",
+  "run": {
+    "id": "b68c6279-5f9e-4c46-8848-e71d72cb9656",
+    "createdAt": "2026-11-03T13:43:14.969Z",
+    "request": {
+      "prompt": "Which of my orders is the most delayed, and by how many days? I only need order information.",
+      "customerId": "C-101",
+      "scope": "orders",
+      "execution": "live",
+      "repeats": 1
+    },
+    "provider": "openai-codex-chatgpt",
+    "model": "gpt-5.5",
+    "setup": {
+      "durationMs": 144.09812499999998,
+      "modelCalls": 0,
+      "costUsd": 0,
+      "checks": 25
+    },
+    "pricing": {
+      "source": "https://developers.openai.com/api/docs/models/gpt-5.5",
+      "checkedAt": "2026-10-03",
+      "inputPerMillionUsd": 5,
+      "cachedInputPerMillionUsd": 0.5,
+      "outputPerMillionUsd": 30
+    },
+    "pairs": [
+      {
+        "order": ["normal", "foundry"],
+        "normal": {
+          "arm": "normal",
+          "mode": "normal",
+          "reason": "Original authorized tools; no Foundry prefetch.",
+          "measurement": {
+            "origin": "observed",
+            "inputTokens": null,
+            "outputTokens": null,
+            "cachedInputTokens": null,
+            "totalTokens": null,
+            "modelCalls": null,
+            "toolCalls": 0,
+            "apiCalls": null,
+            "durationMs": 3076.228584,
+            "costUsd": null,
+            "outcome": "failed"
+          },
+          "estimatedCostUsd": null,
+          "response": null,
+          "checks": {
+            "completed": false
+          },
+          "verification": "contract",
+          "reads": [],
+          "selectorMs": 0,
+          "fallback": false,
+          "failure": "Execution did not complete. Provider usage may be incomplete; unknown values are not counted as zero."
+        },
+        "foundry": {
+          "arm": "foundry",
+          "mode": "compiled_prefetch",
+          "reason": "trusted_contract_requires_resource_subset",
+          "measurement": {
+            "origin": "observed",
+            "inputTokens": null,
+            "outputTokens": null,
+            "cachedInputTokens": null,
+            "totalTokens": null,
+            "modelCalls": null,
+            "toolCalls": 1,
+            "apiCalls": null,
+            "durationMs": 2414.9840420000005,
+            "costUsd": null,
+            "outcome": "failed"
+          },
+          "estimatedCostUsd": null,
+          "response": null,
+          "checks": {
+            "completed": false
+          },
+          "verification": "contract",
+          "reads": [
+            {
+              "operation": "orders.list",
+              "status": "success",
+              "durationMs": 2.391541999999845
+            }
+          ],
+          "selectorMs": 0.008874999999989086,
+          "fallback": false,
+          "failure": "Execution did not complete. Provider usage may be incomplete; unknown values are not counted as zero."
+        },
+        "equivalence": "unavailable"
+      }
+    ]
+  }
+}

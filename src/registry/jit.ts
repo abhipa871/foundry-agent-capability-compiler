@@ -1,3 +1,17 @@
+import { randomInt } from 'node:crypto';
+import {
+  initialHealth,
+  observeHealth,
+  type HealthObservation,
+  type HealthReason,
+} from '../telemetry/health.js';
+import {
+  routingSchema,
+  telemetrySchema,
+  wireArtifactSchema,
+  type RuntimeTicket,
+} from '../integration/protocol.js';
+import { analyzePatterns, type OptimizationPattern } from '../compiler/analyze.js';
 import { compileIR, type CompileOptions } from '../compiler/compile-ir.js';
 import { assertDigest, emitArtifact } from '../compiler/emit.js';
 import { irDigest, type IRArtifact } from '../compiler/ir.js';
@@ -12,7 +26,9 @@ import {
 } from '../runtime/adapters/registry.js';
 import type { ExecutionCheckpoint } from '../runtime/checkpoint.js';
 import { dispatch, type AgentFallback, type TaskRequest } from '../runtime/dispatcher.js';
+import { shadowExecute, shadowReadiness } from '../runtime/shadow.js';
 import { verifyIR } from '../verification/verify-ir.js';
+import { currentIdentity } from '../security/identity.js';
 import { Store, type StoredDispatchRun } from './store.js';
 
 export type JitProfile = {
@@ -30,8 +46,9 @@ export type JitProfile = {
   fallbacks: Record<string, number>;
   recordedTraceBaseline: {
     traces: number;
-    avgLlmInvocations: number;
-    avgTokens: number;
+    avgLlmInvocations: number | null;
+    avgTokens: number | null;
+    measurementOrigins: string[];
     avgDurationMs: number;
     note: string;
   };
@@ -87,6 +104,13 @@ export class JitRegistry {
 
   ingest(value: unknown, source: StoredToolTrace['source']): StoredToolTrace {
     const trace = captureToolTrace(value, source);
+    if (trace.tenantId !== this.store.tenantId) throw new DomainError('Tenant mismatch.', 403);
+    if (
+      this.store.tenantId !== 'local-demo' &&
+      (trace.principalId !== currentIdentity().principalId ||
+        trace.agentId !== currentIdentity().agentId)
+    )
+      throw new DomainError('Principal or agent mismatch.', 403);
     if (this.store.get('toolTrace', trace.id))
       throw new DomainError('That trace has already been ingested.', 409);
     this.store.transaction(() => {
@@ -98,6 +122,54 @@ export class JitRegistry {
       );
     });
     return trace;
+  }
+
+  patterns(): OptimizationPattern[] {
+    return this.store.all('pattern');
+  }
+
+  analyze(): OptimizationPattern[] {
+    const patterns = analyzePatterns(this.traces(), this.store.tenantId);
+    this.store.transaction(() => {
+      this.store.deleteKind('pattern');
+      for (const pattern of patterns) this.store.put('pattern', pattern);
+      this.audit(
+        'patterns.analyzed',
+        this.store.tenantId,
+        `${patterns.length} structural groups; no capability promoted.`,
+      );
+    });
+    return patterns;
+  }
+
+  compilePattern(patternId: string): IRArtifact {
+    // Stored reports are explanatory snapshots. Eligibility is recomputed from current evidence,
+    // so a caller cannot edit a report or retain stale eligibility to authorize compilation.
+    const pattern = analyzePatterns(this.traces(), this.store.tenantId).find(
+      (entry) => entry.id === patternId,
+    );
+    if (!pattern) throw new DomainError('Pattern not found.', 404);
+    if (!pattern.eligible)
+      throw new DomainError('Pattern is not eligible for read-only compilation.', 409);
+    const existing = this.artifacts().find(
+      (artifact) =>
+        artifact.patternId === patternId &&
+        artifact.status !== 'revoked' &&
+        JSON.stringify([...artifact.ir.provenance.traceIds].sort()) ===
+          JSON.stringify([...pattern.traceIds].sort()),
+    );
+    if (existing) return existing;
+    const artifact = this.compile(pattern.traceIds);
+    const next = { ...artifact, patternId, measurementOrigin: pattern.measurementOrigin };
+    this.store.transaction(() => {
+      this.store.put('irArtifact', next);
+      this.audit(
+        'pattern.candidate',
+        next.id,
+        `Untrusted read-only candidate from ${pattern.occurrences} observations.`,
+      );
+    });
+    return next;
   }
 
   compile(traceIds?: string[], options: CompileOptions = {}): IRArtifact {
@@ -132,16 +204,44 @@ export class JitRegistry {
   async verify(id: string): Promise<IRArtifact> {
     const artifact = assertDigest(this.get(id));
     const checks = await verifyIR(artifact, this.traces());
-    const passed = checks.every((check) => check.passed);
+    const current = this.get(id);
+    if (
+      (current.revision ?? 0) !== (artifact.revision ?? 0) ||
+      current.digest !== artifact.digest ||
+      current.status === 'revoked'
+    )
+      throw new DomainError('Artifact changed during verification.', 409);
+    const passed = checks.length > 0 && checks.every((check) => check.passed);
     const next: IRArtifact = {
       ...artifact,
       checks,
       verifiedAt: new Date().toISOString(),
       verifiedDigest: passed ? artifact.digest : undefined,
-      status: artifact.status === 'approved' ? 'approved' : passed ? 'verified' : 'draft',
+      status: passed
+        ? this.store.tenantId === 'local-demo' && artifact.status === 'approved'
+          ? 'approved'
+          : 'verified'
+        : 'draft',
+      approvedDigest:
+        passed && this.store.tenantId === 'local-demo' ? artifact.approvedDigest : undefined,
+      revision: (artifact.revision ?? 0) + 1,
+      validationVersion: 'read-validation-v3',
     };
     this.store.transaction(() => {
       this.store.put('irArtifact', next);
+      if (!passed || this.store.tenantId !== 'local-demo')
+        this.store.undeploy(`jit/${artifact.name}`, id);
+      this.store.put(
+        'health',
+        passed
+          ? initialHealth(this.store.tenantId, id)
+          : {
+              ...this.health(id),
+              status: 'quarantined',
+              reason: 'validation_failed',
+              updatedAt: new Date().toISOString(),
+            },
+      );
       this.audit(
         'ir.verified',
         id,
@@ -154,6 +254,7 @@ export class JitRegistry {
   approve(id: string, note: string): IRArtifact {
     const artifact = assertDigest(this.get(id));
     if (
+      this.health(id).status !== 'healthy' ||
       artifact.status !== 'verified' ||
       !artifact.checks.length ||
       !artifact.checks.every((check) => check.passed) ||
@@ -169,10 +270,11 @@ export class JitRegistry {
       approvedAt: new Date().toISOString(),
       approvedDigest: artifact.digest,
       reviewNote: note,
+      revision: (artifact.revision ?? 0) + 1,
     };
     this.store.transaction(() => {
       this.store.put('irArtifact', next);
-      this.store.deploy(`jit/${next.name}`, next.id);
+      if (this.store.tenantId === 'local-demo') this.store.deploy(`jit/${next.name}`, next.id);
       this.audit('ir.approved', id, `v${next.version}: ${note}`);
     });
     return next;
@@ -180,8 +282,17 @@ export class JitRegistry {
 
   deploy(id: string): IRArtifact {
     const artifact = assertDigest(this.get(id));
-    if (artifact.status !== 'approved' || artifact.approvedDigest !== artifact.digest)
+    if (
+      this.health(id).status !== 'healthy' ||
+      artifact.status !== 'approved' ||
+      artifact.approvedDigest !== artifact.digest ||
+      artifact.verifiedDigest !== artifact.digest ||
+      !artifact.checks.length ||
+      !artifact.checks.every((check) => check.passed)
+    )
       throw new DomainError('Only an approved artifact can be deployed.', 409);
+    if (this.store.tenantId !== 'local-demo' && !this.shadowStatus(id).ready)
+      throw new DomainError('Deployment requires passing read-only shadow coverage.', 409);
     this.store.transaction(() => {
       this.store.deploy(`jit/${artifact.name}`, artifact.id);
       this.audit(
@@ -195,7 +306,12 @@ export class JitRegistry {
 
   revoke(id: string): IRArtifact {
     const artifact = this.get(id);
-    const next: IRArtifact = { ...artifact, status: 'revoked' };
+    const next: IRArtifact = {
+      ...artifact,
+      status: 'revoked',
+      approvedDigest: undefined,
+      revision: (artifact.revision ?? 0) + 1,
+    };
     this.store.transaction(() => {
       this.store.undeploy(`jit/${artifact.name}`, artifact.id);
       this.store.put('irArtifact', next);
@@ -208,21 +324,55 @@ export class JitRegistry {
     const deployments = this.store.deployments();
     return this.artifacts().filter(
       (artifact) =>
+        this.health(artifact.id).status === 'healthy' &&
+        (this.store.tenantId === 'local-demo' || this.validationCurrent(artifact)) &&
         artifact.status === 'approved' &&
+        artifact.verifiedDigest === artifact.digest &&
+        artifact.checks.length > 0 &&
+        artifact.checks.every((check) => check.passed) &&
         deployments[`jit/${artifact.name}`] === artifact.id &&
         irDigest(artifact.ir) === artifact.digest,
     );
   }
 
   async dispatch(request: TaskRequest): Promise<StoredDispatchRun> {
+    const policy = this.routing();
+    const live =
+      this.store.tenantId === 'local-demo' ||
+      (policy.mode === 'live' && randomInt(100) < policy.rolloutPercent);
     const outcome = await dispatch(
       request,
-      this.active().filter((artifact) => artifact.taskKind === request.kind),
+      live
+        ? this.active().filter(
+            (artifact) =>
+              artifact.taskKind === request.kind &&
+              (this.store.tenantId === 'local-demo' || this.shadowStatus(artifact.id).ready),
+          )
+        : [],
       { adapters: this.adapters(), context: this.context(), agent: this.runtime.agent },
     );
-    const run: StoredDispatchRun = { ...outcome, id: outcome.runId };
+    const run: StoredDispatchRun = {
+      ...outcome,
+      id: outcome.runId,
+      expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
+    };
     this.store.transaction(() => {
       this.store.put('dispatchRun', run);
+      if (run.capabilityId) {
+        if (run.mode === 'compiled')
+          this.applyHealth(run.capabilityId, { kind: 'success', durationMs: run.durationMs });
+        else if (run.fallbackReason === 'unsupported_state')
+          this.applyHealth(run.capabilityId, { kind: 'unsupported' });
+        else if (run.fallbackReason && run.outcome !== 'denied')
+          this.applyHealth(run.capabilityId, { kind: 'failure' });
+      }
+      const drifted = this.artifacts().find(
+        (entry) =>
+          this.store.deployments()[`jit/${entry.name}`] === entry.id &&
+          entry.taskKind === request.kind &&
+          run.guards.some((guard) => guard.name === 'adapter_versions' && !guard.ok),
+      );
+      if (drifted) this.applyHealth(drifted.id, { kind: 'drift' });
       if (run.checkpoint) this.store.put('checkpoint', run.checkpoint);
       this.audit(
         `dispatch.${run.mode}`,
@@ -233,6 +383,203 @@ export class JitRegistry {
       );
     });
     return run;
+  }
+
+  private validationCurrent(artifact: IRArtifact, now = Date.now()) {
+    const age = now - Date.parse(artifact.verifiedAt ?? '');
+    return Number.isFinite(age) && age >= 0 && age <= 86400000;
+  }
+  health(id: string) {
+    this.get(id);
+    return this.store.get('health', `health:${id}`) ?? initialHealth(this.store.tenantId, id);
+  }
+  private applyHealth(id: string, observation: HealthObservation) {
+    const next = observeHealth(this.health(id), observation);
+    this.store.put('health', next);
+    if (next.status === 'quarantined') {
+      const artifact = this.get(id);
+      this.store.undeploy(`jit/${artifact.name}`, id);
+      this.audit(
+        'health.quarantined',
+        id,
+        next.reason ?? 'Unsafe capability removed from routing.',
+      );
+    }
+    return next;
+  }
+  quarantine(id: string, reason: HealthReason = 'operator') {
+    return this.store.transaction(() => this.applyHealth(id, { kind: 'failure', reason }));
+  }
+  rollback(id: string) {
+    const target = this.get(id);
+    const currentId = this.store.deployments()[`jit/${target.name}`];
+    const current = currentId ? this.get(currentId) : undefined;
+    if (current && target.version >= current.version)
+      throw new DomainError('Rollback requires a previous approved version.', 409);
+    if (
+      !this.shadowStatus(id).ready ||
+      this.health(id).status !== 'healthy' ||
+      !this.validationCurrent(target)
+    )
+      throw new DomainError(
+        'Rollback target requires healthy current validation and shadow coverage.',
+        409,
+      );
+    const deployed = this.deploy(id);
+    this.audit('ir.rollback', id, `Rolled back ${target.name} to v${target.version}.`);
+    return deployed;
+  }
+  maintenance(now = Date.now()) {
+    for (const artifact of this.artifacts()) {
+      if (
+        ['verified', 'approved'].includes(artifact.status) &&
+        !this.validationCurrent(artifact, now) &&
+        this.health(artifact.id).status === 'healthy'
+      )
+        this.quarantine(artifact.id, 'validation_expired');
+    }
+    const purged = this.store.purgeExpired(now);
+    this.audit('retention.purged', this.store.tenantId, `${purged} expired records deleted.`);
+    return { purged, health: this.artifacts().map((artifact) => this.health(artifact.id)) };
+  }
+
+  routing() {
+    return routingSchema.parse(
+      this.store.setting('runtimeRouting', { mode: 'observe', rolloutPercent: 0 }),
+    );
+  }
+  configureRouting(value: unknown) {
+    const policy = routingSchema.parse(value);
+    this.store.transaction(() => {
+      this.store.setSetting('runtimeRouting', policy);
+      this.audit(
+        'routing.configured',
+        this.store.tenantId,
+        `${policy.mode}; ${policy.rolloutPercent}% rollout.`,
+      );
+    });
+    return policy;
+  }
+  runtimeTicket(now = Date.now()): RuntimeTicket {
+    const identity = currentIdentity();
+    const policy = this.routing();
+    const eligible =
+      policy.mode === 'live'
+        ? this.active().filter((entry) => this.shadowStatus(entry.id).ready)
+        : this.artifacts();
+    const artifact = [...eligible]
+      .sort((a, b) => b.version - a.version)
+      .find(
+        (entry) =>
+          ['verified', 'approved'].includes(entry.status) &&
+          entry.verifiedDigest === entry.digest &&
+          entry.validationVersion === 'read-validation-v3' &&
+          entry.checks.every((check) => check.passed) &&
+          irDigest(entry.ir) === entry.digest &&
+          this.health(entry.id).status === 'healthy' &&
+          this.validationCurrent(entry, now) &&
+          (!entry.ir.guards.principalId || entry.ir.guards.principalId === identity.principalId),
+      );
+    const mode = policy.mode === 'observe' || !artifact ? 'observe' : policy.mode;
+    return {
+      format: 'foundry-runtime-v1',
+      tenantId: this.store.tenantId,
+      principalId: identity.principalId,
+      issuedAt: now,
+      expiresAt: now + 60000,
+      mode,
+      rolloutPercent: mode === 'observe' ? 0 : policy.rolloutPercent,
+      ...(mode !== 'observe' && artifact
+        ? {
+            artifact: wireArtifactSchema.parse(
+              Object.fromEntries(
+                Object.keys(wireArtifactSchema.shape).map((key) => [
+                  key,
+                  artifact[key as keyof IRArtifact],
+                ]),
+              ),
+            ),
+          }
+        : {}),
+    };
+  }
+  ingestTelemetry(value: unknown) {
+    const telemetry = telemetrySchema.parse(value);
+    const identity = currentIdentity();
+    if (
+      telemetry.tenantId !== identity.tenantId ||
+      telemetry.principalId !== identity.principalId ||
+      telemetry.agentId !== identity.agentId
+    )
+      throw new DomainError('Telemetry identity mismatch.', 403);
+    if (this.store.get('telemetry', telemetry.traceId))
+      throw new DomainError('Duplicate telemetry.', 409);
+    const stored = {
+      ...telemetry,
+      id: telemetry.traceId,
+      capturedAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
+      trust: 'client_reported' as const,
+    };
+    if (telemetry.capabilityId) {
+      const artifact = this.get(telemetry.capabilityId);
+      if (
+        artifact.digest !== telemetry.capabilityDigest ||
+        (artifact.ir.guards.principalId && artifact.ir.guards.principalId !== identity.principalId)
+      )
+        throw new DomainError('Telemetry artifact binding mismatch.', 403);
+    }
+    this.store.transaction(() => {
+      this.store.put('telemetry', stored);
+      if (telemetry.capabilityId) {
+        if (telemetry.shadowStatus === 'mismatch')
+          this.applyHealth(telemetry.capabilityId, { kind: 'mismatch' });
+        else if (
+          telemetry.runtimeStatus === 'fallback' ||
+          telemetry.shadowStatus === 'compiled_failure'
+        )
+          this.applyHealth(telemetry.capabilityId, { kind: 'failure' });
+        else if (
+          telemetry.runtimeStatus === 'compiled' &&
+          telemetry.measurement.outcome === 'success'
+        )
+          this.applyHealth(telemetry.capabilityId, {
+            kind: 'success',
+            durationMs: telemetry.measurement.durationMs,
+          });
+      }
+    });
+    // Customer reports are useful for health, but cannot attest validation/shadow promotion.
+    return { accepted: true, traceId: telemetry.traceId };
+  }
+
+  shadowStatus(id: string) {
+    return shadowReadiness(this.get(id), this.store.all('shadowRun'));
+  }
+
+  async shadow(id: string, input: unknown) {
+    const artifact = assertDigest(this.get(id));
+    const result = await shadowExecute({ kind: artifact.taskKind, input }, artifact, {
+      adapters: this.adapters(),
+      context: this.context(),
+      agent: this.runtime.agent,
+    });
+    this.store.transaction(() => {
+      this.store.put('shadowRun', result.shadow);
+      if (result.shadow.status === 'mismatch') this.applyHealth(id, { kind: 'mismatch' });
+      if (result.shadow.status === 'compiled_failure') this.applyHealth(id, { kind: 'failure' });
+      this.store.put('dispatchRun', {
+        ...result.authoritative,
+        id: result.authoritative.runId,
+        expiresAt: result.shadow.expiresAt,
+      });
+      this.audit(
+        'shadow.observed',
+        id,
+        `Native authoritative; comparison ${result.shadow.status}.`,
+      );
+    });
+    return result;
   }
 
   // A handoff is closed by recording what actually resolved it. The recovery note becomes
@@ -262,18 +609,25 @@ export class JitRegistry {
   }
 
   profile(name: string): JitProfile {
-    const runs = this.runs().filter((run) => run.capability === name || run.taskKind === name);
+    const artifact =
+      this.artifacts().find((entry) => entry.id === this.store.deployments()[`jit/${name}`]) ??
+      this.artifacts().find((entry) => entry.name === name);
+    const runs = this.runs().filter(
+      (run) => run.capability === name || run.taskKind === (artifact?.taskKind ?? name),
+    );
     const durations = runs
       .filter((run) => run.mode === 'compiled')
       .map((run) => run.durationMs)
       .sort((a, b) => a - b);
     const traces = this.traces();
-    const artifact = this.artifacts().find((entry) => entry.name === name);
+
     const supporting = traces.filter((trace) =>
       artifact ? artifact.ir.provenance.traceIds.includes(trace.traceId) : false,
     );
-    const average = (values: number[]) =>
-      values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : 0;
+    const average = (values: (number | null)[]): number | null =>
+      !values.length || values.some((value) => value === null)
+        ? null
+        : values.reduce<number>((sum, value) => sum + value!, 0) / values.length;
     return {
       name,
       taskKind: artifact?.taskKind ?? name,
@@ -296,9 +650,33 @@ export class JitRegistry {
       }, {}),
       recordedTraceBaseline: {
         traces: supporting.length,
-        avgLlmInvocations: average(supporting.map((trace) => trace.llmInvocations)),
-        avgTokens: average(supporting.map((trace) => trace.agentTokens)),
-        avgDurationMs: average(supporting.map((trace) => trace.durationMs)),
+        avgLlmInvocations: average(
+          supporting.map((trace) =>
+            trace.measurement
+              ? trace.measurement.modelCalls
+              : trace.source === 'demo'
+                ? trace.llmInvocations
+                : null,
+          ),
+        ),
+        avgTokens: average(
+          supporting.map((trace) =>
+            trace.measurement
+              ? trace.measurement.totalTokens
+              : trace.source === 'demo'
+                ? trace.agentTokens
+                : null,
+          ),
+        ),
+        measurementOrigins: [
+          ...new Set(
+            supporting.map(
+              (trace) =>
+                trace.measurement?.origin ?? (trace.source === 'demo' ? 'fixture' : 'estimated'),
+            ),
+          ),
+        ],
+        avgDurationMs: average(supporting.map((trace) => trace.durationMs)) ?? 0,
         note: 'Recorded from the source trajectories, including their exploration. Not a controlled benchmark against an equivalent second attempt.',
       },
     };

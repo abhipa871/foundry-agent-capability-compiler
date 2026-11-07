@@ -1,11 +1,12 @@
 import { z } from 'zod';
 import { setTimeout as delay } from 'node:timers/promises';
 import { DomainError } from '../../domain.js';
+import { currentIdentity, tenantIdSchema } from '../../security/identity.js';
 import { customerInput, type ReadOperation } from '../../compiler/ir.js';
 
 const common = {
-  customerId: z.string(),
-  tenantId: z.literal('local-demo'),
+  customerId: z.string().regex(/^C-\d{3}$/),
+  tenantId: tenantIdSchema,
   snapshot: z.literal('fixtures-v1'),
 };
 export const contracts = {
@@ -22,9 +23,16 @@ export const contracts = {
     output: z
       .object({
         ...common,
-        orders: z.array(
-          z.object({ id: z.string(), daysLate: z.number().int().nonnegative() }).strict(),
-        ),
+        orders: z
+          .array(
+            z
+              .object({
+                id: z.string().min(1).max(80),
+                daysLate: z.number().int().nonnegative().max(36500),
+              })
+              .strict(),
+          )
+          .max(1000),
       })
       .strict(),
   },
@@ -35,7 +43,16 @@ export const contracts = {
     output: z
       .object({
         ...common,
-        refunds: z.array(z.object({ id: z.string(), amount: z.number().nonnegative() }).strict()),
+        refunds: z
+          .array(
+            z
+              .object({
+                id: z.string().min(1).max(80),
+                amount: z.number().finite().nonnegative().max(100000000),
+              })
+              .strict(),
+          )
+          .max(1000),
       })
       .strict(),
   },
@@ -48,11 +65,15 @@ export type RuntimeContext = {
   adapterVersions: Record<ReadOperation, string>;
   snapshot: string;
   observedAt: number;
+  allowedCustomerIds?: string[];
 };
 export const localContext = (): RuntimeContext => ({
-  tenantId: 'local-demo',
-  principalId: 'local-operator',
-  scopes: Object.values(contracts).map((c) => c.scope),
+  tenantId: currentIdentity().tenantId,
+  principalId: currentIdentity().principalId,
+  scopes: currentIdentity().toolScopes,
+  ...(currentIdentity().tenantId !== 'local-demo'
+    ? { allowedCustomerIds: currentIdentity().customerIds }
+    : {}),
   policyVersion: 'read-policy-v1',
   adapterVersions: { 'crm.getCustomer': '1', 'orders.list': '1', 'payments.refundHistory': '1' },
   snapshot: 'fixtures-v1',
@@ -93,7 +114,10 @@ export function mockAdapters(
   } = {},
 ): AdapterRunner {
   return async (operation, args, context, signal) => {
-    if (context.tenantId !== 'local-demo' || !context.scopes.includes(contracts[operation].scope))
+    if (
+      !context.scopes.includes(contracts[operation].scope) ||
+      (context.allowedCustomerIds && !context.allowedCustomerIds.includes(args.customerId))
+    )
       throw new DomainError('Adapter permission denied.', 403);
     if (context.adapterVersions[operation] !== contracts[operation].version)
       throw new DomainError('Adapter drift.', 409);
@@ -102,9 +126,32 @@ export function mockAdapters(
       !options.faultOperation || options.faultOperation === operation ? options.fault : 'none';
     await delay(fault === 'timeout' ? 10000 : (options.delayMs ?? 2), undefined, { signal });
     const result = fixtureResult(operation, args.customerId) as Record<string, unknown>;
+    result.tenantId = context.tenantId;
     if (fault === 'malformed') return { invalid: true };
     if (fault === 'wrong_customer') result.customerId = 'C-999';
     if (fault === 'wrong_snapshot') result.snapshot = 'wrong';
     return result;
   };
+}
+
+export function authorizeContext(context: RuntimeContext, rawInput: unknown) {
+  return authorizeReads(context, rawInput, Object.keys(contracts) as ReadOperation[]);
+}
+
+export function authorizeReads(
+  context: RuntimeContext,
+  rawInput: unknown,
+  operations: readonly ReadOperation[],
+) {
+  const input = customerInput.parse(rawInput);
+  if (
+    operations.some(
+      (operation) => !contracts[operation] || !context.scopes.includes(contracts[operation].scope),
+    ) ||
+    (operations.length > 0 &&
+      context.allowedCustomerIds &&
+      !context.allowedCustomerIds.includes(input.customerId))
+  )
+    throw new DomainError('Customer context permission denied.', 403);
+  return input;
 }

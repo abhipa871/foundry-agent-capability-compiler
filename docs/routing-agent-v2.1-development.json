@@ -1,0 +1,2675 @@
+{
+  "capturedAt": "2026-10-07T20:43:23.502Z",
+  "split": "development",
+  "complete": false,
+  "failure": "Warmup failed.",
+  "plan": {
+    "planVersion": "routing-v2.1-12-case",
+    "split": "development",
+    "output": "docs/routing-agent-v2.1-development.json",
+    "cases": 12,
+    "arms": 6,
+    "repeats": 1,
+    "measuredSupportRequests": 72,
+    "deniedMeasuredRequestsWithoutInference": 6,
+    "observationContextRequests": 2,
+    "initialShadowContextRequests": 3,
+    "revalidationShadowContextRequests": 3,
+    "warmupSupportRequests": 6,
+    "maxNestedContextFallbackRequests": 12,
+    "maxProviderAgentRequests": 92,
+    "maxCompletedResponsesPerAgentRequest": 6,
+    "estimateStopUsd": 9,
+    "seed": 41107
+  },
+  "environment": {
+    "node": "v25.1.0",
+    "platform": "darwin/arm64",
+    "provider": "openai-codex-chatgpt",
+    "model": "gpt-5.5",
+    "codexVersion": "codex-cli 0.158.0-alpha.2.1",
+    "authMode": "ChatGPT",
+    "reasoningEffort": "low support / none context",
+    "businessSnapshot": "fixtures-v1 expanded synthetic records",
+    "providerInference": "live",
+    "readDelayMs": 2,
+    "slowReadDelayMs": 120
+  },
+  "sourceHashes": {
+    "src/integration/selection.ts": "17f3dee3288176d78f20603447d7c67a7dd21c071e27927f41ac6dfe4bcf26e0",
+    "src/integration/client.ts": "a43cf27ce4de526b6631042b82dc097e675669959c844f6c86e8c2b839781e8d",
+    "src/integration/request-reads.ts": "b6a9781eb96e4d850b2a5c86d035c9bf3afbccd33c2d8b35aa1d6e3ff8d30ae1",
+    "src/exploration/observe.ts": "a362491f27fc3b31d8420e5eb04ff4a274379ae4778443e9174bca2b232fc4e0",
+    "src/runtime/adapters/registry.ts": "7ead6a90f6f7ed44ac7ceb674b0827ddd5b774ce3c9af725d22b8cfd91142540",
+    "src/runtime/dispatcher.ts": "eb31c171734b2386b882156427a6abc391c716a8497a0982ac1ec84476347892",
+    "src/runtime/interpret.ts": "c1fda7d35b706274fedcedf791fb8b2a736058470bef27724fb6220a91a2f154",
+    "src/compiler/compile-ir.ts": "db922095a15f21d96b3544726fbb144e315bd4b53593f8beeeec57229270011d",
+    "scripts/experiments/customer-agent.ts": "c1bd50b10579a701b2b2c881ae4ba71cd14c924b62695aa55468e78f9c965bbe",
+    "scripts/experiments/support-task.ts": "3fb42f30cf4713b6c49c9baec50ce569152e9870bd7c660712c7c8ee5a339a22",
+    "scripts/experiments/routing-task.ts": "10b6f7d157b507d2f585e4093b0e450a7ca36fd9d5121c7b451f66e01d24025d",
+    "scripts/experiments/routing-statistics.ts": "7fbbde26091de39db3806b39fe78723ec3598c5d67de7921b33a7ce21a9d1acd",
+    "scripts/benchmark-routing-agent.ts": "26e08d66d6990f720f8f1fcba43322b06c51e77fffe5e2f71e1a0c425eb55972"
+  },
+  "methodology": {
+    "cases": [
+      {
+        "id": "development-all",
+        "category": "all",
+        "customerId": "C-101",
+        "message": "My delivery is late. Check my eligibility, every order and refund history, recommend the appropriate next step and draft a reply.",
+        "contract": {
+          "requirement": "known",
+          "reads": ["crm.getCustomer", "orders.list", "payments.refundHistory"]
+        },
+        "requiredReads": ["crm.getCustomer", "orders.list", "payments.refundHistory"],
+        "permittedReads": ["crm.getCustomer", "orders.list", "payments.refundHistory"],
+        "followUpReads": [],
+        "software": "foundry_context_loader",
+        "expected": {
+          "customerId": "C-101",
+          "eligible": true,
+          "orders": [{ "id": "O-101", "daysLate": 8 }],
+          "refunds": [],
+          "selectedOrderId": "O-101",
+          "action": "refund_review"
+        },
+        "fault": "none"
+      },
+      {
+        "id": "development-partial",
+        "category": "partial",
+        "customerId": "C-202",
+        "message": "Tell me whether my account is eligible. Do not look up orders or refunds.",
+        "contract": { "requirement": "known", "reads": ["crm.getCustomer"] },
+        "requiredReads": ["crm.getCustomer"],
+        "permittedReads": ["crm.getCustomer"],
+        "followUpReads": [],
+        "software": "foundry_context_loader",
+        "expected": {
+          "customerId": "C-202",
+          "eligible": true,
+          "orders": null,
+          "refunds": null,
+          "selectedOrderId": null,
+          "action": "eligibility_info"
+        },
+        "fault": "none"
+      },
+      {
+        "id": "development-none",
+        "category": "none",
+        "customerId": "C-303",
+        "message": "Explain the general delayed-delivery support policy. Do not access any account records.",
+        "contract": { "requirement": "known", "reads": [] },
+        "requiredReads": [],
+        "permittedReads": [],
+        "followUpReads": [],
+        "software": "foundry_context_loader",
+        "expected": {
+          "customerId": "C-303",
+          "eligible": null,
+          "orders": null,
+          "refunds": null,
+          "selectedOrderId": null,
+          "action": "policy_info"
+        },
+        "fault": "none"
+      },
+      {
+        "id": "development-model_decides",
+        "category": "model_decides",
+        "customerId": "C-202",
+        "message": "Read this incoming note and decide what information is needed to answer: \"How many days late is my most delayed order? I am not asking about refunds or eligibility.\"",
+        "contract": {
+          "requirement": "agent_decides",
+          "reads": ["crm.getCustomer", "orders.list", "payments.refundHistory"]
+        },
+        "requiredReads": ["orders.list"],
+        "permittedReads": ["orders.list"],
+        "followUpReads": [],
+        "software": "foundry_context_loader",
+        "expected": {
+          "customerId": "C-202",
+          "eligible": null,
+          "orders": [
+            { "id": "O-202", "daysLate": 3 },
+            { "id": "O-extra", "daysLate": 6 }
+          ],
+          "refunds": null,
+          "selectedOrderId": "O-extra",
+          "action": "order_status"
+        },
+        "fault": "none"
+      },
+      {
+        "id": "development-denied",
+        "category": "denied",
+        "customerId": "C-202",
+        "message": "My delivery is late. Check my eligibility, every order and refund history, recommend the appropriate next step and draft a reply.",
+        "contract": {
+          "requirement": "known",
+          "reads": ["crm.getCustomer", "orders.list", "payments.refundHistory"]
+        },
+        "requiredReads": [],
+        "permittedReads": [],
+        "followUpReads": [],
+        "software": "foundry_context_loader",
+        "expected": {
+          "customerId": "C-202",
+          "eligible": null,
+          "orders": null,
+          "refunds": null,
+          "selectedOrderId": null,
+          "action": "unavailable"
+        },
+        "fault": "denied"
+      },
+      {
+        "id": "development-quarantined",
+        "category": "quarantined",
+        "customerId": "C-101",
+        "message": "My delivery is late. Check my eligibility, every order and refund history, recommend the appropriate next step and draft a reply.",
+        "contract": {
+          "requirement": "known",
+          "reads": ["crm.getCustomer", "orders.list", "payments.refundHistory"]
+        },
+        "requiredReads": ["crm.getCustomer", "orders.list", "payments.refundHistory"],
+        "permittedReads": ["crm.getCustomer", "orders.list", "payments.refundHistory"],
+        "followUpReads": [],
+        "software": "foundry_context_loader",
+        "expected": {
+          "customerId": "C-101",
+          "eligible": true,
+          "orders": [{ "id": "O-101", "daysLate": 8 }],
+          "refunds": [],
+          "selectedOrderId": "O-101",
+          "action": "refund_review"
+        },
+        "fault": "quarantined"
+      },
+      {
+        "id": "development-incompatible",
+        "category": "incompatible",
+        "customerId": "C-202",
+        "message": "My delivery is late. Check my eligibility, every order and refund history, recommend the appropriate next step and draft a reply.",
+        "contract": {
+          "requirement": "known",
+          "reads": ["crm.getCustomer", "orders.list", "payments.refundHistory"]
+        },
+        "requiredReads": ["crm.getCustomer", "orders.list", "payments.refundHistory"],
+        "permittedReads": ["crm.getCustomer", "orders.list", "payments.refundHistory"],
+        "followUpReads": [],
+        "software": "foundry_context_loader",
+        "expected": {
+          "customerId": "C-202",
+          "eligible": true,
+          "orders": [
+            { "id": "O-202", "daysLate": 3 },
+            { "id": "O-extra", "daysLate": 6 }
+          ],
+          "refunds": [{ "id": "R-202", "amount": 5 }],
+          "selectedOrderId": "O-extra",
+          "action": "human_review"
+        },
+        "fault": "stale"
+      },
+      {
+        "id": "development-slow",
+        "category": "slow",
+        "customerId": "C-202",
+        "message": "My delivery is late. Check my eligibility, every order and refund history, recommend the appropriate next step and draft a reply.",
+        "contract": {
+          "requirement": "known",
+          "reads": ["crm.getCustomer", "orders.list", "payments.refundHistory"]
+        },
+        "requiredReads": ["crm.getCustomer", "orders.list", "payments.refundHistory"],
+        "permittedReads": ["crm.getCustomer", "orders.list", "payments.refundHistory"],
+        "followUpReads": [],
+        "software": "foundry_context_loader",
+        "expected": {
+          "customerId": "C-202",
+          "eligible": true,
+          "orders": [
+            { "id": "O-202", "daysLate": 3 },
+            { "id": "O-extra", "daysLate": 6 }
+          ],
+          "refunds": [{ "id": "R-202", "amount": 5 }],
+          "selectedOrderId": "O-extra",
+          "action": "human_review"
+        },
+        "fault": "slow"
+      },
+      {
+        "id": "development-transient_failure",
+        "category": "transient_failure",
+        "customerId": "C-101",
+        "message": "My delivery is late. Check my eligibility, every order and refund history, recommend the appropriate next step and draft a reply.",
+        "contract": {
+          "requirement": "known",
+          "reads": ["crm.getCustomer", "orders.list", "payments.refundHistory"]
+        },
+        "requiredReads": ["crm.getCustomer", "orders.list", "payments.refundHistory"],
+        "permittedReads": ["crm.getCustomer", "orders.list", "payments.refundHistory"],
+        "followUpReads": [],
+        "software": "foundry_context_loader",
+        "expected": {
+          "customerId": "C-101",
+          "eligible": true,
+          "orders": [{ "id": "O-101", "daysLate": 8 }],
+          "refunds": [],
+          "selectedOrderId": "O-101",
+          "action": "refund_review"
+        },
+        "fault": "transient"
+      },
+      {
+        "id": "development-permanent_failure",
+        "category": "permanent_failure",
+        "customerId": "C-202",
+        "message": "My delivery is late. Check my eligibility, every order and refund history, recommend the appropriate next step and draft a reply.",
+        "contract": {
+          "requirement": "known",
+          "reads": ["crm.getCustomer", "orders.list", "payments.refundHistory"]
+        },
+        "requiredReads": ["crm.getCustomer", "orders.list", "payments.refundHistory"],
+        "permittedReads": ["crm.getCustomer", "orders.list", "payments.refundHistory"],
+        "followUpReads": [],
+        "software": "foundry_context_loader",
+        "expected": {
+          "customerId": "C-202",
+          "eligible": null,
+          "orders": null,
+          "refunds": null,
+          "selectedOrderId": null,
+          "action": "unavailable"
+        },
+        "fault": "permanent"
+      },
+      {
+        "id": "development-software_tool",
+        "category": "software_tool",
+        "customerId": "C-111",
+        "message": "Handle this inbound support note: \"One of my packages still has not arrived. Based on my account, eligibility, orders and any refunds, what should happen next?\"",
+        "contract": {
+          "requirement": "agent_decides",
+          "reads": ["crm.getCustomer", "orders.list", "payments.refundHistory"]
+        },
+        "requiredReads": ["crm.getCustomer", "orders.list", "payments.refundHistory"],
+        "permittedReads": ["crm.getCustomer", "orders.list", "payments.refundHistory"],
+        "followUpReads": [],
+        "software": "foundry_context_loader",
+        "expected": {
+          "customerId": "C-111",
+          "eligible": true,
+          "orders": [
+            { "id": "O-111", "daysLate": 4 },
+            { "id": "O-112", "daysLate": 10 }
+          ],
+          "refunds": [],
+          "selectedOrderId": "O-112",
+          "action": "refund_review"
+        },
+        "fault": "none"
+      },
+      {
+        "id": "development-software_supplement",
+        "category": "software_supplement",
+        "customerId": "C-212",
+        "message": "Handle this inbound support note: \"My order is over a week late. Before you suggest a refund, confirm whether I already received one, check my eligibility and orders, and tell me the next step.\"",
+        "contract": {
+          "requirement": "agent_decides",
+          "reads": ["crm.getCustomer", "orders.list", "payments.refundHistory"]
+        },
+        "requiredReads": ["crm.getCustomer", "orders.list", "payments.refundHistory"],
+        "permittedReads": ["crm.getCustomer", "orders.list", "payments.refundHistory"],
+        "followUpReads": ["payments.refundHistory"],
+        "software": "fixture_partial_order_summary",
+        "expected": {
+          "customerId": "C-212",
+          "eligible": true,
+          "orders": [{ "id": "O-212", "daysLate": 9 }],
+          "refunds": [{ "id": "R-212", "amount": 15 }],
+          "selectedOrderId": "O-212",
+          "action": "human_review"
+        },
+        "fault": "none"
+      }
+    ],
+    "trainingIds": ["C-101", "C-202"],
+    "shadowIds": ["C-101", "C-202", "C-303"],
+    "developmentIds": ["C-101", "C-202", "C-303", "C-111", "C-212"],
+    "heldoutIds": ["C-404", "C-505", "C-606", "C-414", "C-515"],
+    "fixtureSoftwareCategories": ["software_supplement"],
+    "fixtureSoftware": "software_supplement offers a labeled fixture order-summary tool (eligibility and orders only) because the compiled context.v1 contract cannot return a valid partial result. Its rows use live agent inference but are excluded from Foundry-capability aggregates and paired comparisons.",
+    "callLedger": "Each agent tool call is recorded separately with its business reads, duplicate/redundant/unnecessary flags and latency. Each completed model response is recorded with tokens, API-equivalent cost and the tool calls it issued.",
+    "registryIsolation": "Each request forks the same actually validated, approved and shadowed SQLite snapshot; real quarantine is applied to its own fork.",
+    "freshnessContractMs": 30000,
+    "partialAndNoContext": "Compiled prefetch is inapplicable; fixed compiled arms use original tools. Handwritten prefetch can load known partial reads.",
+    "latency": "Includes selector, SDK network, guards, reads, model work, provider thread archive and telemetry. Excludes per-request test database/server fixture initialization and teardown, which are in total experiment time.",
+    "replyChecks": "Independent structured evidence/action labels, permitted/required reads, delay/order grounding and prohibited financial-action claims; no private reasoning or LLM judge.",
+    "uncertainty": "Descriptive paired case-block bootstrap, retaining repeats together. Eleven or twelve synthetic case blocks are not a production workload sample; no production p95 claim."
+  },
+  "pricing": {
+    "source": "https://developers.openai.com/api/docs/models/gpt-5.5",
+    "checkedAt": "2026-10-03",
+    "inputPerMillionUsd": 5,
+    "cachedInputPerMillionUsd": 0.5,
+    "outputPerMillionUsd": 30,
+    "verifiedAt": "2026-10-07",
+    "kind": "API-equivalent estimate; actual ChatGPT billing unknown",
+    "actualBilledCostUsd": null,
+    "hostingConnectorEngineeringCostUsd": null
+  },
+  "setup": {
+    "wallMs": 28114.378458,
+    "phases": {
+      "providerInitialization": 154.031541,
+      "observation": 12177.716541,
+      "analysisCompilation": 5.614250000000538,
+      "validation": 89.82841699999881,
+      "trustedShadow": 15622.037708
+    },
+    "apiEquivalentCostUsd": 0.09331799999999998,
+    "checks": [
+      {
+        "name": "IR structure and digest are intact",
+        "category": "schema",
+        "passed": true,
+        "detail": "digest 6b4b1e3f8d9f matches the validated IR",
+        "durationMs": 0.24816699999973935
+      },
+      {
+        "name": "Complete supporting evidence is present and coherent",
+        "category": "schema",
+        "passed": true,
+        "detail": "complete distinct source evidence",
+        "durationMs": 0.13770900000054098
+      },
+      {
+        "name": "Held-out full context agrees with independent fixture oracle",
+        "category": "regression",
+        "passed": true,
+        "detail": "all resource identities and values match, including C-303 held out from demo evidence",
+        "durationMs": 8.867541999999958
+      },
+      {
+        "name": "Tampered IR changes the digest",
+        "category": "schema",
+        "passed": true,
+        "detail": "a one-field mutation produces a different digest",
+        "durationMs": 0.13741699999991397
+      },
+      {
+        "name": "Observable result matches trace C-202",
+        "category": "sandbox",
+        "passed": true,
+        "detail": "{\"customerId\":\"C-202\",\"eligible\":true,\"orderCount\":2,\"refundCount\":1,\"refundTotal\":5} equals the recorded observable result",
+        "durationMs": 2.8129580000004353
+      },
+      {
+        "name": "Observable result matches trace C-101",
+        "category": "sandbox",
+        "passed": true,
+        "detail": "{\"customerId\":\"C-101\",\"eligible\":true,\"orderCount\":1,\"refundCount\":0,\"refundTotal\":0} equals the recorded observable result",
+        "durationMs": 2.641834000000017
+      },
+      {
+        "name": "Compiled region invokes no model",
+        "category": "sandbox",
+        "passed": true,
+        "detail": "LLM calls inside compiled portion: 0",
+        "durationMs": 2.611624999999549
+      },
+      {
+        "name": "Distinct inputs produce distinct outputs",
+        "category": "sandbox",
+        "passed": true,
+        "detail": "the same artifact returns customer-specific results",
+        "durationMs": 2.8930419999996957
+      },
+      {
+        "name": "Duplicate reads were eliminated",
+        "category": "regression",
+        "passed": true,
+        "detail": "3 adapter calls for 3 read nodes",
+        "durationMs": 2.6210420000006707
+      },
+      {
+        "name": "Parallel schedule preserves results",
+        "category": "regression",
+        "passed": true,
+        "detail": "concurrency 3 matched a sequential run (peak parallel 3)",
+        "durationMs": 9.802083000000493
+      },
+      {
+        "name": "Malformed input rejected",
+        "category": "schema",
+        "passed": true,
+        "detail": "rejected: [ { \"origin\": \"string\", \"code\": \"invalid_format\", \"format\": \"regex\", \"pattern\": \"/^C-\\\\d{3}$/\", \"path\": [ \"customerId\" ], \"message\": \"Invalid string: must match pattern /^C-\\\\d{3}$/\" }, { \"code\": \"unrecogniz...",
+        "durationMs": 0.7745840000006865
+      },
+      {
+        "name": "Missing scope denied",
+        "category": "policy",
+        "passed": true,
+        "detail": "rejected: Missing scope for orders.list.",
+        "durationMs": 2.5697089999994205
+      },
+      {
+        "name": "Adapter drift rejected at the guard",
+        "category": "policy",
+        "passed": true,
+        "detail": "adapter_versions guard fails closed on drift",
+        "durationMs": 0.2376250000015716
+      },
+      {
+        "name": "Stale observation rejected at the guard",
+        "category": "policy",
+        "passed": true,
+        "detail": "data_freshness guard enforces the 30000ms window",
+        "durationMs": 0.07091699999909906
+      },
+      {
+        "name": "Read timeout fails closed",
+        "category": "failure",
+        "passed": true,
+        "detail": "rejected: Operation aborted.",
+        "durationMs": 41.672583999999915
+      },
+      {
+        "name": "Malformed adapter output rejected",
+        "category": "failure",
+        "passed": true,
+        "detail": "rejected: crm.getCustomer returned a value outside customer.v1.",
+        "durationMs": 2.796875
+      },
+      {
+        "name": "Cross-customer response rejected",
+        "category": "failure",
+        "passed": true,
+        "detail": "rejected: Invariant customer_id_matches failed on crm.getCustomer.",
+        "durationMs": 2.587083000000348
+      },
+      {
+        "name": "Wrong data snapshot rejected",
+        "category": "failure",
+        "passed": true,
+        "detail": "rejected: crm.getCustomer returned a value outside customer.v1.",
+        "durationMs": 2.5878329999995913
+      },
+      {
+        "name": "Unsupported customer deoptimizes without a result",
+        "category": "regression",
+        "passed": true,
+        "detail": "checkpoint reason unsupported_state with 0 completed nodes",
+        "durationMs": 2.5615410000009433
+      },
+      {
+        "name": "No privilege expansion beyond the traces",
+        "category": "policy",
+        "passed": true,
+        "detail": "required scopes crm:read, orders:read, payments:read were all exercised in the traces",
+        "durationMs": 0.05774999999994179
+      },
+      {
+        "name": "Effect declaration is read-only",
+        "category": "policy",
+        "passed": true,
+        "detail": "every node declares a read or pure effect",
+        "durationMs": 0.01616699999976845
+      }
+    ],
+    "artifactId": "bf0c852f-50ed-47ff-bc1b-edbcf6b285a7",
+    "digest": "6b4b1e3f8d9f9c1317408e90f8a3f9a199505ba68cc7fbac090eb24500b0c1f8"
+  },
+  "revalidation": {
+    "wallMs": 16056.094583000002,
+    "fixtureValidationMs": 88.23145900000236,
+    "trustedShadowMs": 15963.414666,
+    "apiEquivalentCostUsd": 0.046307,
+    "checks": [
+      {
+        "name": "IR structure and digest are intact",
+        "category": "schema",
+        "passed": true,
+        "detail": "digest 6b4b1e3f8d9f matches the validated IR",
+        "durationMs": 0.23608400000011898
+      },
+      {
+        "name": "Complete supporting evidence is present and coherent",
+        "category": "schema",
+        "passed": true,
+        "detail": "complete distinct source evidence",
+        "durationMs": 0.06120799999916926
+      },
+      {
+        "name": "Held-out full context agrees with independent fixture oracle",
+        "category": "regression",
+        "passed": true,
+        "detail": "all resource identities and values match, including C-303 held out from demo evidence",
+        "durationMs": 8.347250000002532
+      },
+      {
+        "name": "Tampered IR changes the digest",
+        "category": "schema",
+        "passed": true,
+        "detail": "a one-field mutation produces a different digest",
+        "durationMs": 0.06983299999774317
+      },
+      {
+        "name": "Observable result matches trace C-202",
+        "category": "sandbox",
+        "passed": true,
+        "detail": "{\"customerId\":\"C-202\",\"eligible\":true,\"orderCount\":2,\"refundCount\":1,\"refundTotal\":5} equals the recorded observable result",
+        "durationMs": 2.8094590000000608
+      },
+      {
+        "name": "Observable result matches trace C-101",
+        "category": "sandbox",
+        "passed": true,
+        "detail": "{\"customerId\":\"C-101\",\"eligible\":true,\"orderCount\":1,\"refundCount\":0,\"refundTotal\":0} equals the recorded observable result",
+        "durationMs": 2.9914170000010927
+      },
+      {
+        "name": "Compiled region invokes no model",
+        "category": "sandbox",
+        "passed": true,
+        "detail": "LLM calls inside compiled portion: 0",
+        "durationMs": 2.5817910000005213
+      },
+      {
+        "name": "Distinct inputs produce distinct outputs",
+        "category": "sandbox",
+        "passed": true,
+        "detail": "the same artifact returns customer-specific results",
+        "durationMs": 2.692957999999635
+      },
+      {
+        "name": "Duplicate reads were eliminated",
+        "category": "regression",
+        "passed": true,
+        "detail": "3 adapter calls for 3 read nodes",
+        "durationMs": 2.5074580000000424
+      },
+      {
+        "name": "Parallel schedule preserves results",
+        "category": "regression",
+        "passed": true,
+        "detail": "concurrency 3 matched a sequential run (peak parallel 3)",
+        "durationMs": 8.699083000003156
+      },
+      {
+        "name": "Malformed input rejected",
+        "category": "schema",
+        "passed": true,
+        "detail": "rejected: [ { \"origin\": \"string\", \"code\": \"invalid_format\", \"format\": \"regex\", \"pattern\": \"/^C-\\\\d{3}$/\", \"path\": [ \"customerId\" ], \"message\": \"Invalid string: must match pattern /^C-\\\\d{3}$/\" }, { \"code\": \"unrecogniz...",
+        "durationMs": 0.32570799999666633
+      },
+      {
+        "name": "Missing scope denied",
+        "category": "policy",
+        "passed": true,
+        "detail": "rejected: Missing scope for orders.list.",
+        "durationMs": 2.587459000002127
+      },
+      {
+        "name": "Adapter drift rejected at the guard",
+        "category": "policy",
+        "passed": true,
+        "detail": "adapter_versions guard fails closed on drift",
+        "durationMs": 0.11137500000040745
+      },
+      {
+        "name": "Stale observation rejected at the guard",
+        "category": "policy",
+        "passed": true,
+        "detail": "data_freshness guard enforces the 30000ms window",
+        "durationMs": 0.05912499999976717
+      },
+      {
+        "name": "Read timeout fails closed",
+        "category": "failure",
+        "passed": true,
+        "detail": "rejected: Operation aborted.",
+        "durationMs": 41.647625000001426
+      },
+      {
+        "name": "Malformed adapter output rejected",
+        "category": "failure",
+        "passed": true,
+        "detail": "rejected: crm.getCustomer returned a value outside customer.v1.",
+        "durationMs": 2.7786249999990105
+      },
+      {
+        "name": "Cross-customer response rejected",
+        "category": "failure",
+        "passed": true,
+        "detail": "rejected: Invariant customer_id_matches failed on crm.getCustomer.",
+        "durationMs": 2.7616669999988517
+      },
+      {
+        "name": "Wrong data snapshot rejected",
+        "category": "failure",
+        "passed": true,
+        "detail": "rejected: crm.getCustomer returned a value outside customer.v1.",
+        "durationMs": 2.76379100000122
+      },
+      {
+        "name": "Unsupported customer deoptimizes without a result",
+        "category": "regression",
+        "passed": true,
+        "detail": "checkpoint reason unsupported_state with 0 completed nodes",
+        "durationMs": 2.911292000000685
+      },
+      {
+        "name": "No privilege expansion beyond the traces",
+        "category": "policy",
+        "passed": true,
+        "detail": "required scopes crm:read, orders:read, payments:read were all exercised in the traces",
+        "durationMs": 0.014165999997203471
+      },
+      {
+        "name": "Effect declaration is read-only",
+        "category": "policy",
+        "passed": true,
+        "detail": "every node declares a read or pure effect",
+        "durationMs": 0.006957999998121522
+      }
+    ]
+  },
+  "shadowGates": [
+    { "phase": "trustedShadow", "customerId": "C-101", "status": "match", "contextAgeMs": 6006 },
+    { "phase": "trustedShadow", "customerId": "C-202", "status": "match", "contextAgeMs": 4679 },
+    { "phase": "trustedShadow", "customerId": "C-303", "status": "match", "contextAgeMs": 4937 },
+    { "phase": "renewedShadow", "customerId": "C-101", "status": "match", "contextAgeMs": 4658 },
+    { "phase": "renewedShadow", "customerId": "C-202", "status": "match", "contextAgeMs": 7327 },
+    { "phase": "renewedShadow", "customerId": "C-303", "status": "match", "contextAgeMs": 3978 }
+  ],
+  "steadyState": {
+    "normal": null,
+    "compiled_tool": null,
+    "compiled_prefetch": null,
+    "handwritten_prefetch": null,
+    "selector_native_fallback": null,
+    "selector_direct_fallback": null
+  },
+  "steadyStateIncludingFixtureSoftwareCase": {
+    "normal": null,
+    "compiled_tool": null,
+    "compiled_prefetch": null,
+    "handwritten_prefetch": null,
+    "selector_native_fallback": null,
+    "selector_direct_fallback": null
+  },
+  "byCategory": {
+    "all": {
+      "normal": null,
+      "compiled_tool": null,
+      "compiled_prefetch": null,
+      "handwritten_prefetch": null,
+      "selector_native_fallback": null,
+      "selector_direct_fallback": null
+    },
+    "partial": {
+      "normal": null,
+      "compiled_tool": null,
+      "compiled_prefetch": null,
+      "handwritten_prefetch": null,
+      "selector_native_fallback": null,
+      "selector_direct_fallback": null
+    },
+    "none": {
+      "normal": null,
+      "compiled_tool": null,
+      "compiled_prefetch": null,
+      "handwritten_prefetch": null,
+      "selector_native_fallback": null,
+      "selector_direct_fallback": null
+    },
+    "model_decides": {
+      "normal": null,
+      "compiled_tool": null,
+      "compiled_prefetch": null,
+      "handwritten_prefetch": null,
+      "selector_native_fallback": null,
+      "selector_direct_fallback": null
+    },
+    "denied": {
+      "normal": null,
+      "compiled_tool": null,
+      "compiled_prefetch": null,
+      "handwritten_prefetch": null,
+      "selector_native_fallback": null,
+      "selector_direct_fallback": null
+    },
+    "quarantined": {
+      "normal": null,
+      "compiled_tool": null,
+      "compiled_prefetch": null,
+      "handwritten_prefetch": null,
+      "selector_native_fallback": null,
+      "selector_direct_fallback": null
+    },
+    "incompatible": {
+      "normal": null,
+      "compiled_tool": null,
+      "compiled_prefetch": null,
+      "handwritten_prefetch": null,
+      "selector_native_fallback": null,
+      "selector_direct_fallback": null
+    },
+    "slow": {
+      "normal": null,
+      "compiled_tool": null,
+      "compiled_prefetch": null,
+      "handwritten_prefetch": null,
+      "selector_native_fallback": null,
+      "selector_direct_fallback": null
+    },
+    "transient_failure": {
+      "normal": null,
+      "compiled_tool": null,
+      "compiled_prefetch": null,
+      "handwritten_prefetch": null,
+      "selector_native_fallback": null,
+      "selector_direct_fallback": null
+    },
+    "permanent_failure": {
+      "normal": null,
+      "compiled_tool": null,
+      "compiled_prefetch": null,
+      "handwritten_prefetch": null,
+      "selector_native_fallback": null,
+      "selector_direct_fallback": null
+    },
+    "software_tool": {
+      "normal": null,
+      "compiled_tool": null,
+      "compiled_prefetch": null,
+      "handwritten_prefetch": null,
+      "selector_native_fallback": null,
+      "selector_direct_fallback": null
+    },
+    "software_supplement": {
+      "normal": null,
+      "compiled_tool": null,
+      "compiled_prefetch": null,
+      "handwritten_prefetch": null,
+      "selector_native_fallback": null,
+      "selector_direct_fallback": null
+    }
+  },
+  "paired": {
+    "selectorVsCompiledTool": {
+      "inputTokens": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "outputTokens": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "cachedInputTokens": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "totalTokens": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "modelCalls": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "toolCalls": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "durationMs": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "apiEquivalentCostUsd": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "unnecessaryReads": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "duplicateSuccessfulReads": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "selectorMs": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      }
+    },
+    "directVsNativeFallback": {
+      "inputTokens": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "outputTokens": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "cachedInputTokens": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "totalTokens": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "modelCalls": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "toolCalls": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "durationMs": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "apiEquivalentCostUsd": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "unnecessaryReads": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "duplicateSuccessfulReads": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "selectorMs": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      }
+    },
+    "directVsNormal": {
+      "inputTokens": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "outputTokens": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "cachedInputTokens": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "totalTokens": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "modelCalls": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "toolCalls": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "durationMs": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "apiEquivalentCostUsd": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "unnecessaryReads": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "duplicateSuccessfulReads": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "selectorMs": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      }
+    },
+    "directVsHandwritten": {
+      "inputTokens": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "outputTokens": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "cachedInputTokens": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "totalTokens": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "modelCalls": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "toolCalls": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "durationMs": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "apiEquivalentCostUsd": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "unnecessaryReads": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "duplicateSuccessfulReads": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "selectorMs": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      }
+    },
+    "compiledToolVsNormal": {
+      "inputTokens": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "outputTokens": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "cachedInputTokens": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "totalTokens": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "modelCalls": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "toolCalls": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "durationMs": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "apiEquivalentCostUsd": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "unnecessaryReads": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "duplicateSuccessfulReads": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "selectorMs": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      }
+    },
+    "compiledPrefetchVsNormal": {
+      "inputTokens": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "outputTokens": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "cachedInputTokens": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "totalTokens": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "modelCalls": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "toolCalls": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "durationMs": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "apiEquivalentCostUsd": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "unnecessaryReads": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "duplicateSuccessfulReads": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "selectorMs": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      }
+    },
+    "handwrittenVsNormal": {
+      "inputTokens": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "outputTokens": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "cachedInputTokens": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "totalTokens": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "modelCalls": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "toolCalls": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "durationMs": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "apiEquivalentCostUsd": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "unnecessaryReads": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "duplicateSuccessfulReads": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "selectorMs": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      }
+    },
+    "compiledPrefetchVsHandwritten": {
+      "inputTokens": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "outputTokens": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "cachedInputTokens": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "totalTokens": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "modelCalls": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "toolCalls": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "durationMs": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "apiEquivalentCostUsd": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "unnecessaryReads": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "duplicateSuccessfulReads": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      },
+      "selectorMs": {
+        "baseline": null,
+        "optimized": null,
+        "absoluteSaving": null,
+        "percentSaving": null,
+        "pairedDifferences": [],
+        "descriptiveCaseBlockBootstrap95": null
+      }
+    }
+  },
+  "providerAccounting": {
+    "completedInferenceResponses": 21,
+    "reroutes": 0,
+    "warnings": 24,
+    "transportRetries": null
+  },
+  "experimentTotals": {
+    "elapsedMs": 282810.797875,
+    "cpuMicros": { "user": 619453, "system": 102098 },
+    "apiEquivalentCostUsd": null,
+    "knownCostSubtotalUsd": 0.198034,
+    "unknownCostRequests": 1,
+    "priorEvidence": [
+      {
+        "path": "docs/routing-agent-development-preflight.json",
+        "complete": false,
+        "plannedMeasuredRequests": 60,
+        "apiEquivalentCostUsd": 0.10779,
+        "knownCostSubtotalUsd": 0.10779,
+        "unknownCostRequests": 0,
+        "nativeRequests": 4,
+        "completedInferenceResponses": 8,
+        "measuredTaskRequests": 0,
+        "note": "Prior attempt retained for accounting only; never pooled with this run. Unknown request costs are not zero."
+      },
+      {
+        "path": "docs/routing-agent-development-revalidation-preflight.json",
+        "complete": false,
+        "plannedMeasuredRequests": 60,
+        "apiEquivalentCostUsd": 0.15103299999999997,
+        "knownCostSubtotalUsd": 0.15103299999999997,
+        "unknownCostRequests": 0,
+        "nativeRequests": 8,
+        "completedInferenceResponses": 16,
+        "measuredTaskRequests": 0,
+        "note": "Prior attempt retained for accounting only; never pooled with this run. Unknown request costs are not zero."
+      },
+      {
+        "path": "docs/routing-agent-development-interrupted.json",
+        "complete": false,
+        "plannedMeasuredRequests": 60,
+        "apiEquivalentCostUsd": null,
+        "knownCostSubtotalUsd": 0.49366499999999996,
+        "unknownCostRequests": 1,
+        "nativeRequests": 25,
+        "completedInferenceResponses": 41,
+        "measuredTaskRequests": 14,
+        "note": "Prior attempt retained for accounting only; never pooled with this run. Unknown request costs are not zero."
+      },
+      {
+        "path": "docs/routing-agent-development-provider-preflight.json",
+        "complete": false,
+        "plannedMeasuredRequests": 60,
+        "apiEquivalentCostUsd": null,
+        "knownCostSubtotalUsd": 0.12557400000000002,
+        "unknownCostRequests": 1,
+        "nativeRequests": 6,
+        "completedInferenceResponses": 10,
+        "measuredTaskRequests": 0,
+        "note": "Prior attempt retained for accounting only; never pooled with this run. Unknown request costs are not zero."
+      },
+      {
+        "path": "docs/routing-agent-development.json",
+        "complete": false,
+        "plannedMeasuredRequests": 60,
+        "apiEquivalentCostUsd": null,
+        "knownCostSubtotalUsd": 0.5132929999999999,
+        "unknownCostRequests": 1,
+        "nativeRequests": 32,
+        "completedInferenceResponses": 53,
+        "measuredTaskRequests": 18,
+        "note": "Prior attempt retained for accounting only; never pooled with this run. Unknown request costs are not zero."
+      },
+      {
+        "path": "docs/routing-agent-v2-development.json",
+        "complete": true,
+        "plannedMeasuredRequests": 72,
+        "apiEquivalentCostUsd": 1.8954390000000003,
+        "knownCostSubtotalUsd": 1.8954390000000003,
+        "unknownCostRequests": 0,
+        "nativeRequests": 92,
+        "completedInferenceResponses": 161,
+        "measuredTaskRequests": 72,
+        "note": "Prior attempt retained for accounting only; never pooled with this run. Unknown request costs are not zero."
+      }
+    ],
+    "includingPriorAttemptsApiEquivalentCostUsd": null,
+    "nativeRequests": 12,
+    "ledger": [
+      {
+        "measurement": {
+          "origin": "observed",
+          "inputTokens": 8446,
+          "outputTokens": 170,
+          "cachedInputTokens": 7168,
+          "totalTokens": 8616,
+          "modelCalls": 2,
+          "toolCalls": 3,
+          "apiCalls": null,
+          "durationMs": 5211.743417000001,
+          "costUsd": null,
+          "outcome": "success"
+        },
+        "status": "success",
+        "responses": 2,
+        "apiEquivalentCostUsd": 0.015074,
+        "role": "context",
+        "phase": "observation"
+      },
+      {
+        "measurement": {
+          "origin": "observed",
+          "inputTokens": 8467,
+          "outputTokens": 191,
+          "cachedInputTokens": 7168,
+          "totalTokens": 8658,
+          "modelCalls": 2,
+          "toolCalls": 3,
+          "apiCalls": null,
+          "durationMs": 6863.896833,
+          "costUsd": null,
+          "outcome": "success"
+        },
+        "status": "success",
+        "responses": 2,
+        "apiEquivalentCostUsd": 0.015809,
+        "role": "context",
+        "phase": "observation"
+      },
+      {
+        "measurement": {
+          "origin": "observed",
+          "inputTokens": 8446,
+          "outputTokens": 170,
+          "cachedInputTokens": 7168,
+          "totalTokens": 8616,
+          "modelCalls": 2,
+          "toolCalls": 3,
+          "apiCalls": 0,
+          "durationMs": 5975.784,
+          "costUsd": null,
+          "outcome": "success"
+        },
+        "status": "success",
+        "responses": 2,
+        "apiEquivalentCostUsd": 0.015074,
+        "role": "context",
+        "phase": "trustedShadow"
+      },
+      {
+        "measurement": {
+          "origin": "observed",
+          "inputTokens": 8467,
+          "outputTokens": 191,
+          "cachedInputTokens": 3584,
+          "totalTokens": 8658,
+          "modelCalls": 2,
+          "toolCalls": 3,
+          "apiCalls": 0,
+          "durationMs": 4644.811874999999,
+          "costUsd": null,
+          "outcome": "success"
+        },
+        "status": "success",
+        "responses": 2,
+        "apiEquivalentCostUsd": 0.031937,
+        "role": "context",
+        "phase": "trustedShadow"
+      },
+      {
+        "measurement": {
+          "origin": "observed",
+          "inputTokens": 8456,
+          "outputTokens": 180,
+          "cachedInputTokens": 7168,
+          "totalTokens": 8636,
+          "modelCalls": 2,
+          "toolCalls": 3,
+          "apiCalls": 0,
+          "durationMs": 4901.185042000001,
+          "costUsd": null,
+          "outcome": "success"
+        },
+        "status": "success",
+        "responses": 2,
+        "apiEquivalentCostUsd": 0.015424,
+        "role": "context",
+        "phase": "trustedShadow"
+      },
+      {
+        "measurement": {
+          "origin": "observed",
+          "inputTokens": 8446,
+          "outputTokens": 170,
+          "cachedInputTokens": 7168,
+          "totalTokens": 8616,
+          "modelCalls": 2,
+          "toolCalls": 3,
+          "apiCalls": 0,
+          "durationMs": 4624.470792,
+          "costUsd": null,
+          "outcome": "success"
+        },
+        "status": "success",
+        "responses": 2,
+        "apiEquivalentCostUsd": 0.015074,
+        "role": "context",
+        "phase": "renewedShadow"
+      },
+      {
+        "measurement": {
+          "origin": "observed",
+          "inputTokens": 8467,
+          "outputTokens": 191,
+          "cachedInputTokens": 7168,
+          "totalTokens": 8658,
+          "modelCalls": 2,
+          "toolCalls": 3,
+          "apiCalls": 0,
+          "durationMs": 7293.180334000004,
+          "costUsd": null,
+          "outcome": "success"
+        },
+        "status": "success",
+        "responses": 2,
+        "apiEquivalentCostUsd": 0.015809,
+        "role": "context",
+        "phase": "renewedShadow"
+      },
+      {
+        "measurement": {
+          "origin": "observed",
+          "inputTokens": 8456,
+          "outputTokens": 180,
+          "cachedInputTokens": 7168,
+          "totalTokens": 8636,
+          "modelCalls": 2,
+          "toolCalls": 3,
+          "apiCalls": 0,
+          "durationMs": 3942.3770829999994,
+          "costUsd": null,
+          "outcome": "success"
+        },
+        "status": "success",
+        "responses": 2,
+        "apiEquivalentCostUsd": 0.015424,
+        "role": "context",
+        "phase": "renewedShadow"
+      },
+      {
+        "measurement": {
+          "origin": "observed",
+          "inputTokens": 8854,
+          "outputTokens": 210,
+          "cachedInputTokens": 5120,
+          "totalTokens": 9064,
+          "modelCalls": 2,
+          "toolCalls": 3,
+          "apiCalls": 0,
+          "durationMs": 7389.012875,
+          "costUsd": null,
+          "outcome": "success"
+        },
+        "status": "success",
+        "responses": 2,
+        "apiEquivalentCostUsd": 0.02753,
+        "role": "support",
+        "phase": "warmup"
+      },
+      {
+        "measurement": {
+          "origin": "observed",
+          "inputTokens": 8718,
+          "outputTokens": 163,
+          "cachedInputTokens": 6144,
+          "totalTokens": 8881,
+          "modelCalls": 2,
+          "toolCalls": 0,
+          "apiCalls": 0,
+          "durationMs": 8887.330917,
+          "costUsd": null,
+          "outcome": "success"
+        },
+        "status": "success",
+        "responses": 2,
+        "apiEquivalentCostUsd": 0.020832,
+        "role": "support",
+        "phase": "warmup"
+      },
+      {
+        "measurement": {
+          "origin": "observed",
+          "inputTokens": 4353,
+          "outputTokens": 147,
+          "cachedInputTokens": 3584,
+          "totalTokens": 4500,
+          "modelCalls": 1,
+          "toolCalls": 0,
+          "apiCalls": 0,
+          "durationMs": 10910.318959000004,
+          "costUsd": null,
+          "outcome": "success"
+        },
+        "status": "success",
+        "responses": 1,
+        "apiEquivalentCostUsd": 0.010047,
+        "role": "support",
+        "phase": "warmup"
+      },
+      {
+        "measurement": {
+          "origin": "observed",
+          "inputTokens": null,
+          "outputTokens": null,
+          "cachedInputTokens": null,
+          "totalTokens": null,
+          "modelCalls": null,
+          "toolCalls": 3,
+          "apiCalls": 0,
+          "durationMs": 211261.27833400003,
+          "costUsd": null,
+          "outcome": "failed"
+        },
+        "status": "failed",
+        "failure": "provider completion/usage: Provider turn timeout.",
+        "responses": 0,
+        "apiEquivalentCostUsd": null,
+        "role": "support",
+        "phase": "warmup"
+      }
+    ],
+    "note": "All setup, revalidation, warmups, failed reads, incorrect outputs, outliers and measured requests retained. Unknown charges are not zero."
+  },
+  "warmups": [
+    {
+      "arm": "normal",
+      "softwareSource": "foundry_context_loader",
+      "softwareEvidence": "Foundry compiled capability where invoked.",
+      "selectedMode": "normal",
+      "selectionReason": "manual_original_tools",
+      "loaderAttempted": false,
+      "callLedger": {
+        "applicationReads": [],
+        "calls": [
+          {
+            "index": 0,
+            "name": "lookup_customer",
+            "kind": "original_tool",
+            "status": "success",
+            "latencyMs": 2.7347500000032596,
+            "businessReads": [{ "operation": "crm.getCustomer", "status": "success" }],
+            "redundant": false,
+            "duplicateSuccessfulReads": 0,
+            "unnecessaryReads": 0,
+            "necessaryFollowUp": false
+          },
+          {
+            "index": 1,
+            "name": "lookup_orders",
+            "kind": "original_tool",
+            "status": "success",
+            "latencyMs": 1.5527500000025611,
+            "businessReads": [{ "operation": "orders.list", "status": "success" }],
+            "redundant": false,
+            "duplicateSuccessfulReads": 0,
+            "unnecessaryReads": 0,
+            "necessaryFollowUp": false
+          },
+          {
+            "index": 2,
+            "name": "lookup_refund_history",
+            "kind": "original_tool",
+            "status": "success",
+            "latencyMs": 2.767583000000741,
+            "businessReads": [{ "operation": "payments.refundHistory", "status": "success" }],
+            "redundant": false,
+            "duplicateSuccessfulReads": 0,
+            "unnecessaryReads": 0,
+            "necessaryFollowUp": false
+          }
+        ],
+        "responses": [
+          {
+            "index": 0,
+            "inputTokens": 4335,
+            "cachedInputTokens": 1536,
+            "outputTokens": 70,
+            "apiEquivalentCostUsd": 0.016863,
+            "latencyMs": 3834.835791999998,
+            "issuedToolCalls": [0, 1, 2]
+          },
+          {
+            "index": 1,
+            "inputTokens": 4519,
+            "cachedInputTokens": 3584,
+            "outputTokens": 140,
+            "apiEquivalentCostUsd": 0.010667,
+            "latencyMs": 3545.9432499999966,
+            "issuedToolCalls": []
+          }
+        ],
+        "softwareCalls": 0,
+        "followUpCalls": 0,
+        "necessaryFollowUpCalls": 0,
+        "redundantToolCalls": 0
+      },
+      "redundantToolCalls": 0,
+      "effectiveMode": "normal",
+      "selectorMs": 0,
+      "measurement": {
+        "origin": "observed",
+        "inputTokens": 8854,
+        "outputTokens": 210,
+        "cachedInputTokens": 5120,
+        "totalTokens": 9064,
+        "modelCalls": 2,
+        "toolCalls": 3,
+        "apiCalls": 0,
+        "durationMs": 7418.858417000003,
+        "costUsd": null,
+        "outcome": "success"
+      },
+      "apiEquivalentCostUsd": 0.02753,
+      "assessment": {
+        "passed": true,
+        "checks": {
+          "exactEvidenceAndDecision": true,
+          "permittedReads": true,
+          "requiredReadsAttempted": true,
+          "evidenceGrounded": true,
+          "replyGrounded": true,
+          "unavailableAcknowledged": true,
+          "noFinancialActionClaim": true
+        }
+      },
+      "response": {
+        "customerId": "C-101",
+        "eligible": true,
+        "orders": [{ "id": "O-101", "daysLate": 8 }],
+        "refunds": [],
+        "selectedOrderId": "O-101",
+        "action": "refund_review",
+        "reply": "Thanks for reaching out. I checked your account records: you are currently eligible, order O-101 is 8 days late, and there are no prior refunds recorded. Based on the support policy, the appropriate next step is for a support operator to review this order for possible refund handling. This is only a recommendation for review; I can’t issue, approve, or guarantee a refund or make any order changes."
+      },
+      "usedFallback": false,
+      "prefetchFailed": false,
+      "suppliedReadOperations": [],
+      "reusedCompletedReads": [],
+      "unnecessaryReads": 0,
+      "duplicateSuccessfulReads": 0,
+      "cacheHits": 0,
+      "businessReads": [
+        {
+          "operation": "crm.getCustomer",
+          "startedAt": 3774.604625,
+          "completedAt": 3776.951500000003,
+          "status": "success"
+        },
+        {
+          "operation": "orders.list",
+          "startedAt": 3788.2229579999985,
+          "completedAt": 3789.475166999997,
+          "status": "success"
+        },
+        {
+          "operation": "payments.refundHistory",
+          "startedAt": 3821.431875000002,
+          "completedAt": 3823.8079999999973,
+          "status": "success"
+        }
+      ],
+      "contextRuns": [],
+      "modelEvents": [
+        {
+          "id": "d5fa75a1-3929-4f0d-a4dc-40fe69377f34",
+          "provider": "openai-codex-chatgpt",
+          "model": "gpt-5.5",
+          "startMs": 0.4794160000019474,
+          "endMs": 3835.315208,
+          "status": "success",
+          "inputTokens": 4335,
+          "outputTokens": 70,
+          "cachedInputTokens": 1536,
+          "costUsd": null
+        },
+        {
+          "id": "e0bcac4d-14e4-48f2-8532-2bbe19014caf",
+          "provider": "openai-codex-chatgpt",
+          "model": "gpt-5.5",
+          "startMs": 3836.613750000004,
+          "endMs": 7382.557000000001,
+          "status": "success",
+          "inputTokens": 4519,
+          "outputTokens": 140,
+          "cachedInputTokens": 3584,
+          "costUsd": null
+        }
+      ],
+      "modelToolCalls": [
+        {
+          "name": "lookup_customer",
+          "status": "success",
+          "startedAt": 48337.536833,
+          "completedAt": 48340.440583
+        },
+        {
+          "name": "lookup_orders",
+          "status": "success",
+          "startedAt": 48351.409208,
+          "completedAt": 48352.974333
+        },
+        {
+          "name": "lookup_refund_history",
+          "status": "success",
+          "startedAt": 48384.508792,
+          "completedAt": 48387.297667
+        }
+      ],
+      "nativeEntries": [
+        {
+          "measurement": {
+            "origin": "observed",
+            "inputTokens": 8854,
+            "outputTokens": 210,
+            "cachedInputTokens": 5120,
+            "totalTokens": 9064,
+            "modelCalls": 2,
+            "toolCalls": 3,
+            "apiCalls": 0,
+            "durationMs": 7389.012875,
+            "costUsd": null,
+            "outcome": "success"
+          },
+          "status": "success",
+          "responses": 2,
+          "apiEquivalentCostUsd": 0.02753,
+          "role": "support",
+          "phase": "warmup"
+        }
+      ]
+    },
+    {
+      "arm": "compiled_tool",
+      "softwareSource": "foundry_context_loader",
+      "softwareEvidence": "Foundry compiled capability where invoked.",
+      "selectedMode": "compiled_tool",
+      "selectionReason": "manual_complete_context_tool",
+      "loaderAttempted": true,
+      "callLedger": {
+        "applicationReads": [],
+        "calls": [
+          {
+            "index": 0,
+            "name": "load_customer_context",
+            "kind": "foundry_software",
+            "status": "success",
+            "latencyMs": 21.58350000000064,
+            "businessReads": [
+              { "operation": "crm.getCustomer", "status": "success" },
+              { "operation": "orders.list", "status": "success" },
+              { "operation": "payments.refundHistory", "status": "success" }
+            ],
+            "redundant": false,
+            "duplicateSuccessfulReads": 0,
+            "unnecessaryReads": 0,
+            "necessaryFollowUp": false
+          }
+        ],
+        "responses": [
+          {
+            "index": 0,
+            "inputTokens": 4289,
+            "cachedInputTokens": 2560,
+            "outputTokens": 27,
+            "apiEquivalentCostUsd": 0.010735,
+            "latencyMs": 4352.639041999995,
+            "issuedToolCalls": [0]
+          },
+          {
+            "index": 1,
+            "inputTokens": 4429,
+            "cachedInputTokens": 3584,
+            "outputTokens": 136,
+            "apiEquivalentCostUsd": 0.010097,
+            "latencyMs": 4530.8863340000025,
+            "issuedToolCalls": []
+          }
+        ],
+        "softwareCalls": 1,
+        "followUpCalls": 0,
+        "necessaryFollowUpCalls": 0,
+        "redundantToolCalls": 0
+      },
+      "redundantToolCalls": 0,
+      "effectiveMode": "compiled_tool",
+      "selectorMs": 0,
+      "measurement": {
+        "origin": "observed",
+        "inputTokens": 8718,
+        "outputTokens": 163,
+        "cachedInputTokens": 6144,
+        "totalTokens": 8881,
+        "modelCalls": 2,
+        "toolCalls": 3,
+        "apiCalls": 2,
+        "durationMs": 8913.628667000004,
+        "costUsd": null,
+        "outcome": "success"
+      },
+      "apiEquivalentCostUsd": 0.020832,
+      "assessment": {
+        "passed": true,
+        "checks": {
+          "exactEvidenceAndDecision": true,
+          "permittedReads": true,
+          "requiredReadsAttempted": true,
+          "evidenceGrounded": true,
+          "replyGrounded": true,
+          "unavailableAcknowledged": true,
+          "noFinancialActionClaim": true
+        }
+      },
+      "response": {
+        "customerId": "C-101",
+        "eligible": true,
+        "orders": [{ "id": "O-101", "daysLate": 8 }],
+        "refunds": [],
+        "selectedOrderId": "O-101",
+        "action": "refund_review",
+        "reply": "Thanks for reaching out. I checked the account records: you are currently eligible, order O-101 is 8 days late, and there are no prior refunds recorded. Based on the support policy, the appropriate next step is to send this to refund review for the support operator to evaluate. I can’t issue or guarantee a refund here, but the record supports review of order O-101."
+      },
+      "usedFallback": false,
+      "prefetchFailed": false,
+      "suppliedReadOperations": ["crm.getCustomer", "orders.list", "payments.refundHistory"],
+      "reusedCompletedReads": [],
+      "unnecessaryReads": 0,
+      "duplicateSuccessfulReads": 0,
+      "cacheHits": 0,
+      "businessReads": [
+        {
+          "operation": "crm.getCustomer",
+          "startedAt": 4332.944209000001,
+          "completedAt": 4335.492542,
+          "status": "success"
+        },
+        {
+          "operation": "orders.list",
+          "startedAt": 4332.983292000004,
+          "completedAt": 4335.533625000004,
+          "status": "success"
+        },
+        {
+          "operation": "payments.refundHistory",
+          "startedAt": 4333.001959000001,
+          "completedAt": 4335.580916999999,
+          "status": "success"
+        }
+      ],
+      "contextRuns": [
+        {
+          "runId": "06c67b44-3df2-4a94-88ee-7e8e12032cef",
+          "taskKind": "customer_context",
+          "input": { "customerId": "C-101" },
+          "llmInvocations": 0,
+          "agentTokens": 0,
+          "executedNodeIds": [
+            "crm_get_customer",
+            "orders_list",
+            "payments_refund_history",
+            "context"
+          ],
+          "nodeTimings": [
+            { "id": "crm_get_customer", "operation": "crm.getCustomer", "startMs": 0, "endMs": 3 },
+            { "id": "orders_list", "operation": "orders.list", "startMs": 0, "endMs": 3 },
+            {
+              "id": "payments_refund_history",
+              "operation": "payments.refundHistory",
+              "startMs": 0,
+              "endMs": 3
+            },
+            { "id": "context", "operation": "join", "startMs": 3, "endMs": 3 }
+          ],
+          "adapterCalls": 3,
+          "peakParallel": 3,
+          "createdAt": "2026-10-07T20:39:36.616Z",
+          "mode": "compiled",
+          "outcome": "success",
+          "measurement": {
+            "origin": "observed",
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "cachedInputTokens": 0,
+            "totalTokens": 0,
+            "modelCalls": 0,
+            "toolCalls": 3,
+            "apiCalls": 2,
+            "durationMs": 20.75616599999921,
+            "costUsd": null,
+            "outcome": "success"
+          },
+          "capability": "load_customer_context",
+          "capabilityId": "bf0c852f-50ed-47ff-bc1b-edbcf6b285a7",
+          "capabilityVersion": 1,
+          "capabilityDigest": "6b4b1e3f8d9f9c1317408e90f8a3f9a199505ba68cc7fbac090eb24500b0c1f8",
+          "guards": [
+            { "name": "artifact_status", "ok": true, "detail": "status approved" },
+            {
+              "name": "artifact_digest",
+              "ok": true,
+              "detail": "recomputed digest must match the approved digest"
+            },
+            { "name": "validation", "ok": true, "detail": "current passing verification required" },
+            { "name": "principal", "ok": true, "detail": "principal binding" },
+            { "name": "compiler_version", "ok": true, "detail": "read-ir-v1" },
+            { "name": "task_kind", "ok": true, "detail": "customer_context vs customer_context" },
+            { "name": "input_schema", "ok": true, "detail": "customer_input.v1" },
+            { "name": "tenant", "ok": true, "detail": "local-demo" },
+            { "name": "data_snapshot", "ok": true, "detail": "fixtures-v1" },
+            { "name": "policy_version", "ok": true, "detail": "read-policy-v1" },
+            { "name": "adapter_versions", "ok": true, "detail": "pinned versions match" },
+            { "name": "scopes", "ok": true, "detail": "crm:read, orders:read, payments:read" },
+            {
+              "name": "data_freshness",
+              "ok": true,
+              "detail": "4332ms observed against a 30000ms window"
+            }
+          ],
+          "durationMs": 20.75616599999921,
+          "result": {
+            "crm_get_customer": {
+              "customerId": "C-101",
+              "tenantId": "local-demo",
+              "snapshot": "fixtures-v1",
+              "eligible": true
+            },
+            "orders_list": {
+              "customerId": "C-101",
+              "tenantId": "local-demo",
+              "snapshot": "fixtures-v1",
+              "orders": [{ "id": "O-101", "daysLate": 8 }]
+            },
+            "payments_refund_history": {
+              "customerId": "C-101",
+              "tenantId": "local-demo",
+              "snapshot": "fixtures-v1",
+              "refunds": []
+            },
+            "customer_id": "C-101"
+          },
+          "observable": {
+            "customerId": "C-101",
+            "eligible": true,
+            "orderCount": 1,
+            "refundCount": 0,
+            "refundTotal": 0
+          }
+        }
+      ],
+      "modelEvents": [
+        {
+          "id": "5c37060d-f051-4da8-a084-e0cbca75d72f",
+          "provider": "openai-codex-chatgpt",
+          "model": "gpt-5.5",
+          "startMs": 0.2719169999982114,
+          "endMs": 4352.910958999993,
+          "status": "success",
+          "inputTokens": 4289,
+          "outputTokens": 27,
+          "cachedInputTokens": 2560,
+          "costUsd": null
+        },
+        {
+          "id": "8b840905-2319-4531-b75b-4fdbcf586587",
+          "provider": "openai-codex-chatgpt",
+          "model": "gpt-5.5",
+          "startMs": 4353.267999999996,
+          "endMs": 8884.154333999999,
+          "status": "success",
+          "inputTokens": 4429,
+          "outputTokens": 136,
+          "cachedInputTokens": 3584,
+          "costUsd": null
+        }
+      ],
+      "modelToolCalls": [
+        {
+          "name": "load_customer_context",
+          "status": "success",
+          "startedAt": 56306.537417,
+          "completedAt": 56328.16725
+        }
+      ],
+      "nativeEntries": [
+        {
+          "measurement": {
+            "origin": "observed",
+            "inputTokens": 8718,
+            "outputTokens": 163,
+            "cachedInputTokens": 6144,
+            "totalTokens": 8881,
+            "modelCalls": 2,
+            "toolCalls": 0,
+            "apiCalls": 0,
+            "durationMs": 8887.330917,
+            "costUsd": null,
+            "outcome": "success"
+          },
+          "status": "success",
+          "responses": 2,
+          "apiEquivalentCostUsd": 0.020832,
+          "role": "support",
+          "phase": "warmup"
+        }
+      ]
+    },
+    {
+      "arm": "compiled_prefetch",
+      "softwareSource": "foundry_context_loader",
+      "softwareEvidence": "Foundry compiled capability where invoked.",
+      "selectedMode": "compiled_prefetch",
+      "selectionReason": "manual_known_complete_context",
+      "loaderAttempted": true,
+      "callLedger": {
+        "applicationReads": [
+          { "operation": "crm.getCustomer", "status": "success", "latencyMs": 2.747209000001021 },
+          { "operation": "orders.list", "status": "success", "latencyMs": 2.7451250000012806 },
+          {
+            "operation": "payments.refundHistory",
+            "status": "success",
+            "latencyMs": 2.762125000001106
+          }
+        ],
+        "calls": [],
+        "responses": [
+          {
+            "index": 0,
+            "inputTokens": 4353,
+            "cachedInputTokens": 3584,
+            "outputTokens": 147,
+            "apiEquivalentCostUsd": 0.010047,
+            "latencyMs": 10893.333166000004,
+            "issuedToolCalls": []
+          }
+        ],
+        "softwareCalls": 0,
+        "followUpCalls": 0,
+        "necessaryFollowUpCalls": 0,
+        "redundantToolCalls": 0
+      },
+      "redundantToolCalls": 0,
+      "effectiveMode": "compiled_prefetch",
+      "selectorMs": 0,
+      "measurement": {
+        "origin": "observed",
+        "inputTokens": 4353,
+        "outputTokens": 147,
+        "cachedInputTokens": 3584,
+        "totalTokens": 4500,
+        "modelCalls": 1,
+        "toolCalls": 3,
+        "apiCalls": 2,
+        "durationMs": 10944.419417000005,
+        "costUsd": null,
+        "outcome": "success"
+      },
+      "apiEquivalentCostUsd": 0.010047,
+      "assessment": {
+        "passed": true,
+        "checks": {
+          "exactEvidenceAndDecision": true,
+          "permittedReads": true,
+          "requiredReadsAttempted": true,
+          "evidenceGrounded": true,
+          "replyGrounded": true,
+          "unavailableAcknowledged": true,
+          "noFinancialActionClaim": true
+        }
+      },
+      "response": {
+        "customerId": "C-101",
+        "eligible": true,
+        "orders": [{ "id": "O-101", "daysLate": 8 }],
+        "refunds": [],
+        "selectedOrderId": "O-101",
+        "action": "refund_review",
+        "reply": "Thanks for reaching out. I checked the account records for customer C-101. You are currently eligible, and order O-101 is showing as 8 days late. I also checked the refund history and found no prior refunds recorded. Based on the support policy, the recommended next step is for a support operator to review this case for a possible refund. This is a review recommendation only, and no refund or order change has been issued or guaranteed."
+      },
+      "usedFallback": false,
+      "prefetchFailed": false,
+      "suppliedReadOperations": ["crm.getCustomer", "orders.list", "payments.refundHistory"],
+      "reusedCompletedReads": [],
+      "unnecessaryReads": 0,
+      "duplicateSuccessfulReads": 0,
+      "cacheHits": 0,
+      "businessReads": [
+        {
+          "operation": "crm.getCustomer",
+          "startedAt": 4.264625000003434,
+          "completedAt": 7.0118340000044554,
+          "status": "success"
+        },
+        {
+          "operation": "orders.list",
+          "startedAt": 4.289541999998619,
+          "completedAt": 7.034666999999899,
+          "status": "success"
+        },
+        {
+          "operation": "payments.refundHistory",
+          "startedAt": 4.302292000000307,
+          "completedAt": 7.064417000001413,
+          "status": "success"
+        }
+      ],
+      "contextRuns": [
+        {
+          "runId": "157652c7-77c2-4626-aa13-9fa67a8b6707",
+          "taskKind": "customer_context",
+          "input": { "customerId": "C-101" },
+          "llmInvocations": 0,
+          "agentTokens": 0,
+          "executedNodeIds": [
+            "crm_get_customer",
+            "orders_list",
+            "payments_refund_history",
+            "context"
+          ],
+          "nodeTimings": [
+            { "id": "crm_get_customer", "operation": "crm.getCustomer", "startMs": 0, "endMs": 3 },
+            { "id": "orders_list", "operation": "orders.list", "startMs": 0, "endMs": 3 },
+            {
+              "id": "payments_refund_history",
+              "operation": "payments.refundHistory",
+              "startMs": 0,
+              "endMs": 3
+            },
+            { "id": "context", "operation": "join", "startMs": 3, "endMs": 3 }
+          ],
+          "adapterCalls": 3,
+          "peakParallel": 3,
+          "createdAt": "2026-10-07T20:39:41.206Z",
+          "mode": "compiled",
+          "outcome": "success",
+          "measurement": {
+            "origin": "observed",
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "cachedInputTokens": 0,
+            "totalTokens": 0,
+            "modelCalls": 0,
+            "toolCalls": 3,
+            "apiCalls": 2,
+            "durationMs": 9.465250000001106,
+            "costUsd": null,
+            "outcome": "success"
+          },
+          "capability": "load_customer_context",
+          "capabilityId": "bf0c852f-50ed-47ff-bc1b-edbcf6b285a7",
+          "capabilityVersion": 1,
+          "capabilityDigest": "6b4b1e3f8d9f9c1317408e90f8a3f9a199505ba68cc7fbac090eb24500b0c1f8",
+          "guards": [
+            { "name": "artifact_status", "ok": true, "detail": "status approved" },
+            {
+              "name": "artifact_digest",
+              "ok": true,
+              "detail": "recomputed digest must match the approved digest"
+            },
+            { "name": "validation", "ok": true, "detail": "current passing verification required" },
+            { "name": "principal", "ok": true, "detail": "principal binding" },
+            { "name": "compiler_version", "ok": true, "detail": "read-ir-v1" },
+            { "name": "task_kind", "ok": true, "detail": "customer_context vs customer_context" },
+            { "name": "input_schema", "ok": true, "detail": "customer_input.v1" },
+            { "name": "tenant", "ok": true, "detail": "local-demo" },
+            { "name": "data_snapshot", "ok": true, "detail": "fixtures-v1" },
+            { "name": "policy_version", "ok": true, "detail": "read-policy-v1" },
+            { "name": "adapter_versions", "ok": true, "detail": "pinned versions match" },
+            { "name": "scopes", "ok": true, "detail": "crm:read, orders:read, payments:read" },
+            {
+              "name": "data_freshness",
+              "ok": true,
+              "detail": "5ms observed against a 30000ms window"
+            }
+          ],
+          "durationMs": 9.465250000001106,
+          "result": {
+            "crm_get_customer": {
+              "customerId": "C-101",
+              "tenantId": "local-demo",
+              "snapshot": "fixtures-v1",
+              "eligible": true
+            },
+            "orders_list": {
+              "customerId": "C-101",
+              "tenantId": "local-demo",
+              "snapshot": "fixtures-v1",
+              "orders": [{ "id": "O-101", "daysLate": 8 }]
+            },
+            "payments_refund_history": {
+              "customerId": "C-101",
+              "tenantId": "local-demo",
+              "snapshot": "fixtures-v1",
+              "refunds": []
+            },
+            "customer_id": "C-101"
+          },
+          "observable": {
+            "customerId": "C-101",
+            "eligible": true,
+            "orderCount": 1,
+            "refundCount": 0,
+            "refundTotal": 0
+          }
+        }
+      ],
+      "modelEvents": [
+        {
+          "id": "8f3d92ca-303d-4e34-b05c-69b30d40e28a",
+          "provider": "openai-codex-chatgpt",
+          "model": "gpt-5.5",
+          "startMs": 9.890500000001339,
+          "endMs": 10903.223665999998,
+          "status": "success",
+          "inputTokens": 4353,
+          "outputTokens": 147,
+          "cachedInputTokens": 3584,
+          "costUsd": null
+        }
+      ],
+      "modelToolCalls": [],
+      "nativeEntries": [
+        {
+          "measurement": {
+            "origin": "observed",
+            "inputTokens": 4353,
+            "outputTokens": 147,
+            "cachedInputTokens": 3584,
+            "totalTokens": 4500,
+            "modelCalls": 1,
+            "toolCalls": 0,
+            "apiCalls": 0,
+            "durationMs": 10910.318959000004,
+            "costUsd": null,
+            "outcome": "success"
+          },
+          "status": "success",
+          "responses": 1,
+          "apiEquivalentCostUsd": 0.010047,
+          "role": "support",
+          "phase": "warmup"
+        }
+      ]
+    },
+    {
+      "arm": "handwritten_prefetch",
+      "softwareSource": "foundry_context_loader",
+      "softwareEvidence": "Foundry compiled capability where invoked.",
+      "selectedMode": "handwritten_prefetch",
+      "selectionReason": "manual_known_reads",
+      "loaderAttempted": false,
+      "callLedger": {
+        "applicationReads": [
+          { "operation": "crm.getCustomer", "status": "success", "latencyMs": 2.6412920000002487 },
+          { "operation": "orders.list", "status": "success", "latencyMs": 2.6358329999929992 },
+          {
+            "operation": "payments.refundHistory",
+            "status": "success",
+            "latencyMs": 2.650792000000365
+          }
+        ],
+        "calls": [],
+        "responses": [],
+        "softwareCalls": 0,
+        "followUpCalls": 0,
+        "necessaryFollowUpCalls": 0,
+        "redundantToolCalls": 0
+      },
+      "redundantToolCalls": 0,
+      "effectiveMode": "handwritten_prefetch",
+      "selectorMs": 0,
+      "measurement": {
+        "origin": "observed",
+        "inputTokens": null,
+        "outputTokens": null,
+        "cachedInputTokens": null,
+        "totalTokens": null,
+        "modelCalls": null,
+        "toolCalls": 3,
+        "apiCalls": 0,
+        "durationMs": 211298.46375,
+        "costUsd": null,
+        "outcome": "failed"
+      },
+      "apiEquivalentCostUsd": null,
+      "assessment": { "passed": false, "checks": {} },
+      "failure": "provider completion/usage: Provider turn timeout.",
+      "usedFallback": false,
+      "prefetchFailed": false,
+      "suppliedReadOperations": ["crm.getCustomer", "orders.list", "payments.refundHistory"],
+      "reusedCompletedReads": [],
+      "unnecessaryReads": 0,
+      "duplicateSuccessfulReads": 0,
+      "cacheHits": 0,
+      "businessReads": [
+        {
+          "operation": "crm.getCustomer",
+          "startedAt": 0.20933300000615418,
+          "completedAt": 2.850625000006403,
+          "status": "success"
+        },
+        {
+          "operation": "orders.list",
+          "startedAt": 0.25287500000558794,
+          "completedAt": 2.888707999998587,
+          "status": "success"
+        },
+        {
+          "operation": "payments.refundHistory",
+          "startedAt": 0.27491599999484606,
+          "completedAt": 2.925707999995211,
+          "status": "success"
+        }
+      ],
+      "contextRuns": [],
+      "modelEvents": [],
+      "modelToolCalls": [],
+      "nativeEntries": [
+        {
+          "measurement": {
+            "origin": "observed",
+            "inputTokens": null,
+            "outputTokens": null,
+            "cachedInputTokens": null,
+            "totalTokens": null,
+            "modelCalls": null,
+            "toolCalls": 3,
+            "apiCalls": 0,
+            "durationMs": 211261.27833400003,
+            "costUsd": null,
+            "outcome": "failed"
+          },
+          "status": "failed",
+          "failure": "provider completion/usage: Provider turn timeout.",
+          "responses": 0,
+          "apiEquivalentCostUsd": null,
+          "role": "support",
+          "phase": "warmup"
+        }
+      ]
+    }
+  ],
+  "trials": []
+}

@@ -1,0 +1,206 @@
+{
+  "capturedAt": "2026-10-04T01:58:55.615Z",
+  "node": "v24.21.0",
+  "platform": "darwin/arm64",
+  "scope": "Controlled local read-only fixture workflow replay through the real SDK, authenticated loopback API, signer and interpreter. No live model inference or external SaaS calls.",
+  "methodology": {
+    "pairs": 30,
+    "warmupPairs": 3,
+    "inputIds": ["C-101", "C-202", "C-303"],
+    "alternatingOrder": true,
+    "adapterDelayMs": 8,
+    "telemetryIncludedInWallTime": true
+  },
+  "baseline": {
+    "origin": "fixture",
+    "inputTokens": null,
+    "outputTokens": null,
+    "cachedInputTokens": null,
+    "totalTokens": null,
+    "modelCalls": null,
+    "toolCalls": 4,
+    "apiCalls": 2,
+    "durationMs": 41.85853756666668,
+    "costUsd": null,
+    "outcome": "success",
+    "p50DurationMs": 41.794791999999916,
+    "p95DurationMs": 45.476833999999826
+  },
+  "optimized": {
+    "origin": "fixture",
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "cachedInputTokens": 0,
+    "totalTokens": 0,
+    "modelCalls": 0,
+    "toolCalls": 3,
+    "apiCalls": 2,
+    "durationMs": 24.319244433333356,
+    "costUsd": null,
+    "outcome": "success",
+    "p50DurationMs": 24.36366699999985,
+    "p95DurationMs": 27.039040999999997
+  },
+  "savings": {
+    "tokenSavingsPercent": null,
+    "modelCallSavingsPercent": null,
+    "toolCallSavingsPercent": 25,
+    "latencySavingsPercent": 41.901351917512855,
+    "costSavingsPercent": null,
+    "toolCallsSavedPerRun": 1,
+    "latencySavedMsPerRun": 17.539293133333327,
+    "tokensSaved": null,
+    "modelCallsSaved": null,
+    "costSavedUsd": null
+  },
+  "correctness": {
+    "comparisons": 30,
+    "matches": 30,
+    "comparison": "Full identities, eligibility, order IDs/lateness and refund IDs/amounts; list order normalized."
+  },
+  "lifecycle": {
+    "patternObserved": true,
+    "compileDurationMs": 5.4554580000000215,
+    "verificationDurationMs": 108.62037499999997,
+    "passingChecks": 21,
+    "shadowCoverage": {
+      "ready": true,
+      "matches": 3,
+      "failures": 0,
+      "covered": ["C-303", "C-202", "C-101"],
+      "requirement": "Three full-context matches covering C-101, C-202 and C-303 on the current verification; no divergence."
+    },
+    "postQuarantineFallback": {
+      "mode": "agent",
+      "outcome": "success"
+    }
+  },
+  "rawPairs": [
+    {
+      "baselineMs": 42.87133300000005,
+      "optimizedMs": 24.588834000000134
+    },
+    {
+      "baselineMs": 42.97508400000015,
+      "optimizedMs": 23.883084000000053
+    },
+    {
+      "baselineMs": 41.54258400000003,
+      "optimizedMs": 23.355332999999973
+    },
+    {
+      "baselineMs": 45.38570800000002,
+      "optimizedMs": 24.443457999999964
+    },
+    {
+      "baselineMs": 39.821083000000044,
+      "optimizedMs": 24.405124999999998
+    },
+    {
+      "baselineMs": 39.84887499999991,
+      "optimizedMs": 27.039040999999997
+    },
+    {
+      "baselineMs": 44.61308299999996,
+      "optimizedMs": 24.726291000000174
+    },
+    {
+      "baselineMs": 42.732749999999896,
+      "optimizedMs": 24.77762500000017
+    },
+    {
+      "baselineMs": 45.476833999999826,
+      "optimizedMs": 25.88562499999989
+    },
+    {
+      "baselineMs": 46.255916999999954,
+      "optimizedMs": 24.01566700000012
+    },
+    {
+      "baselineMs": 41.9011660000001,
+      "optimizedMs": 23.646999999999935
+    },
+    {
+      "baselineMs": 41.358999999999924,
+      "optimizedMs": 22.51933400000007
+    },
+    {
+      "baselineMs": 37.35670899999991,
+      "optimizedMs": 22.11304199999995
+    },
+    {
+      "baselineMs": 39.47383300000001,
+      "optimizedMs": 25.922915999999987
+    },
+    {
+      "baselineMs": 41.794791999999916,
+      "optimizedMs": 24.36366699999985
+    },
+    {
+      "baselineMs": 41.04537499999992,
+      "optimizedMs": 25.895332999999937
+    },
+    {
+      "baselineMs": 41.54358400000001,
+      "optimizedMs": 24.44425000000001
+    },
+    {
+      "baselineMs": 41.6232500000001,
+      "optimizedMs": 24.971666999999798
+    },
+    {
+      "baselineMs": 42.41691700000001,
+      "optimizedMs": 22.993917000000238
+    },
+    {
+      "baselineMs": 38.611417000000074,
+      "optimizedMs": 20.948624999999993
+    },
+    {
+      "baselineMs": 38.01808299999993,
+      "optimizedMs": 25.298291000000063
+    },
+    {
+      "baselineMs": 36.82216700000026,
+      "optimizedMs": 23.999832999999853
+    },
+    {
+      "baselineMs": 44.95116700000017,
+      "optimizedMs": 23.323209000000134
+    },
+    {
+      "baselineMs": 43.71879100000024,
+      "optimizedMs": 26.953958000000057
+    },
+    {
+      "baselineMs": 39.2622080000001,
+      "optimizedMs": 22.32833299999993
+    },
+    {
+      "baselineMs": 43.89695800000027,
+      "optimizedMs": 28.854707999999846
+    },
+    {
+      "baselineMs": 43.38958399999956,
+      "optimizedMs": 22.020750000000135
+    },
+    {
+      "baselineMs": 43.16975000000002,
+      "optimizedMs": 22.509000000000015
+    },
+    {
+      "baselineMs": 39.60024999999996,
+      "optimizedMs": 25.685459000000264
+    },
+    {
+      "baselineMs": 44.27787500000022,
+      "optimizedMs": 23.663958000000093
+    }
+  ],
+  "limitations": [
+    "Fixture delays are controlled, not SaaS performance.",
+    "No live agent/model baseline was run: model-call/token/cost savings are unknown.",
+    "Compile/verification/shadow setup is excluded from steady-state pairs.",
+    "Single-process loopback benchmark does not establish production economics."
+  ]
+}
