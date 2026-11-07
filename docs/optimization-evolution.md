@@ -37,6 +37,16 @@ Automatic profile collection/matching and learned routing are not implemented; r
 belong to stage 3. No new live savings claim is supported by these local tests. Stage 2 remains
 next: agent-selected partial retrieval after reasoning, using the approved subset interpreter.
 
+### Reusable policy, bounded execution scope
+
+The customer selector now delegates to a shared read-workflow selection policy. Other applications
+can register operation names, trusted contracts and synchronous authorization/readiness checks,
+without customer-specific identifiers or new selection algorithms. This is a routing extension
+point, not automatic compilation of other domains. The v2 compiled executor still supports only
+the existing customer-context family. See [read-workflow selection](read-workflow-selection.md)
+for requirements, fixture examples and limitations. Reasoning-dependent partial tools (stage 2)
+are still pending.
+
 ## Keep development and evaluation bounded
 
 - Develop with deterministic fixtures and targeted tests. Use real provider requests only for

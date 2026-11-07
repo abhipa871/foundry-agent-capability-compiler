@@ -312,5 +312,11 @@ export type {
   PrefetchCostComparison,
 } from './selection.js';
 export { RequestReadCache } from './request-reads.js';
+export { createReadWorkflowSelector } from './read-workflow-selection.js';
+export type {
+  ReadWorkflowContract,
+  ReadWorkflowReadiness,
+  ReadWorkflowSelection,
+} from './read-workflow-selection.js';
 export { planSelection, subsetContextProjection } from '../runtime/selective.js';
 export type { SelectionPlan, SubsetContext } from '../runtime/selective.js';

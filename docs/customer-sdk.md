@@ -137,3 +137,11 @@ runs the complete SDK/API lifecycle and 30 alternating fixture replay pairs, wit
 pairs, producing `docs/optimization-benchmark.json`. It uses fake credentials, ephemeral signing
 keys, a memory database and read fixtures. Its latency and call counts are measured; its model,
 token and dollar savings are unknown. It makes no production or live-agent performance claim.
+
+## Reusable selection policy
+
+The SDK also exports `createReadWorkflowSelector` for application-owned read-only workflows.
+It reuses the customer selector's placement and cost rules with configurable operation names and
+explicit authorization/readiness hooks. This generalizes routing, not the v2 compiler or executor:
+new workflow execution still requires validated adapters and an independent correctness oracle.
+See [read-workflow selection](read-workflow-selection.md) for the API, fixture examples and limits.
