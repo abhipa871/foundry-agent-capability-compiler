@@ -1,0 +1,24 @@
+{
+  "model": "gemini-3.8-flash",
+  "api": "Gemini Developer API",
+  "credentialPresent": true,
+  "surroundingWhitespace": false,
+  "discovery": {
+    "httpStatus": 401,
+    "error": {
+      "status": "UNAUTHENTICATED",
+      "message": "API key not valid. Please pass a valid API key."
+    },
+    "requiredModelListed": null,
+    "usage": null
+  },
+  "inference": {
+    "httpStatus": 401,
+    "error": {
+      "status": "UNAUTHENTICATED",
+      "message": "API key not valid. Please pass a valid API key."
+    },
+    "requiredModelListed": null,
+    "usage": null
+  }
+}

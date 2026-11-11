@@ -1,0 +1,68 @@
+{
+  "format": "lossless-gzip-original-provider-evidence",
+  "entries": [
+    {
+      "file": "billing-gemini-1794099965765.json.gz",
+      "rawBytes": 23998,
+      "archiveBytes": 3658,
+      "rawSha256": "b39936754f861d5b022ced5b28b85d13ceb68ae743eed8ae9b2e0194614fda74",
+      "archiveSha256": "03d94367362ee64fc1d4c8b2fe365ddd75a848bbb7bc14df294433d7eef1bab3"
+    },
+    {
+      "file": "billing-gemini-1794103601111.json.gz",
+      "rawBytes": 111951,
+      "archiveBytes": 9806,
+      "rawSha256": "c8620fa1d19ca7f1ded2d62373406332d52f5a337066043e0cab1c5d4a3769a4",
+      "archiveSha256": "40143f7fa5d2f6d2cf4c0e2328cac647d4257b34f1239cbcfa03ae537adaf1fd"
+    },
+    {
+      "file": "billing-gemini-1794103725542.json.gz",
+      "rawBytes": 115101,
+      "archiveBytes": 10177,
+      "rawSha256": "3bd35890b9e688b2a6757eda68b8ada8c6c1254cf5cebdd082c3378ab8777bbb",
+      "archiveSha256": "226721142f6fe6d466a087d6b860561157eaf4a1f99149f16a475b8b5cbb835d"
+    },
+    {
+      "file": "billing-gemini-1794103814996.json.gz",
+      "rawBytes": 481548,
+      "archiveBytes": 36561,
+      "rawSha256": "736980e707b66c71d85da04f98d3744d89af4b6a2565a718162144489de4f4c7",
+      "archiveSha256": "d671bb4235114956fe8b1ba52fcedafaf29206e6331d249a62c495234225884c"
+    },
+    {
+      "file": "billing-gemini-1794103998915.json.gz",
+      "rawBytes": 4081328,
+      "archiveBytes": 299330,
+      "rawSha256": "3559a4c10d6bba400c52195427608d1413f63e5810b17a12aef8215fb78032ea",
+      "archiveSha256": "9d880f61963466e0bd84b867d6845cff7ba3488afc9f9e10a4d6c2b80dd85cc2"
+    },
+    {
+      "file": "billing-gemini-1794105149596.json.gz",
+      "rawBytes": 44920009,
+      "archiveBytes": 3143711,
+      "rawSha256": "137f4f808c4fce58cf506f3baf15d68462cae67169435f9af84e6479b6dcdce6",
+      "archiveSha256": "c12e5dc43267f7acab3ea0b919f40742441141a5afd8e83835a5224dbeedb221"
+    },
+    {
+      "file": "billing-gemini-1794112822304.json.gz",
+      "rawBytes": 95607203,
+      "archiveBytes": 6702113,
+      "rawSha256": "e255cc0b0084af43f99d46f04ffb83adb45c9207ac541643b59185ba56ec7b27",
+      "archiveSha256": "52342e3e22dc66a6e0ca620bb4e48d76d1bee26105eb42a0f7617597ce5368ea"
+    },
+    {
+      "file": "billing-gemini-1794339975784.json.gz",
+      "rawBytes": 100393555,
+      "archiveBytes": 7037447,
+      "rawSha256": "df6bca60e42b664798af4f57455d3c0448e73553bd8c27d7d88ebef5c1f42bb6",
+      "archiveSha256": "1265211287c13d21d62738113c743c6e20457911d424eed0c91c1ebad32c0b11"
+    },
+    {
+      "file": "billing-gemini-1794340360793.json.gz",
+      "rawBytes": 122286057,
+      "archiveBytes": 8579834,
+      "rawSha256": "54d152747e87f0b1a919c4dd8a265523f351f80bd61a6c0d62b79e1f93604314",
+      "archiveSha256": "bfcbd982d973a772a8379ce1cfd6fbfcea7907eb3276a019fdd58eac06b9a5a2"
+    }
+  ]
+}

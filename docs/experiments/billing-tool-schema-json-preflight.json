@@ -1,0 +1,10 @@
+{
+  "model": "gemini-3.8-flash",
+  "httpStatus": 400,
+  "error": {
+    "status": "INVALID_ARGUMENT",
+    "message": "ref loops are only supported if they include optional or nullable property values, or a potentially-zero-length array items, but a ref loop of required fields was found at $defs.__schema0.anyOf.5.additionalProperties"
+  },
+  "usage": null,
+  "origin": "One replay of the JSON-Schema transport training failure; not a measured task."
+}

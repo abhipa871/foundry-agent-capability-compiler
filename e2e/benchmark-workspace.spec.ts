@@ -1,5 +1,34 @@
 import { test, expect } from '@playwright/test';
 
+test('billing scenario shows registered APIs, real lifecycle gates and sanitized provider failures', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByLabel('Benchmark scenario').selectOption('billing');
+  await expect(
+    page.getByRole('heading', { name: 'Enterprise Billing Investigation' }),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: '2. Compile & validate reads' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: '3. Approve & deploy' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: '4. Run optimized' })).toBeDisabled();
+  await page.getByText('Registered simulated APIs (15)', { exact: true }).click();
+  await expect(page.getByText('create_refund', { exact: true })).toBeVisible();
+  await page.route('**/api/benchmarks/billing/baseline', (route) =>
+    route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: 'Test-only provider unavailable; no inference performed.' }),
+    }),
+  );
+  await page.getByRole('button', { name: '1. Run baseline' }).click();
+  await expect(page.getByRole('alert')).toContainText('no inference performed');
+  await page.screenshot({
+    path: 'test-results/billing-benchmark.png',
+    fullPage: true,
+    animations: 'disabled',
+  });
+});
+
 test('one persistent sidebar connects benchmarks and developer tools', async ({ page }) => {
   await page.goto('/');
   const sidebar = await page.getByLabel('Workspace sidebar').elementHandle();

@@ -1,0 +1,9 @@
+{
+  "sourceReport": "billing-gemini-1794103814996.json",
+  "status": "interrupted_at_training_gate",
+  "reason": "First complete training attempt ended MAX_TOKENS under the symmetric 4096-token response budget. Stopped before measured trials to fix this foundational configuration.",
+  "inFlightTrainingTasksWhenStopped": 1,
+  "inFlightUsage": "unknown; not counted as zero",
+  "financialApis": "synthetic only; no external financial effects",
+  "sourceFinancialStatePreservedInCompletedRuns": true
+}

@@ -9,3 +9,5 @@ playwright-report/
 .playwright-cli/
 tmp/
 dist-sdk/
+# Preserve raw billing traces locally; version the lossless .json.gz evidence archives.
+docs/experiments/billing-gemini-[0-9]*.json

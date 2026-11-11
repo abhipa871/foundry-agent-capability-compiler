@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { json, type Json } from '../compiler/contracts.js';
+import { json, stable, type Json } from '../compiler/contracts.js';
 
 export const providerNames = [
   'openai',
@@ -19,6 +19,7 @@ export type ModelUsage = {
   reasoningTokens: number | null;
 };
 export type ModelEvent = {
+  failure?: { kind: 'http' | 'timeout' | 'transport'; httpStatus: number | null };
   usage: ModelUsage;
   latencyMs: number;
   status: 'success' | 'failed';
@@ -32,6 +33,7 @@ export type ModelConfig = {
   protocol?: 'responses' | 'chat';
   timeoutMs?: number;
   maxOutputTokens?: number;
+  temperature?: number;
   fetch?: typeof fetch;
 };
 const settings: Record<ModelProvider, { base: string; env: string }> = {
@@ -120,14 +122,46 @@ const unknownUsage = (): ModelUsage => ({
   reasoningTokens: null,
 });
 
-function geminiSchema(value: Json): Json {
-  if (Array.isArray(value)) return value.map(geminiSchema);
-  if (!value || typeof value !== 'object') return value;
-  return Object.fromEntries(
-    Object.entries(value)
-      .filter(([key]) => !['$schema', 'additionalProperties'].includes(key))
-      .map(([key, entry]) => [key, geminiSchema(entry)]),
-  );
+export function geminiParametersJsonSchema(value: Json): Json {
+  const schema = json(value) as Wire;
+  if (!schema || typeof schema !== 'object' || !schema.$defs) return schema;
+  for (const [name, definition] of Object.entries(schema.$defs)) {
+    const reference = { $ref: `#/$defs/${name}` };
+    const anyJson = {
+      anyOf: [
+        { type: 'string' },
+        { type: 'number' },
+        { type: 'boolean' },
+        { type: 'null' },
+        { type: 'array', items: reference },
+        { type: 'object', propertyNames: { type: 'string' }, additionalProperties: reference },
+      ],
+    };
+    // Zod's unconstrained JSON union is equivalent to {} over JSON wire values. Only this
+    // exact shape is simplified; application-specific recursive constraints stay intact.
+    if (stable(definition) === stable(anyJson)) schema.$defs[name] = {};
+  }
+  return schema;
+}
+
+export function publicGeminiExchange(value: unknown): unknown {
+  if (Array.isArray(value))
+    return value
+      .filter((item) => !(item && typeof item === 'object' && (item as Wire).thought === true))
+      .map(publicGeminiExchange);
+  if (value && typeof value === 'object')
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([key]) => key !== 'thoughtSignature' && key !== 'thought')
+        .map(([key, item]) => [key, publicGeminiExchange(item)]),
+    );
+  return value;
+}
+
+class ProviderHttpError extends Error {
+  constructor(readonly status: number) {
+    super(`Provider API returned HTTP ${status}.`);
+  }
 }
 
 export class ModelClient {
@@ -167,7 +201,7 @@ export class ModelClient {
     });
     if (!response.ok) {
       await response.body?.cancel().catch(() => {});
-      throw new Error(`${this.provider} API returned HTTP ${response.status}.`);
+      throw new ProviderHttpError(response.status);
     }
     const reader = response.body?.getReader();
     if (!reader) throw new Error('Provider returned no body.');
@@ -209,6 +243,15 @@ export class ModelClient {
     maxToolCalls?: number;
     maxTotalTokens?: number;
     onEvent?: (event: ModelEvent) => void;
+    beforeRequest?: () => void;
+    // Gemini public request/response transcripts only: private thought parts and signatures
+    // are removed before observation. Credentials are in headers and never passed here.
+    onGeminiExchange?: (exchange: {
+      at: string;
+      request: unknown;
+      response: unknown;
+      status: 'success' | 'failed';
+    }) => void;
     toolCallPolicy?: 'repeatable' | 'once_per_name';
   }): Promise<{ text: string; usage: ModelUsage; events: ModelEvent[]; toolCalls: number }> {
     const events: ModelEvent[] = [];
@@ -240,6 +283,7 @@ export class ModelClient {
       .max(128)
       .parse(options.maxToolCalls ?? 32);
     for (let index = 0; index < limit; index++) {
+      options.beforeRequest?.();
       const schemas = allSchemas.filter(
         (tool) => options.toolCallPolicy !== 'once_per_name' || !completedTools.has(tool.name),
       );
@@ -254,9 +298,9 @@ export class ModelClient {
             ? {
                 tools: [
                   {
-                    functionDeclarations: schemas.map((tool) => ({
+                    functionDeclarations: schemas.map(({ parameters, ...tool }) => ({
                       ...tool,
-                      parameters: geminiSchema(tool.parameters),
+                      parametersJsonSchema: geminiParametersJsonSchema(parameters),
                     })),
                   },
                 ],
@@ -264,6 +308,9 @@ export class ModelClient {
             : {}),
           generationConfig: {
             maxOutputTokens: this.config.maxOutputTokens ?? 4096,
+            ...(this.config.temperature === undefined
+              ? {}
+              : { temperature: z.number().min(0).max(2).parse(this.config.temperature) }),
             ...(options.outputSchema
               ? { responseMimeType: 'application/json', responseJsonSchema: options.outputSchema }
               : {}),
@@ -313,16 +360,40 @@ export class ModelClient {
       let raw: Wire;
       try {
         raw = await this.request(path, body);
-      } catch {
+      } catch (error) {
+        const failure: NonNullable<ModelEvent['failure']> = {
+          kind:
+            error instanceof ProviderHttpError
+              ? 'http'
+              : error instanceof Error && ['TimeoutError', 'AbortError'].includes(error.name)
+                ? 'timeout'
+                : 'transport',
+          httpStatus: error instanceof ProviderHttpError ? error.status : null,
+        };
+        if (provider === 'gemini')
+          options.onGeminiExchange?.({
+            at: new Date().toISOString(),
+            request: publicGeminiExchange(body),
+            response: { error: failure },
+            status: 'failed',
+          });
         const event: ModelEvent = {
           usage: unknownUsage(),
           latencyMs: performance.now() - started,
           status: 'failed',
+          failure,
         };
         events.push(event);
         options.onEvent?.(event);
         throw new Error(`${provider} inference failed; usage may be unknown.`);
       }
+      if (provider === 'gemini')
+        options.onGeminiExchange?.({
+          at: new Date().toISOString(),
+          request: publicGeminiExchange(body),
+          response: publicGeminiExchange(raw),
+          status: 'success',
+        });
       const event: ModelEvent = {
         usage: normalizeModelUsage(provider, raw.usageMetadata ?? raw.usage ?? {}, protocol),
         latencyMs: performance.now() - started,

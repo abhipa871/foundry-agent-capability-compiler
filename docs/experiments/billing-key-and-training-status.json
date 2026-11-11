@@ -1,0 +1,69 @@
+{
+  "sourceReport": "billing-gemini-1794103998915.json",
+  "requiredModel": "gemini-3.8-flash",
+  "discovery": {
+    "httpStatus": 200,
+    "error": null,
+    "requiredModelListed": true,
+    "usage": null
+  },
+  "minimalInferenceUsage": {
+    "inputTokens": 12,
+    "outputTokens": 61,
+    "cachedInputTokens": 0,
+    "totalTokens": 73,
+    "reasoningTokens": 60
+  },
+  "training": [
+    {
+      "seed": 9001,
+      "passed": true,
+      "usage": {
+        "inputTokens": 225288,
+        "outputTokens": 14596,
+        "cachedInputTokens": 176117,
+        "totalTokens": 239884,
+        "reasoningTokens": 9916
+      },
+      "modelCalls": 16,
+      "estimatedCostUsd": 0.104822025
+    },
+    {
+      "seed": 9002,
+      "passed": true,
+      "usage": {
+        "inputTokens": 159514,
+        "outputTokens": 12006,
+        "cachedInputTokens": 119707,
+        "totalTokens": 171520,
+        "reasoningTokens": 8058
+      },
+      "modelCalls": 13,
+      "estimatedCostUsd": 0.08385577500000001
+    }
+  ],
+  "compiler": {
+    "candidateReads": 20,
+    "checksPassed": 16,
+    "shadowMatches": 3,
+    "status": "deployed",
+    "registry": "Isolated memory registry; closed after stopping this attempt."
+  },
+  "completedPairedTrials": 0,
+  "budget": {
+    "originalTotalTokens": 5000000,
+    "requestedTotalTokens": 20000000,
+    "trainingTokens": 411404,
+    "projectedBaselineTokensFor35": 7199570
+  },
+  "pricing": {
+    "model": "gemini-3.8-flash",
+    "inputPerMillion": 0.75,
+    "outputPerMillion": 3.75,
+    "cachedInputPerMillion": 0.075,
+    "maxInputTokens": 200000,
+    "source": "https://ai.google.dev/gemini-api/docs/pricing?authuser=0",
+    "verifiedAt": "2026-11-08T02:26:27.426Z"
+  },
+  "pricingNote": "Post-hoc API-equivalent estimates at published introductory rates, not actual billing. Historical failed/aborted requests can have unknown costs."
+}

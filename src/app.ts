@@ -16,11 +16,14 @@ import {
   type Identity,
 } from './security/identity.js';
 import { BenchmarkWorkspace, retainedEvidence } from './benchmarks/workspace.js';
+import { BillingWorkspace } from './benchmarks/billing-workspace.js';
+import { billingVariants } from './benchmarks/billing-fixtures.js';
 import { TaskRegistry, type GenericTaskOptions } from './registry/tasks.js';
 import { contractId } from './compiler/contracts.js';
 import { currentIdentity } from './security/identity.js';
 import type { TaskTrace } from './compiler/task-ir.js';
 export type AppOptions = {
+  billing?: false;
   auth?: ApiKeyAuthenticator;
   signer?: ArtifactSigner;
   runtime?: ConstructorParameters<typeof Foundry>[1];
@@ -197,6 +200,32 @@ export function createApp(store: Store, seed = true, options: AppOptions = {}) {
   // Local experiment surface only. Hosted-mode middleware above excludes these routes.
   const benchmarks = new BenchmarkWorkspace();
   app.get('/api/benchmarks/config', (_req, res) => res.json(benchmarks.config()));
+  if (!options.auth && options.billing !== false) {
+    const billing = new BillingWorkspace();
+    app.get('/api/benchmarks/billing', (_req, res) => res.json(billing.summary()));
+    app.get('/api/benchmarks/billing/runs/:id', (req, res) => {
+      const run = billing.runs.find((run) => run.id === req.params.id);
+      if (!run) throw new DomainError('Billing run not found.', 404);
+      res.json(run);
+    });
+    for (const arm of ['baseline', 'optimized'] as const)
+      app.post(`/api/benchmarks/billing/${arm}`, async (req, res) => {
+        const body = z
+          .object({ variant: z.enum(billingVariants), seed: z.number().int().min(0).max(10000) })
+          .strict()
+          .parse(req.body);
+        res.json(await billing.runArm(arm, body.variant, body.seed));
+      });
+    app.post('/api/benchmarks/billing/compile', async (req, res) => {
+      emptyRequest.parse(req.body);
+      res.json(await billing.compile());
+    });
+    app.post('/api/benchmarks/billing/deploy', async (req, res) => {
+      emptyRequest.parse(req.body);
+      res.json(await billing.deploy());
+    });
+    app.get('/api/benchmarks/billing/report', (_req, res) => res.json(billing.report()));
+  }
   app.get('/api/benchmarks/evidence', async (_req, res) => res.json(await retainedEvidence()));
   app.post('/api/benchmarks/runs', async (req, res) => {
     res.status(201).json(await benchmarks.run(req.body));

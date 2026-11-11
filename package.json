@@ -7,8 +7,8 @@
     "node": ">=24.0.0"
   },
   "scripts": {
-    "dev": "concurrently -k -n api,web \"tsx watch src/server.ts\" \"vite --host 127.0.0.1\"",
-    "start": "tsx src/server.ts",
+    "dev": "concurrently -k -n api,web \"tsx watch --env-file-if-exists=.env.server.local src/server.ts\" \"vite --host 127.0.0.1\"",
+    "start": "tsx --env-file-if-exists=.env.server.local src/server.ts",
     "build": "tsc --noEmit && vite build",
     "lint": "tsc --noEmit && prettier --check src tests scripts e2e *.json *.ts *.html *.md docs",
     "format": "prettier --write src tests scripts e2e *.json *.ts *.html *.md docs",
@@ -24,8 +24,10 @@
     "benchmark:support-agent": "tsx scripts/benchmark-support-agent.ts",
     "benchmark:routing-agent": "tsx scripts/benchmark-routing-agent.ts",
     "benchmark:selective-agent": "tsx scripts/benchmark-selective-agent.ts",
-    "benchmark:departure": "tsx scripts/benchmark-departure.ts",
-    "benchmark:travel-day": "tsx scripts/benchmark-travel-day.ts"
+    "benchmark:departure": "tsx --env-file-if-exists=.env.server.local scripts/benchmark-departure.ts",
+    "benchmark:travel-day": "tsx --env-file-if-exists=.env.server.local scripts/benchmark-travel-day.ts",
+    "diagnose:gemini": "tsx --env-file-if-exists=.env.server.local scripts/diagnose-gemini.ts",
+    "benchmark:billing": "tsx --env-file-if-exists=.env.server.local scripts/benchmark-billing.ts"
   },
   "dependencies": {
     "express": "5.2.1",

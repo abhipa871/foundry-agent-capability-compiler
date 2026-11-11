@@ -1,0 +1,25 @@
+{
+  "checkedAt": "2026-11-10T20:22:48.742Z",
+  "pairedCoverage": "35 unique pairs; 5 per condition",
+  "meteredPairs": 33,
+  "knownUsageFailuresRetainedInMeteredSubset": 3,
+  "archivesVerified": 9,
+  "archiveOnlyReproduction": "passed",
+  "independentMeanCalculation": "passed",
+  "budgetWithReserveWithinApprovedCap": true,
+  "privacy": {
+    "credentialPresent": true,
+    "configuredKeyMatchesInArtifacts": [],
+    "privateFileTracked": false,
+    "privateFileMode": "600",
+    "filesScanned": 47
+  },
+  "verification": {
+    "testFilesPassed": 39,
+    "testsPassed": 258,
+    "browserTestsPassed": 10,
+    "sdkBuild": "passed",
+    "productionBuild": "passed",
+    "existingEvaluationGates": "passed"
+  }
+}

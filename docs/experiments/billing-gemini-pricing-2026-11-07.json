@@ -1,0 +1,9 @@
+{
+  "model": "gemini-3.8-flash",
+  "inputPerMillion": 0.75,
+  "outputPerMillion": 3.75,
+  "cachedInputPerMillion": 0.075,
+  "maxInputTokens": 200000,
+  "source": "https://ai.google.dev/gemini-api/docs/pricing?authuser=0",
+  "verifiedAt": "2026-11-08T02:26:27.426Z"
+}

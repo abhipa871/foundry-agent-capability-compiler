@@ -3,8 +3,11 @@ import {
   ModelClient,
   normalizeModelUsage,
   sumModelUsage,
+  geminiParametersJsonSchema,
   type ModelProvider,
 } from '../../src/agent/providers.js';
+import { z } from 'zod';
+import { json } from '../../src/compiler/contracts.js';
 
 const tool = {
   name: 'get_weather',
@@ -32,6 +35,55 @@ const response = (value: unknown) =>
   new Response(JSON.stringify(value), { headers: { 'content-type': 'application/json' } });
 
 describe('model-independent provider transport', () => {
+  it('removes only the redundant unconstrained JSON recursion, preserving domain schemas', () => {
+    const input = json(z.toJSONSchema(z.object({ evidence: z.json() }).strict()));
+    const normalized = geminiParametersJsonSchema(input) as any;
+    expect(normalized.$defs.__schema0).toEqual({});
+    expect((input as any).$defs.__schema0.anyOf).toHaveLength(6);
+    const domain = {
+      type: 'object',
+      $defs: {
+        node: {
+          type: 'object',
+          properties: { next: { $ref: '#/$defs/node' } },
+          required: ['next'],
+        },
+      },
+    };
+    expect(geminiParametersJsonSchema(domain)).toEqual(domain);
+  });
+  it('sends full JSON Schema through Gemini parametersJsonSchema without weakening constraints', async () => {
+    const parameters = {
+      type: 'object',
+      properties: {
+        customer: { const: 'CUST-1042', type: 'string' },
+        cursor: { type: ['string', 'null'] },
+        amount: { type: 'number', exclusiveMinimum: 0 },
+      },
+      additionalProperties: false,
+    };
+    const fetchMock = vi.fn<typeof fetch>(async (_url, init) => {
+      const declaration = JSON.parse(String(init?.body)).tools[0].functionDeclarations[0];
+      expect(declaration.parameters).toBeUndefined();
+      expect(declaration.parametersJsonSchema).toEqual(parameters);
+      return response({
+        candidates: [{ finishReason: 'STOP', content: { role: 'model', parts: [{ text: 'OK' }] } }],
+        usageMetadata: { promptTokenCount: 2, totalTokenCount: 3 },
+      });
+    });
+    const result = await new ModelClient({
+      provider: 'gemini',
+      model: 'gemini-3.8-flash',
+      apiKey: () => 'test-only',
+      fetch: fetchMock,
+    }).run({
+      instructions: '',
+      prompt: '',
+      tools: [{ name: 'typed_read', description: 'Read', inputSchema: parameters }],
+      execute: async () => null,
+    });
+    expect(result.text).toBe('OK');
+  });
   it('removes completed tools only when the application requests one call per tool name', async () => {
     const bodies: any[] = [];
     const client = new ModelClient({
@@ -228,6 +280,7 @@ describe('model-independent provider transport', () => {
       }),
     ).rejects.toThrow('usage may be unknown');
     expect(sumModelUsage(events).totalTokens).toBeNull();
+    expect(events[0].failure).toEqual({ kind: 'http', httpStatus: 429 });
     expect(JSON.stringify(events)).not.toContain('fake-secret');
     const repeats = new ModelClient({
       provider: 'openrouter',

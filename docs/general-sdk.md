@@ -1,5 +1,13 @@
 # General task SDK
 
+The [enterprise billing stress test](enterprise-billing-experiment.md) exercises this SDK with
+stateful simulated APIs, read-only compilation and native guarded writes. Its fixture validation
+and all 70 live Gemini attempts are complete. The baseline passed 33/35; Foundry passed 32/35.
+Foundry reduced model-facing tool invocations by 38.6%, but the 33 fully metered pairs used 4.5%
+more tokens and cost an estimated 0.9% more. Two pairs have unknown usage. See the report for
+per-condition results and fallback limitations. Use `npm run diagnose:gemini -- --infer` to verify
+a newly configured credential.
+
 Build with `npm run build:sdk`. The package in `dist-sdk` now exports the domain-independent
 `FoundryClient` (`TaskClient`) by default. The earlier CRM SDK is available at the `./legacy`
 subpath. Model transports are at `./providers`. This is a private Node.js 24+ package.
@@ -192,6 +200,16 @@ const result = await agent.run({
 | `gemini`     | `GEMINI_API_KEY`                | GenerateContent  |
 | `xai`        | `XAI_API_KEY`                   | Responses        |
 | `openrouter` | `OPENROUTER_API_KEY`            | Chat Completions |
+
+For local Gemini configuration, put `GEMINI_API_KEY=your-key` in the Git-ignored
+`.env.server.local` at the repository root. `npm run dev` (API process), `npm start`,
+`npm run benchmark:departure` and `npm run benchmark:travel-day` load this optional file.
+An existing shell environment value takes precedence. Restart the server after changing the file.
+The file is not a standard Vite environment filename; provider keys must remain server-side and
+must never use a `VITE_` prefix. Other commands continue to use exported environment variables.
+Configuring Gemini does not switch the legacy customer benchmark playground from Codex CLI or
+turn the local developer-console fixture examples into live agents. Live experiments still require
+their explicit `--live` argument and consume provider inference.
 
 IDs are not restricted to a frozen model list. `models()` returns the provider catalog and, for
 OpenRouter, the advertised tool support flag. Providers may reject unavailable/non-tool models.

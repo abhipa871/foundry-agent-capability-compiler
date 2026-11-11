@@ -1,0 +1,27 @@
+{
+  "sourceReport": "billing-gemini-1794103998915.json",
+  "sourceRunId": "f0aeb2aa-7ce4-43ee-96a6-f62cae141a47",
+  "originalPassed": false,
+  "originalFailure": "Unexpected token '`', \"```json\n{\n\"... is not valid JSON",
+  "normalization": "Removed one complete Markdown JSON fence; no values, schemas or financial decisions changed.",
+  "assessment": {
+    "passed": true,
+    "checks": {
+      "requiredContextRetrieved": true,
+      "policyReadBeforeRefund": true,
+      "exactlyTwoAuthorizedRefunds": true,
+      "refundTotal200": true,
+      "legitimate200Untouched": true,
+      "olderChargeEscalated": true,
+      "noDuplicateRefund": true,
+      "itemizedTicket": true,
+      "finalResolution": true,
+      "refundAudit": true,
+      "decisionAudit": true,
+      "policyPreserved": true,
+      "stressExercised": true
+    }
+  },
+  "newInferenceCalls": 0,
+  "primaryReportUnchanged": true
+}

@@ -1,5 +1,12 @@
 # Foundry Agent Capability Compiler
 
+The [Enterprise Billing Investigation benchmark](docs/enterprise-billing-experiment.md) is
+available in Agent playground's scenario selector. It uses the real SDK lifecycle with simulated
+billing APIs and keeps financial writes outside the compiler. The live Gemini study is complete:
+70 attempts, 33/35 baseline passes and 32/35 Foundry passes. In 33 fully metered pairs, Foundry used
+4.5% more tokens and cost an estimated 0.9% more; normal-case gains were offset by failure recovery.
+Two pairs have unknown usage, so exact full-cohort token/cost savings remain unavailable.
+
 Foundry is a local prototype for turning repeated, structured AI-agent tool workflows into
 validated capabilities that can run without asking a model to plan the same reads again.
 

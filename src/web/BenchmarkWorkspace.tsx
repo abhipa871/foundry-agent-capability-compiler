@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { generalSdkExample } from './sdk-example';
+import { BillingBenchmarkPanel } from './BillingBenchmarkPanel';
 import {
   Activity,
   ArrowDown,
@@ -217,6 +218,7 @@ export function BenchmarkWorkspace({
   onOpenConsole: () => void;
   onRunCountChange: (count: number) => void;
 }) {
+  const [benchmarkScenario, setBenchmarkScenario] = useState<'customer' | 'billing'>('customer');
   const [config, setConfig] = useState<BenchmarkConfig>();
   const [evidence, setEvidence] = useState<BenchmarkEvidence>();
   const [error, setError] = useState('');
@@ -359,6 +361,20 @@ export function BenchmarkWorkspace({
         </div>
       )}
       {view === 'playground' && (
+        <label style={{ display: 'block', marginBottom: 20 }}>
+          Benchmark scenario
+          <select
+            aria-label="Benchmark scenario"
+            value={benchmarkScenario}
+            onChange={(event) => setBenchmarkScenario(event.target.value as 'customer' | 'billing')}
+          >
+            <option value="customer">Customer support context</option>
+            <option value="billing">Enterprise Billing Investigation</option>
+          </select>
+        </label>
+      )}
+      {view === 'playground' && benchmarkScenario === 'billing' && <BillingBenchmarkPanel />}
+      {view === 'playground' && benchmarkScenario === 'customer' && (
         <>
           <div className="bw-section-kicker">
             <span>
